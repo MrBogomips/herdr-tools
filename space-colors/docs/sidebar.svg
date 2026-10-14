@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="248" height="326" viewBox="0 0 248 326" role="img" aria-label="Herdr spaces sidebar coloured by customer prefix">
+<rect width="248" height="326" rx="6" fill="#1e1e2e"/>
+<g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="13">
+<text x="10" y="24" fill="#a6adc8" font-weight="normal">spaces</text>
+<text x="10" y="51" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="39" width="4" height="15" fill="#fab387"/>
+<text x="36" y="51" fill="#fab387" font-weight="normal">~</text>
+<text x="10" y="71" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="59" width="4" height="15" fill="#f9e2af"/>
+<text x="36" y="71" fill="#f9e2af" font-weight="normal">LUMON +</text>
+<text x="10" y="91" fill="#f9e2af" font-weight="normal">●</text>
+<rect x="28" y="79" width="4" height="15" fill="#cba6f7"/>
+<text x="36" y="91" fill="#cba6f7" font-weight="normal">ACME - api</text>
+<text x="10" y="111" fill="#7f849c" font-weight="normal">main</text>
+<text x="10" y="131" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="119" width="4" height="15" fill="#cba6f7"/>
+<text x="36" y="131" fill="#cba6f7" font-weight="normal">ACME - web</text>
+<text x="10" y="151" fill="#7f849c" font-weight="normal">feature/checkout</text>
+<rect x="0" y="156" width="248" height="40" fill="#313244"/>
+<text x="10" y="171" fill="#f9e2af" font-weight="normal">●</text>
+<rect x="28" y="159" width="4" height="15" fill="#94e2d5"/>
+<text x="36" y="171" fill="#94e2d5" font-weight="normal">Globex - etl</text>
+<text x="10" y="191" fill="#7f849c" font-weight="normal">master</text>
+<text x="10" y="211" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="199" width="4" height="15" fill="#f5c2e7"/>
+<text x="36" y="211" fill="#f5c2e7" font-weight="normal">Initech - crm</text>
+<text x="10" y="231" fill="#7f849c" font-weight="normal">main</text>
+<text x="10" y="251" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="239" width="4" height="15" fill="#89b4fa"/>
+<text x="36" y="251" fill="#89b4fa" font-weight="normal">Umbrella - lab</text>
+<text x="10" y="271" fill="#6c7086" font-weight="normal">·</text>
+<rect x="28" y="259" width="4" height="15" fill="#a6e3a1"/>
+<text x="36" y="271" fill="#a6e3a1" font-weight="normal">SYS -</text>
+<text x="10" y="291" fill="#a6e3a1" font-weight="normal">○</text>
+<rect x="28" y="279" width="4" height="15" fill="#f38ba8"/>
+<text x="36" y="291" fill="#f38ba8" font-weight="normal">Archive -</text>
+<text x="10" y="311" fill="#7f849c" font-weight="normal">feature/cleanup</text>
+</g>
+</svg>

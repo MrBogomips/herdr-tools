@@ -2,15 +2,12 @@
 
 Colours the names in Herdr's spaces sidebar, so every space of one customer gets the same colour.
 
-```
-● ▌ACME - api        pink    ┐ same prefix "ACME",
-○ ▌ACME - web        pink    ┘ same colour
-○ ▌Globex - etl      cyan
-● ▌Initech - crm     yellow
-```
+<img src="docs/sidebar.svg" alt="Herdr spaces sidebar: ACME - api and ACME - web share one colour, every other customer has its own" width="248">
 
-Name your spaces `CUSTOMER - project` and the colour follows the customer. Together with
-[sort-spaces](../sort-spaces/) the spaces of one customer also sit next to each other.
+Name your spaces `CUSTOMER - project` and the colour follows the customer: above, both `ACME`
+spaces share a colour (catppuccin palette, sticky mode). Together with
+[sort-spaces](../sort-spaces/) the spaces of one customer also sit next to each other, with
+`LUMON +` pinned on top and `SYS -` / `Archive -` at the bottom.
 
 ## How the colour is chosen
 

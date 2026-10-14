@@ -25,7 +25,8 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
 ## Git / PR Working Policy
-- Worktree usage: enabled
+- Worktree usage: enabled (features and multi-file work, merged through a PR)
+- Trivial work (doc tweaks, typos, single-line fixes): commit directly to main and push
 - Worktree location: in-repo, Claude Code default (.claude/worktrees/<branch>/)
 - Base branch: main
 - Recorded on: 2026-10-14
