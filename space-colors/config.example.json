@@ -1,0 +1,16 @@
+{
+  "palette": "dracula",
+  "palette_size": 13,
+  "assign": "sticky",
+  "key": "prefix",
+  "separator": " -",
+  "ignore_case": true,
+  "ignore_suffixes": [" +", " -"],
+  "marker": "▌",
+  "worktrees_follow_parent": true,
+  "rules": [
+    {"match": "^~$", "color": null},
+    {"match": "^Lumon\\b", "color": "#e0e0e0"},
+    {"match": "^Initech\\b", "color": 4}
+  ]
+}

@@ -1,0 +1,54 @@
+id = "mrbogomips.space-colors"
+name = "Space Colors"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+description = "Colour space names in the sidebar by a stable hash of their prefix, or by regex rules, so every space of one customer shares a colour."
+platforms = ["macos", "linux"]
+
+# The colours show only after the [ui.sidebar.spaces] block printed by
+# `python3 space_colors.py snippet` is in Herdr's config.toml (see the README).
+
+# Token metadata does not survive a server restart: colour every space again at startup.
+[[startup]]
+command = ["python3", "space_colors.py", "reconcile", "--hook"]
+
+[[events]]
+on = "workspace.created"
+command = ["python3", "space_colors.py", "reconcile", "--hook"]
+
+[[events]]
+on = "workspace.renamed"
+command = ["python3", "space_colors.py", "reconcile", "--hook"]
+
+# A space nobody named takes its label from its pane's folder, and a `cd` changes it without a
+# hookable event (pane.updated cannot be hooked), so catch up on the next focus change. A run
+# with nothing to change writes nothing.
+[[events]]
+on = "pane.focused"
+command = ["python3", "space_colors.py", "reconcile", "--hook"]
+
+# Worktree provenance changes (a worktree child follows its parent's colour).
+[[events]]
+on = "workspace.updated"
+command = ["python3", "space_colors.py", "reconcile", "--hook"]
+
+[[actions]]
+id = "snippet"
+title = "Write sidebar rows for config.toml"
+description = "Write the [ui.sidebar.spaces] block for the current palette next to config.json and show its path."
+contexts = ["global", "workspace"]
+command = ["python3", "space_colors.py", "snippet", "--write"]
+
+[[actions]]
+id = "recolor"
+title = "Recolour spaces"
+description = "Colour every space name again, for example after editing config.json."
+contexts = ["global", "workspace"]
+command = ["python3", "space_colors.py", "reconcile"]
+
+[[actions]]
+id = "clear"
+title = "Clear space colours"
+description = "Remove the coloured names until the next hook run, for example to test the default rows."
+contexts = ["global", "workspace"]
+command = ["python3", "space_colors.py", "clear"]
