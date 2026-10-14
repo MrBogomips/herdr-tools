@@ -127,8 +127,9 @@ def suggest(
     flags: List[str] = []
     for commit in commits:
         signals.extend(_commit_signals(commit, flags))
-    if any(file.kind in ("manifest", "config") for commit in commits for file in commit.files):
-        signals.extend(_contract_signals(old, new, old_keys, new_keys))
+    # Always compare the contracts: a release commit (left out of `commits`) may drop a platform or raise
+    # min_herdr_version, and equal contracts yield nothing.
+    signals.extend(_contract_signals(old, new, old_keys, new_keys))
     level = max((level for level, _ in signals), key=LEVELS.index, default="none")
     breaking = tuple(reason for kind, reason in signals if kind == "breaking")
     return Suggestion(level, tuple(reason for _, reason in signals), tuple(flags), breaking)

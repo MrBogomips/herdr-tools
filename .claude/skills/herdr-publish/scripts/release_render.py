@@ -76,8 +76,11 @@ def _plugin(plugin: rs.PluginStatus) -> List[str]:
 
 
 def _next_step(plugin: rs.PluginStatus) -> List[str]:
+    if plugin.state == "untagged" and plugin.tag_commit:
+        return ["first release: tag {}-v{} (annotated) on {}".format(
+            plugin.folder, plugin.manifest_version, _short(plugin.tag_commit))]
     if plugin.state == "untagged":
-        return ["first release: tag {}-v{} (annotated) on the commit that ships it".format(
+        return ["first release: tag {}-v{} (annotated) once it is on origin/main".format(
             plugin.folder, plugin.manifest_version)]
     if plugin.state == "unreleased":
         return ["next: {} -> {} (bump the manifest, then tag {}-v{})".format(

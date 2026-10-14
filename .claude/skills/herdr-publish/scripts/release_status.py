@@ -98,7 +98,7 @@ def build(git: Git, plugins: Optional[Sequence[str]], index: Optional[dict], now
     statuses = []
     for folder in folders:
         status = plugin_status(git, folder, origin_main, remote_tags, rows.get(folder),
-                               listed.get(folder + "/" + repo.MANIFEST))
+                               listed.get(folder + "/" + repo.MANIFEST), listed_head)
         misread = _listing_mismatches(git, folder, listed.get(folder + "/" + repo.MANIFEST), listed_head)
         statuses.append(replace(status, warnings=status.warnings + misread) if misread else status)
     return StatusReport("/".join(slug), gate(git, origin_main), state, index_error, tuple(statuses))
@@ -152,13 +152,16 @@ def gate(git: Git, origin_main: Optional[str]) -> GitGate:
 
 
 def plugin_status(git: Git, folder: str, origin_main: Optional[str], remote_tags: Optional[Set[str]],
-                  row: Optional[List[str]], listed: Optional[dict]) -> PluginStatus:
+                  row: Optional[List[str]], listed: Optional[dict], listed_head: Optional[str] = None) -> PluginStatus:
     problems: List[str] = []
     warnings: List[str] = []
     summary = _summary((git.root / folder / repo.MANIFEST).read_text(encoding="utf-8"), problems, "manifest")
     tags = git.plugin_tags(folder)
     last = tags[-1] if tags else None
     release = _release(git, folder, last, summary.version, origin_main, problems, warnings)
+    if release.state == "untagged":
+        release = replace(release, tag_commit=_first_tag_commit(
+            git, folder, summary.version or "", origin_main, listed, listed_head))
     if last:
         warnings.extend(_tag_warnings(git, last, origin_main, remote_tags))
     return PluginStatus(
@@ -225,6 +228,19 @@ def _bumped(git: Git, folder: str, last: Tag, version: str, origin_main: Optiona
         warnings.append("the bump {} is not on origin/main yet: push main and the tag together (--atomic)".format(
             bump[:7]))
     return _Release("tag-pending", version, bump, commits, later, suggestion)
+
+
+def _first_tag_commit(git: Git, folder: str, version: str, origin_main: Optional[str], listed: Optional[dict],
+                      listed_head: Optional[str]) -> Optional[str]:
+    """Where a plugin's first tag goes: the commit the index read, when it lists this version and the folder
+    has not changed since (what users were offered); otherwise the commit on origin/main that set the version
+    (for a new plugin, the commit its merge landed as)."""
+    if not origin_main:
+        return None
+    if (listed and listed.get("version") == version and listed_head and git.is_ancestor(listed_head, origin_main)
+            and not git.commits_touching(listed_head, origin_main, folder)):
+        return listed_head
+    return git.last_version_change(None, origin_main, "{}/{}".format(folder, repo.MANIFEST))
 
 
 def _tag_warnings(git: Git, last: Tag, origin_main: Optional[str], remote_tags: Optional[Set[str]]) -> List[str]:
