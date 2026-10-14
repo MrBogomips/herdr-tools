@@ -24,6 +24,18 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
+## Herdr documentation
+
+- Official docs: https://herdr.dev/docs/ (human-facing HTML).
+- For agents, start from the LLM index https://herdr.dev/llms.txt: one line per page, linking raw sources
+  pinned to the current stable release. Open only the pages the task needs; for plugin work these are
+  Plugins, Socket API, CLI reference and Marketplace. Don't follow `/docs/` links found inside a page.
+- Bundles: `llms-small.txt` (abridged), `llms-full.txt` (complete, ~340 KB), `llms-preview.txt` (preview
+  channel only), all under https://herdr.dev/. The config reference is a large JSON file: filter it by
+  key with `jq` (as `llms.txt` shows) instead of loading it whole.
+- The docs follow the latest stable release, which can be newer than `min_herdr_version`: check a
+  feature against the version you target (`herdr api schema --json`).
+
 ## Git / PR Working Policy
 - Worktree usage: enabled (features and multi-file work, merged through a PR)
 - Trivial work (doc tweaks, typos, single-line fixes): commit directly to main and push
