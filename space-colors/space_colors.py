@@ -12,11 +12,12 @@ import argparse
 import sys
 from datetime import date
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from config import Config, load_config
 from herdr_api import (
     Call,
+    Workspace,
     config_path,
     list_workspaces,
     notify,
@@ -27,7 +28,7 @@ from herdr_api import (
     state_dir,
 )
 from palettes import PRESETS
-from plan import Report, choose, clear_reports, plan_reports, token_name
+from plan import Choice, Report, choose, clear_reports, plan_reports, token_name
 from snippet import render_rows
 from sticky import STATE_FILE_NAME, load_state, save_state
 
@@ -41,16 +42,28 @@ Toast = Tuple[str, Optional[str]]
 
 def reconcile(call: Call, config: Config) -> int:
     """Bring every space's coloured name up to date; returns how many spaces changed."""
-    state = state_dir(PLUGIN_ID) / STATE_FILE_NAME
     with plugin_lock(PLUGIN_ID):
         spaces = list_workspaces(call)
-        stored = load_state(state) if config.assign == "sticky" else {}
+        reports = plan_reports(spaces, choose_and_remember(spaces, config), config.marker)
+        send(call, reports)
+    return len({workspace_id for workspace_id, _ in reports})
+
+
+def choose_and_remember(spaces: List[Workspace], config: Config) -> Dict[str, Choice]:
+    """Pick the slots; in sticky mode also save new assignments.
+
+    The state file is shared by every Herdr server on the machine, so its read-modify-write
+    holds a lock that is not per server.
+    """
+    if config.assign != "sticky":
+        return choose(spaces, config, {}, date.today())[0]
+    state = state_dir(PLUGIN_ID) / STATE_FILE_NAME
+    with plugin_lock(PLUGIN_ID, per_server=False):
+        stored = load_state(state)
         choices, remembered = choose(spaces, config, stored, date.today())
         if remembered != stored:
             save_state(state, remembered)
-        reports = plan_reports(spaces, choices, config.marker)
-        send(call, reports)
-    return len({workspace_id for workspace_id, _ in reports})
+    return choices
 
 
 def clear(call: Call) -> None:

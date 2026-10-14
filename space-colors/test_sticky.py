@@ -4,7 +4,9 @@ import unittest
 from collections import Counter
 from datetime import date
 from pathlib import Path
+from unittest import mock
 
+import sticky
 from herdr_api import ConfigError
 from sticky import FORGET_AFTER_DAYS, assign, load_state, save_state
 
@@ -40,6 +42,11 @@ class AssignTest(unittest.TestCase):
 
         self.assertEqual(indices, {"acme": 1})
         self.assertIn("lumon", stored)
+
+    def test_colors_pinned_by_rules_count_as_taken(self):
+        indices, _ = assign(["acme"], PALETTE, {}, TODAY, reserved=["#000001"])
+
+        self.assertEqual(indices, {"acme": 1})
 
     def test_a_color_no_longer_in_the_palette_is_assigned_again(self):
         indices, stored = assign(["acme"], PALETTE, {"acme": entry("#ffffff")}, TODAY)
@@ -88,6 +95,16 @@ class StateFileTest(unittest.TestCase):
 
         self.assertEqual(load_state(self.path), {"acme": entry("#000001")})
         self.assertEqual(json.loads(self.path.read_text())["version"], 1)
+        self.assertEqual([item.name for item in self.path.parent.iterdir()], ["assignments.json"])
+
+    def test_a_failed_save_leaves_the_old_state_and_no_temporary_file(self):
+        save_state(self.path, {"acme": entry("#000001")})
+
+        with mock.patch.object(sticky.os, "replace", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                save_state(self.path, {"globex": entry("#000002")})
+
+        self.assertEqual(load_state(self.path), {"acme": entry("#000001")})
         self.assertEqual([item.name for item in self.path.parent.iterdir()], ["assignments.json"])
 
     def test_a_damaged_file_is_an_error_naming_it(self):

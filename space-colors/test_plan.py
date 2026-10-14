@@ -74,6 +74,12 @@ class StickyChoiceTest(unittest.TestCase):
         self.assertEqual(slots([ws("a", "ACME - api"), ws("u", "Umbrella - x")], config(assign="sticky"), stored),
                          {"a": 1, "u": 0})
 
+    def test_new_customers_avoid_palette_colors_pinned_by_rules(self):
+        cfg = config(assign="sticky", rules=[{"match": "^lumon", "color": 0}, {"match": "^globex", "color": "#abcdef"}])
+        spaces = [ws("l", "Lumon - x"), ws("a", "ACME - api"), ws("g", "Globex - etl")]
+
+        self.assertEqual(slots(spaces, cfg), {"l": 0, "a": 1, "g": 8})
+
     def test_spaces_colored_by_a_rule_are_not_remembered(self):
         cfg = config(assign="sticky", rules=[{"match": "^globex", "color": 2}])
 

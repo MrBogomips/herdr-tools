@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
 from herdr_api import ConfigError
 from keys import color_index
@@ -27,15 +28,18 @@ Entry = Dict[str, str]
 Stored = Dict[str, Entry]
 
 
-def assign(keys: List[str], palette: Palette, stored: Mapping[str, Entry], today: date) -> Tuple[Dict[str, int], Stored]:
+def assign(
+    keys: List[str], palette: Palette, stored: Mapping[str, Entry], today: date, reserved: Iterable[str] = ()
+) -> Tuple[Dict[str, int], Stored]:
     """Return ({key: palette index} for the open keys, the updated remembered entries).
 
     A remembered key keeps its colour while that colour is in the palette. A new key takes, from
     its hash colour onwards, the first colour used by the fewest open keys, then by the fewest
-    remembered ones, so a closed customer's colour is reused last.
+    remembered ones, so a closed customer's colour is reused last. `reserved` colours (pinned by
+    rules on open spaces) count as used by an open key.
     """
     entries = {key: dict(value) for key, value in stored.items()}
-    open_use: Counter = Counter()
+    open_use: Counter = Counter(reserved)
     indices: Dict[str, int] = {}
     for key in keys:
         color = entries.get(key, {}).get("color")
@@ -99,6 +103,11 @@ def _valid_entry(entry: Any) -> bool:
 def save_state(path: Path, stored: Mapping[str, Entry]) -> None:
     """Write the state atomically, so a crash never leaves half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps({"version": STATE_VERSION, "keys": stored}, indent=2, sort_keys=True), encoding="utf-8")
-    os.replace(temporary, path)
+    handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as output:
+            json.dump({"version": STATE_VERSION, "keys": stored}, output, indent=2, sort_keys=True)
+        os.replace(temporary, path)
+    except BaseException:
+        os.unlink(temporary)
+        raise

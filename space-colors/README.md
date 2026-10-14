@@ -147,7 +147,8 @@ description = "recolour spaces"
 ### Sticky assignments
 
 Sticky mode remembers each key's colour in `assignments.json` in the plugin state directory
-(`~/.local/state/herdr/plugins/mrbogomips.space-colors/`). A key not seen for 90 days is forgotten,
+(`~/.local/state/herdr/plugins/mrbogomips.space-colors/`). Palette colours that rules pin to open
+spaces count as taken, so a new customer avoids them too. A key not seen for 90 days is forgotten,
 so the folder names of unnamed spaces do not pile up. A remembered colour that is no longer in the
 palette is assigned again. Delete the file to deal the colours afresh.
 

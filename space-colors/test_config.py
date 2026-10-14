@@ -140,6 +140,13 @@ class RulesTest(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "slots"):
             build(palette=self.PALETTE, rules=extra)
 
+    def test_too_many_rule_colors_alone_ask_for_fewer_rule_colors(self):
+        extra = [{"match": str(index), "color": "#0000{:02x}".format(index)} for index in range(SLOT_LIMIT)]
+
+        with self.assertRaisesRegex(ConfigError, "fewer distinct rule colours") as raised:
+            build(palette=self.PALETTE, rules=extra)
+        self.assertNotIn("palette_size to", str(raised.exception))
+
 
 class LoadConfigTest(unittest.TestCase):
     def test_reads_and_validates_the_file(self):

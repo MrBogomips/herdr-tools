@@ -168,6 +168,20 @@ class MainTest(unittest.TestCase):
         self.assertEqual(herdr.tokens(), {"ACME - api": {"spc0": "▌ACME - api"}, "Umbrella - x": {"spc1": "▌Umbrella - x"}})
         self.assertEqual(set(json.loads(state.read_text())["keys"]), {"acme", "umbrella"})
 
+    def test_sticky_state_is_guarded_by_a_lock_shared_by_all_servers(self):
+        self.use_sticky()
+        taken = []
+        real_lock = tool.plugin_lock
+
+        def recording_lock(plugin_id, **kwargs):
+            taken.append(kwargs.get("per_server", True))
+            return real_lock(plugin_id, **kwargs)
+
+        with mock.patch.object(tool, "plugin_lock", side_effect=recording_lock):
+            self.run_main(FakeHerdr(["ACME - api"]), "reconcile", "--hook")
+
+        self.assertEqual(taken, [True, False])
+
     def test_sticky_preview_writes_no_state(self):
         state = self.use_sticky()
 
