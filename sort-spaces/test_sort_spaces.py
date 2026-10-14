@@ -73,6 +73,52 @@ class PlanOrderTest(unittest.TestCase):
 
         self.assertEqual(plan_order(spaces), ["P", "c", "X"])
 
+    def test_suffix_markers_order_head_default_bottom(self):
+        spaces = [ws("w1", "SYS -", 1), ws("w2", "beta", 2), ws("w3", "LAB +", 3), ws("w4", "alpha", 4)]
+
+        self.assertEqual(plan_order(spaces), ["w3", "w4", "w2", "w1"])
+
+    def test_sorts_by_name_without_marker_inside_a_group(self):
+        spaces = [
+            ws("w1", "personal +", 1),
+            ws("w2", "b -", 2),
+            ws("w3", "LUMON +", 3),
+            ws("w4", "A -", 4),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["w3", "w1", "w4", "w2"])
+
+    def test_home_space_comes_before_the_head_group(self):
+        spaces = [ws("w1", "AAA +", 1), ws("w2", "~", 2)]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w1"])
+
+    def test_marker_needs_a_space_before_it(self):
+        spaces = [
+            ws("w1", "aa -", 1),
+            ws("w2", "C++", 2),
+            ws("w3", "b-", 3),
+            ws("w4", "ACME - API", 4),
+            ws("w5", "+", 5),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["w5", "w4", "w3", "w2", "w1"])
+
+    def test_tolerates_whitespace_after_the_marker(self):
+        spaces = [ws("w1", "beta", 1), ws("w2", "LAB + ", 2)]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w1"])
+
+    def test_worktree_child_inherits_its_parent_group(self):
+        spaces = [
+            ws("w1", "alpha", 1),
+            ws("w2", "aa-repo -", 2, worktree("rm", False)),
+            ws("w3", "aa-child +", 3, worktree("rm", True)),
+            ws("w4", "beta", 4),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["w1", "w4", "w2", "w3"])
+
     def test_orphan_worktree_child_sorts_by_its_own_label(self):
         spaces = [ws("w1", "beta", 1), ws("w2", "alpha", 2, worktree("repo-x", True))]
 

@@ -5,7 +5,7 @@ Python standard library only; each tool runs with the system `/usr/bin/python3`.
 
 | Tool | What it does | Key |
 | --- | --- | --- |
-| [sort-spaces](sort-spaces/) | Sorts the spaces sidebar by name, ignoring case, with `~` (home) first | `prefix+shift+s` |
+| [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into head / default / bottom groups (name suffix), then by name | `prefix+shift+s` |
 
 ## sort-spaces
 
@@ -15,6 +15,22 @@ stays focused, worktree children stay under their parent, and running it again o
 changes nothing. A Herdr toast reports the result ("Spaces sorted", "Spaces already sorted", or
 "Space sort failed" with the reason).
 
+### Groups
+
+A suffix in the space name chooses its group. Groups are sorted in this order, and inside each
+group spaces sort by name with the suffix removed, ignoring case:
+
+| Group | Name convention | Example |
+| --- | --- | --- |
+| home | the name `~` | `~` (always first) |
+| head | ends with a space and `+` | `LAB +` |
+| default | no suffix | `ACME - API` |
+| bottom | ends with a space and `-` | `SYS -` |
+
+The space before the suffix is required, so names like `C++` or `ACME - API` stay in the
+default group. Worktree children follow their parent's group. To move a space, rename it
+(`prefix+shift+w`), for example to `LAB +`, then press `prefix+shift+s`.
+
 Wire it in `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
 
 ```toml
@@ -22,7 +38,7 @@ Wire it in `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
 key = "prefix+shift+s"
 type = "shell"
 command = "/usr/bin/python3 /path/to/herdr-tools/sort-spaces/sort_spaces.py"
-description = "sort spaces by name"
+description = "sort spaces: ~, head (+), default, bottom (-)"
 ```
 
 From a terminal inside Herdr:

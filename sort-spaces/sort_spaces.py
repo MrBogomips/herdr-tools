@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Sort Herdr spaces (workspaces) by name, ignoring case, with the home space "~" first.
+"""Sort Herdr spaces (workspaces) into groups, then by name ignoring case.
+
+Groups, in order: the home space "~", head (name ends with " +"), default (no marker),
+bottom (name ends with " -"). The marker is ignored when sorting inside a group.
 
 Herdr has no sort setting for spaces, so this reorders them once through the socket API
 (`workspace.move_block`). Bind it to a key in config.toml; see the README.
@@ -7,12 +10,18 @@ Herdr has no sort setting for spaces, so this reorders them once through the soc
 import argparse
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
 from pathlib import Path
 
 HOME_LABEL = "~"
+HEAD_MARKER = "+"
+BOTTOM_MARKER = "-"
+PINNED, HEAD, DEFAULT, BOTTOM = range(4)
+MARKER_RANKS = {HEAD_MARKER: HEAD, BOTTOM_MARKER: BOTTOM}
+MARKED_LABEL = re.compile(r"^(.*\S)\s+([{}])\s*$".format(re.escape(HEAD_MARKER + BOTTOM_MARKER)))
 SOCKET_TIMEOUT_SECONDS = 5
 DEFAULT_SOCKET_PATH = Path.home() / ".config" / "herdr" / "herdr.sock"
 
@@ -21,12 +30,22 @@ class HerdrError(Exception):
     """A Herdr request failed or returned something unexpected."""
 
 
-def plan_order(workspaces):
-    """Return workspace ids in the target order.
+def parse_label(label):
+    """Return (group rank, name without the group marker) for a space label."""
+    marked = MARKED_LABEL.match(label)
+    if marked:
+        name, rank = marked.group(1), MARKER_RANKS[marked.group(2)]
+    else:
+        name, rank = label.strip(), DEFAULT
+    return (PINNED if name == HOME_LABEL else rank), name
 
-    Worktree children sort with their parent (its label, then its position), so a worktree
-    group stays together even when other spaces share the parent's label. Equal keys keep
-    their current order.
+
+def plan_order(workspaces):
+    """Return workspace ids in the target order: by group, then by name.
+
+    Worktree children sort with their parent (its group, label, then position), so a
+    worktree group stays together even when other spaces share the parent's label. Equal
+    keys keep their current order.
     """
     parents = {
         space["worktree"]["repo_key"]: space
@@ -35,16 +54,17 @@ def plan_order(workspaces):
     }
 
     def sort_key(space):
-        label = space["label"]
         tree = space.get("worktree") or {}
         is_child = bool(tree.get("is_linked_worktree")) and tree.get("repo_key") in parents
         group = parents[tree["repo_key"]] if is_child else space
+        group_rank, group_name = parse_label(group["label"])
+        _, own_name = parse_label(space["label"])
         return (
-            group["label"] != HOME_LABEL,
-            group["label"].casefold(),
+            group_rank,
+            group_name.casefold(),
             group["number"],
             is_child,
-            label.casefold(),
+            own_name.casefold(),
             space["number"],
         )
 
