@@ -17,7 +17,11 @@ def render(plugin: str, version: str, commits: Sequence[rb.Commit], breaking: Se
             continue
         kind, _, breaking = rb.conventional(commit.subject, commit.body)
         group = "Breaking" if breaking else {"feat": "Features", "fix": "Fixes"}.get(kind or "", "Other")
-        groups[group].append("- {} ({})".format(_description(commit.subject), commit.short))
+        reference = commit.short
+        if kind in rb.NON_SHIPPING_TYPES:  # its subject describes docs; say what actually ships
+            shipped = ", ".join(f.path for f in commit.files if f.kind in rb.SHIPPED and f.semantic)
+            reference += "; typed {} but changes {}".format(kind, shipped)
+        groups[group].append("- {} ({})".format(_description(commit.subject), reference))
     lines = ["{} {}".format(plugin, version), ""]
     if not any(groups.values()):
         lines.append("No changes to shipped files.")
