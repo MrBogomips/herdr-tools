@@ -1,0 +1,24 @@
+id = "mrbogomips.sort-spaces"
+name = "Sort Spaces"
+version = "0.2.0"
+min_herdr_version = "0.9.3"
+description = "Sort the spaces sidebar into ~, head (+), default and bottom (-) groups, then by name; on demand or after a space is created or renamed."
+platforms = ["macos", "linux"]
+
+# Bind a key in config.toml: type = "plugin_action", command = "mrbogomips.sort-spaces.sort".
+[[actions]]
+id = "sort"
+title = "Sort spaces"
+description = "Sort spaces: ~ first, then names ending with ' +', plain names, names ending with ' -'."
+contexts = ["global", "workspace"]
+command = ["python3", "sort_spaces.py"]
+
+# Autosort. Both hooks always run; "auto_sort" in the plugin's config.json decides whether they
+# sort ("off" by default). They stay silent unless sorting fails.
+[[events]]
+on = "workspace.created"
+command = ["python3", "sort_spaces.py", "--hook", "created"]
+
+[[events]]
+on = "workspace.renamed"
+command = ["python3", "sort_spaces.py", "--hook", "renamed"]
