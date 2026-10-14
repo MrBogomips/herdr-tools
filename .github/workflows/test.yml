@@ -1,0 +1,48 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  vendored:
+    name: vendored herdr_api copies match
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare every plugin's copy with the first one
+        run: |
+          set -eu
+          plugins=$(dirname */herdr-plugin.toml)
+          first=$(echo "$plugins" | head -n1)
+          for plugin in $plugins; do
+            for file in herdr_api.py test_herdr_api.py; do
+              cmp "$first/$file" "$plugin/$file"
+            done
+          done
+
+  unittest:
+    name: unittest (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The plugins must run on the system Python of macOS (3.9).
+          - os: macos-14
+            python: /usr/bin/python3
+          - os: ubuntu-latest
+            python: python3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run each plugin's tests from its own folder
+        run: |
+          set -eu
+          ${{ matrix.python }} --version
+          for manifest in */herdr-plugin.toml; do
+            plugin=$(dirname "$manifest")
+            echo "::group::$plugin"
+            (cd "$plugin" && ${{ matrix.python }} -m unittest -v)
+            echo "::endgroup::"
+          done
