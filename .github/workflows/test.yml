@@ -46,3 +46,14 @@ jobs:
             (cd "$plugin" && ${{ matrix.python }} -m unittest -v)
             echo "::endgroup::"
           done
+      # The release helper runs on whatever python3 a maintainer has: the 3.9 run covers its
+      # fallback TOML parser, the Ubuntu run covers tomllib.
+      - name: Run the project skills' tests
+        run: |
+          set -eu
+          for scripts in .claude/skills/*/scripts; do
+            [ -d "$scripts" ] || continue
+            echo "::group::$scripts"
+            (cd "$scripts" && ${{ matrix.python }} -m unittest -v)
+            echo "::endgroup::"
+          done

@@ -24,6 +24,23 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
+## Releasing
+
+- A plugin reaches the Herdr marketplace (herdr.dev/plugins) by landing on `main`: the index lists every
+  `herdr-plugin.toml` on the default branch and refreshes about every 30 minutes. There is no submission,
+  and `herdr plugin update` hands every push to `main` to users, so `main` must always be releasable.
+- Release with the `herdr-publish` skill (`.claude/skills/herdr-publish/`): a semver bump per plugin
+  (breaking changes bump the minor while 0.x) and an annotated tag `<plugin>-vX.Y.Z` carrying the notes,
+  pushed with `git push --atomic origin main <tag>`. Never push `--tags`, force, or move a pushed tag.
+- Never commit a `herdr-plugin.toml` outside a top-level plugin folder, test fixtures included: the index
+  would list it as a plugin.
+- Commits, tags and PR bodies carry no tool attribution or trailers.
+
+## Working documents
+
+- Specs, drafts, eval workspaces and sandboxes go in `.work/` at the repo root, excluded locally through
+  `.git/info/exclude` (not `.gitignore`); nothing there is committed.
+
 ## Herdr documentation
 
 - Official docs: https://herdr.dev/docs/ (human-facing HTML).

@@ -55,6 +55,15 @@ Requirements:
 Each plugin's README explains its key bindings and its `config.json`, which lives in
 `herdr plugin config-dir <plugin id>`.
 
+### Versions
+
+`herdr plugin update` follows `main`, which only receives tested changes. Every release is also
+tagged `<plugin>-vX.Y.Z` (for example `sort-spaces-v0.2.0`); to stay on one, pin it:
+
+```bash
+herdr plugin install MrBogomips/herdr-tools/sort-spaces --ref sort-spaces-v0.2.0
+```
+
 ## Develop
 
 ```bash
