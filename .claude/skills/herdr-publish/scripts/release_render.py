@@ -62,7 +62,8 @@ def _plugin(plugin: rs.PluginStatus) -> List[str]:
     lines.extend("  {}".format(line) for line in _next_step(plugin))
     lines.extend("    because {}".format(reason) for reason in plugin.reasons)
     if plugin.commits:
-        lines.append("  in this release (since {}):".format(plugin.last_tag))
+        shipping = plugin.state in ("unreleased", "tag-pending", "awaiting-merge")
+        lines.append("  {} {}:".format("in this release, since" if shipping else "commits since", plugin.last_tag))
         lines.extend("    {} {}  [{}]".format(commit.short, commit.subject, _kinds(commit)) for commit in plugin.commits)
     if plugin.later:
         lines.append("  after the bump (not in this release):")
