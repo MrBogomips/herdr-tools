@@ -144,6 +144,10 @@ class NotesTest(unittest.TestCase):
         self.assertNotIn("readme", text)
         self.assertNotIn("more", text)
 
+    def test_a_mislabelled_commit_says_what_it_ships(self) -> None:
+        text = release_notes.render("sorter", "0.1.1", [self.commit("docs(sorter): explain the retry loop", "sorter.py")])
+        self.assertIn("- explain the retry loop (abcdef1; typed docs but changes sorter.py)", text)
+
     def test_contract_breaks_are_listed_as_breaking(self) -> None:
         text = release_notes.render("sorter", "0.2.0", [self.commit("refactor(sorter): rename", "herdr-plugin.toml")],
                                     breaking=("removes action 'sort': key bindings to acme.sorter.sort stop working",))
