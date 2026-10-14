@@ -8,8 +8,10 @@ import release_bump as rb
 GROUPS = ("Breaking", "Features", "Fixes", "Other")
 
 
-def render(plugin: str, version: str, commits: Sequence[rb.Commit]) -> str:
+def render(plugin: str, version: str, commits: Sequence[rb.Commit], breaking: Sequence[str] = ()) -> str:
+    """`breaking` holds contract breaks found by comparing manifests, which a commit may not mark with `!`."""
     groups: Dict[str, List[str]] = {name: [] for name in GROUPS}
+    groups["Breaking"].extend("- {}".format(reason) for reason in breaking)
     for commit in commits:
         if rb.is_release_commit(commit.subject) or not _ships(commit):
             continue

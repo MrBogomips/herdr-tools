@@ -51,6 +51,7 @@ class Suggestion:
     level: str
     reasons: Tuple[str, ...]
     flags: Tuple[str, ...]
+    breaking: Tuple[str, ...] = ()  # the reasons that make it breaking, for the release notes
 
 
 def parse_version(text: Optional[str]) -> Optional[Tuple[int, int, int]]:
@@ -129,7 +130,8 @@ def suggest(
     if any(file.kind in ("manifest", "config") for commit in commits for file in commit.files):
         signals.extend(_contract_signals(old, new, old_keys, new_keys))
     level = max((level for level, _ in signals), key=LEVELS.index, default="none")
-    return Suggestion(level, tuple(reason for _, reason in signals), tuple(flags))
+    breaking = tuple(reason for kind, reason in signals if kind == "breaking")
+    return Suggestion(level, tuple(reason for _, reason in signals), tuple(flags), breaking)
 
 
 def _commit_signals(commit: Commit, flags: List[str]) -> List[Tuple[str, str]]:
@@ -156,15 +158,16 @@ def _contract_signals(
 ) -> List[Tuple[str, str]]:
     """What users bound or configured: removing it breaks them, adding it is a feature."""
     signals = []
+    plugin_id = new.id or old.id or "<plugin id>"
     pairs = (
-        ("action", old.actions, new.actions, "key bindings to <plugin id>.<action> stop working"),
-        ("pane", old.panes, new.panes, "pane entrypoints stop opening"),
-        ("config key", old_keys, new_keys, "existing config.json files lose a setting"),
-        ("platform", old.platforms, new.platforms, "users on it can no longer install updates"),
+        ("action", old.actions, new.actions, "key bindings to {}.{{}} stop working".format(plugin_id)),
+        ("pane", old.panes, new.panes, "pane entrypoint {} stops opening"),
+        ("config key", old_keys, new_keys, "existing config.json files lose the {!r} setting"),
+        ("platform", old.platforms, new.platforms, "users on {} can no longer install updates"),
     )
     for label, before, after, consequence in pairs:
         for removed in sorted(before - after):
-            signals.append(("breaking", "removes {} {!r}: {}".format(label, removed, consequence)))
+            signals.append(("breaking", "removes {} {!r}: {}".format(label, removed, consequence.format(removed))))
         for added in sorted(after - before):
             signals.append(("minor", "adds {} {!r}".format(label, added)))
     for added in sorted(set(new.events) - set(old.events)):
