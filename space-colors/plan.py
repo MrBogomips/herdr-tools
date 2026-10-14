@@ -55,7 +55,8 @@ def choose(
         named[space["workspace_id"]] = (derive_key(label, config), rule)
     hashed = list(dict.fromkeys(key for key, rule in named.values() if rule is None))
     if config.assign == "sticky":
-        indices, stored = assign(hashed, config.palette, stored, today)
+        pinned = [config.slots[rule.slot] for _, rule in named.values() if rule and rule.slot < len(config.palette)]
+        indices, stored = assign(hashed, config.palette, stored, today, reserved=pinned)
     else:
         indices = {key: color_index(key, len(config.palette)) for key in hashed}
     choices = {

@@ -125,12 +125,17 @@ def _layout_rules(raw_rules: Any, palette: Palette, ignore_case: bool) -> Tuple[
     if any(color is None for _, _, color in parsed):
         slots.append(None)
     if len(slots) > SLOT_LIMIT:
-        raise ValueError(
-            "{} colour slots (palette plus rule colours) but a sidebar row fits {}: set palette_size to {} "
-            "or less, or give the rules palette colours".format(len(slots), SLOT_LIMIT, SLOT_LIMIT - len(slots) + len(palette))
-        )
+        raise ValueError(_too_many_slots(len(slots), len(palette)))
     rules = tuple(Rule(match, pattern, slots.index(color)) for match, pattern, color in parsed)
     return rules, tuple(slots)
+
+
+def _too_many_slots(slots: int, palette_size: int) -> str:
+    message = "{} colour slots (palette plus rule colours) but a sidebar row fits {}: ".format(slots, SLOT_LIMIT)
+    room = SLOT_LIMIT - (slots - palette_size)
+    if room < 1:
+        return message + "use fewer distinct rule colours, or palette colours in the rules"
+    return message + "set palette_size to {} or less, or give the rules palette colours".format(room)
 
 
 def _parse_rule(number: int, rule: Any, palette: Palette, ignore_case: bool) -> Tuple[str, Pattern[str], Optional[str]]:
