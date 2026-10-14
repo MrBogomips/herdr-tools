@@ -121,6 +121,20 @@ Run `preflight <plugin…>`. It checks:
 
 Errors block the release. Weigh each warning and mention it to the user.
 
+On a pull request, it's the merge that publishes, so an error may sit on the branch for a while. Either fix
+it on the branch, or put it at the top of the PR description so it's fixed before anyone merges. Never open
+a PR that hides a known error.
+
+### Bugs you find on the way
+
+A release is a bad moment to change plugin code: the change would ship to every `plugin update` user
+without its own review. When you spot a bug while publishing:
+
+- say what it is and propose the fix;
+- leave the fix as its own change, which the user decides on.
+
+The release itself owns only its metadata: version, description, platforms and README rows.
+
 ### 5. Show the plan and get a yes
 
 Pushing to a public repository is visible to everyone, and a pushed tag is permanent: users may pin it.
