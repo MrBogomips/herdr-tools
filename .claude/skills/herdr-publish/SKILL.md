@@ -67,8 +67,12 @@ Plugin states:
 | `untagged` | No release tag yet. The first release tags the current version (see "First tag"). |
 | `released` | Nothing shipped since the tag; docs and tests don't count. Say so and stop: users already get docs changes via `plugin update`. |
 | `unreleased` | Shipped files changed since the tag; `next` is the suggested version. |
-| `tag-pending` | The manifest is already bumped; tag the commit shown. |
-| `error` | Fix the listed problem first, e.g. the manifest is behind the latest tag. |
+| `tag-pending` | The bump is committed on `main`; tag the commit shown. The release covers the commits listed under "in this release". Commits listed under "after the bump" wait for the next release. |
+| `awaiting-merge` | The bump is on a branch that is not merged yet. Merge it, then tag the commit that lands on `main`. |
+| `error` | Fix the listed problem first, e.g. a bump that is not committed yet, or a manifest behind the latest tag. |
+
+`status` also warns when it could not reach origin to check a tag, and when a tag is lightweight or
+missing from origin.
 
 ### 2. Decide the version
 
@@ -153,8 +157,9 @@ git push --atomic origin main <plugin>-vX.Y.Z
 - You may bump the version inside the PR.
 - Tag only after the merge, on the commit that landed in `main`. A squash merge creates a new commit, so a
   tag made on the branch would point outside `main`.
-- After the merge, `status` shows the plugin as `tag-pending` with the commit to tag. Tag it, then push
-  the tag alone: `git push origin <plugin>-vX.Y.Z`.
+- Before the merge, `status` shows the plugin as `awaiting-merge`.
+- After the merge, run `git pull --ff-only` on `main`. `status` then shows the plugin as `tag-pending`
+  with the commit to tag. Tag it, then push the tag alone: `git push origin <plugin>-vX.Y.Z`.
 - For a new plugin, after the merge also update the GitHub repository description so the card mentions
   it, and check the topic is still there (`references/marketplace.md`, last section). Confirm the wording
   of each `gh` write with the user.

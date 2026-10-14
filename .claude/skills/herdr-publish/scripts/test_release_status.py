@@ -56,6 +56,39 @@ class StatusTest(unittest.TestCase):
         self.assertEqual((status.next_version, status.tag_commit), ("0.1.1", release))
         self.assertEqual([commit.subject for commit in status.commits], ["fix(sorter): keep ~ first"])
 
+    def test_a_bump_on_a_feature_branch_awaits_the_merge(self) -> None:
+        # A squash merge creates a new commit: a tag on the branch commit would point outside main.
+        self.repo.git("switch", "-q", "-c", "feature/x")
+        self.repo.commit("fix(sorter): keep ~ first", {"sorter/sorter.py": "print('fixed')\n"})
+        self.repo.commit("chore(sorter): release v0.1.1", self.manifest("0.1.1"))
+        status = self.plugin()
+        self.assertEqual(status.state, "awaiting-merge")
+        self.assertIsNone(status.tag_commit)
+
+    def test_an_uncommitted_bump_is_a_problem(self) -> None:
+        self.repo.write("sorter/herdr-plugin.toml", render_manifest({"version": "0.1.1"}))
+        status = self.plugin()
+        self.assertEqual(status.state, "error")
+        self.assertTrue(any("not committed" in problem for problem in status.problems), status.problems)
+
+    def test_commits_after_the_bump_stay_out_of_the_release(self) -> None:
+        fix = self.repo.commit("fix(sorter): keep ~ first", {"sorter/sorter.py": "print('fixed')\n"})
+        release = self.repo.commit("chore(sorter): release v0.1.1", self.manifest("0.1.1"))
+        later = self.repo.commit("feat(sorter): by date", {"sorter/sorter.py": "print('date')\n"})
+        status = self.plugin()
+        self.assertEqual((status.state, status.tag_commit), ("tag-pending", release))
+        self.assertEqual([commit.sha for commit in status.commits], [fix])
+        self.assertEqual([commit.sha for commit in status.later], [later])
+        warnings = " ".join(status.warnings)
+        self.assertNotIn("0.2.0", warnings)
+        self.assertIn("after the bump", warnings)
+
+    def test_says_when_origin_cannot_be_checked(self) -> None:
+        self.repo.git("config", "--remove-section", "url.{}".format(self.repo.bare))
+        self.repo.git("config", "url.{}.insteadOf".format(self.repo.tmp / "gone.git"), self.repo.url)
+        warnings = " ".join(self.plugin().warnings)
+        self.assertIn("could not check", warnings)
+
     def test_a_bump_smaller_than_suggested_is_a_warning(self) -> None:
         self.repo.commit("feat(sorter): by date", {"sorter/sorter.py": "print('date')\n"})
         self.repo.commit("chore(sorter): release v0.1.1", self.manifest("0.1.1"))

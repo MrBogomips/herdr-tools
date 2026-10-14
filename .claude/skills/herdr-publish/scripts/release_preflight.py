@@ -40,7 +40,10 @@ def run(git: Git, plugins: Optional[Sequence[str]], index: Optional[dict], event
     owner, name = slug
     every = repo.plugin_folders(git.root)
     selected = list(plugins) if plugins else every
-    findings: List[Finding] = []
+    findings: List[Finding] = [
+        Finding("error", "{}: no plugin folder by that name (plugins here: {})".format(name, ", ".join(every)))
+        for name in selected if name not in every
+    ]
     findings.extend(_stray_manifests(git, every))
     findings.extend(_vendored(git.root, every))
     manifests = {folder: _parse(git.root / folder / repo.MANIFEST, folder, findings) for folder in every}

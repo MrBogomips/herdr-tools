@@ -64,6 +64,7 @@ class ConventionalTest(unittest.TestCase):
         self.assertTrue(rb.is_release_commit("chore(sort-spaces): release v0.2.1"))
         self.assertTrue(rb.is_release_commit("chore(release): sort-spaces v0.2.1, space-colors v0.1.1"))
         self.assertFalse(rb.is_release_commit("chore(sort-spaces): tidy imports"))
+        self.assertFalse(rb.is_release_commit("chore(sort-spaces): release the lock before sorting"))
 
 
 class ClassifyPathTest(unittest.TestCase):

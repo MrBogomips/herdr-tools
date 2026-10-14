@@ -62,8 +62,11 @@ def _plugin(plugin: rs.PluginStatus) -> List[str]:
     lines.extend("  {}".format(line) for line in _next_step(plugin))
     lines.extend("    because {}".format(reason) for reason in plugin.reasons)
     if plugin.commits:
-        lines.append("  commits since {}:".format(plugin.last_tag))
+        lines.append("  in this release (since {}):".format(plugin.last_tag))
         lines.extend("    {} {}  [{}]".format(commit.short, commit.subject, _kinds(commit)) for commit in plugin.commits)
+    if plugin.later:
+        lines.append("  after the bump (not in this release):")
+        lines.extend("    {} {}  [{}]".format(commit.short, commit.subject, _kinds(commit)) for commit in plugin.later)
     lines.extend("  ? {}".format(flag) for flag in plugin.flags)
     lines.extend("  ! {}".format(message) for message in plugin.problems + plugin.warnings)
     lines.append("  description: {}".format(plugin.description))
@@ -80,6 +83,9 @@ def _next_step(plugin: rs.PluginStatus) -> List[str]:
             plugin.level, plugin.next_version, plugin.folder, plugin.next_version)]
     if plugin.state == "tag-pending":
         return ["next: tag {}-v{} on {}".format(plugin.folder, plugin.next_version, _short(plugin.tag_commit))]
+    if plugin.state == "awaiting-merge":
+        return ["next: merge the bump to {} into main, then tag the commit that lands there".format(
+            plugin.next_version)]
     if plugin.state == "released":
         return ["nothing to release" + (" (docs/tests only since the tag)" if plugin.commits else "")]
     return ["fix the problems below first"]

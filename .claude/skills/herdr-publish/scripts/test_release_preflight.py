@@ -36,6 +36,11 @@ class PreflightTest(unittest.TestCase):
         self.assertTrue(report.ok)
         self.assertIn("tests passed", self.messages(report, "ok"))
 
+    def test_an_unknown_plugin_is_an_error(self) -> None:
+        report = self.run_preflight(["sortre"])
+        self.assertFalse(report.ok)
+        self.assertIn("sortre", self.messages(report, "error"))
+
     def test_a_failing_test_is_an_error(self) -> None:
         self.repo.write("sorter/test_sorter.py", FAILING_TEST)
         report = self.run_preflight(["sorter"], tests=True)
