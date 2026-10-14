@@ -64,6 +64,10 @@ def _preflight(args: argparse.Namespace, git: Git, now: datetime) -> int:
 
 def _notes(args: argparse.Namespace, git: Git, now: datetime) -> int:
     status = rs.build(git, [args.plugin], None, now).plugins[0]
+    if status.state == "error":
+        # Notes from a broken state (say, a bump not committed yet) would describe the wrong release.
+        print("herdr_release: no notes for {}: {}".format(args.plugin, "; ".join(status.problems)), file=sys.stderr)
+        return 2
     version = args.version or status.next_version or status.manifest_version or "?"
     if status.last_tag is None:
         print(release_notes.render_first(args.plugin, version, status.description), end="")

@@ -107,6 +107,14 @@ class CliTest(unittest.TestCase):
         self.assertIn("Breaking", out)
         self.assertIn("acme.sorter.sort", out)
 
+    def test_notes_refuse_a_plugin_in_error(self) -> None:
+        self.repo.commit("feat(sorter): by date", {"sorter/sorter.py": "print('date')\n"})
+        self.repo.write("sorter/herdr-plugin.toml", render_manifest({"version": "0.2.0"}))
+        code, out, err = self.cli("notes", "sorter")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("not committed", err)
+
     def test_notes_for_a_first_release_describe_the_plugin(self) -> None:
         self.repo.git("tag", "-d", "sorter-v0.1.0")
         code, out, _ = self.cli("notes", "sorter")

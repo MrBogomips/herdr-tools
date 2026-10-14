@@ -64,7 +64,7 @@ Plugin states:
 
 | State | Meaning |
 | --- | --- |
-| `untagged` | No release tag yet. The first release tags the current version (see "First tag"). |
+| `untagged` | No release tag yet. `status` names the commit for the first tag (see "First tag"). |
 | `released` | Nothing shipped since the tag; docs and tests don't count. Say so and stop: users already get docs changes via `plugin update`. |
 | `unreleased` | Shipped files changed since the tag; `next` is the suggested version. |
 | `tag-pending` | The bump is committed on `main`; tag the commit shown. The release covers the commits listed under "in this release, since". Commits listed under "after the bump" wait for the next release. |
@@ -172,8 +172,14 @@ git push --atomic origin main <plugin>-vX.Y.Z
 - Tag only after the merge, on the commit that landed in `main`. A squash merge creates a new commit, so a
   tag made on the branch would point outside `main`.
 - Before the merge, `status` shows the plugin as `awaiting-merge`.
-- After the merge, run `git pull --ff-only` on `main`. `status` then shows the plugin as `tag-pending`
-  with the commit to tag. Tag it, then push the tag alone: `git push origin <plugin>-vX.Y.Z`.
+- After the merge, run `git pull --ff-only` on `main`. `status` then names the commit to tag: as
+  `tag-pending` for a bumped plugin, or as `untagged` for a new one. Tag exactly that commit, not HEAD,
+  since later commits may have landed on `main`. Then push the tag alone:
+
+  ```bash
+  git tag -a <plugin>-vX.Y.Z <commit> -F <scratch>/notes.txt
+  git push origin <plugin>-vX.Y.Z
+  ```
 - For a new plugin, after the merge also update the GitHub repository description so the card mentions
   it, and check the topic is still there (`references/marketplace.md`, last section). Confirm the wording
   of each `gh` write with the user.
@@ -200,11 +206,16 @@ git push --atomic origin main <plugin>-vX.Y.Z
 
 ### First tag (plugins without one)
 
-When `status` says `untagged`, tag the version that is already published:
+When `status` says `untagged`, it names the commit for `<plugin>-v<version>`:
 
-- If the plugin folder is unchanged since the commit the index lists (the index's `headCommit`), put
-  `<plugin>-v<version>` on that commit.
-- Otherwise, follow steps 2–6 and release the next version.
+- **A plugin the index already lists:** the commit the index read, if the plugin folder has not changed
+  since. That is what users were offered.
+- **Otherwise:** the commit on `origin/main` that set the version. For a new plugin, that is the commit
+  its merge landed as.
+
+Tag that commit with the manifest's version (step 6B shows how). Any changes after it then show up as
+`unreleased`; release them with steps 2–6. If `status` names no commit, the plugin is not on `origin/main`
+yet: merge it first.
 
 ## Finish with a short report
 

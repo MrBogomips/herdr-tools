@@ -156,6 +156,13 @@ class SuggestTest(unittest.TestCase):
                 result = suggest([commit("fix(sorter): x", ("herdr-plugin.toml", True))], **change)
                 self.assertEqual(result.level, "minor")
 
+    def test_contract_changes_count_even_without_a_listed_commit(self) -> None:
+        # Release commits are left out of the commit list, but what they change in the manifest still counts.
+        new = summary({"min_herdr_version": "0.9.4"})
+        result = suggest([], new=new)
+        self.assertEqual(result.level, "breaking")
+        self.assertTrue(result.breaking)
+
     def test_the_highest_signal_wins(self) -> None:
         commits = [commit("fix: a", ("sorter.py", True)), commit("feat: b", ("sorter.py", True))]
         self.assertEqual(suggest(commits).level, "minor")

@@ -65,6 +65,36 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(status.state, "awaiting-merge")
         self.assertIsNone(status.tag_commit)
 
+    def test_a_break_made_in_the_release_commit_is_seen(self) -> None:
+        self.repo.commit("fix(sorter): keep ~ first", {"sorter/sorter.py": "print('fixed')\n"})
+        self.repo.commit("chore(sorter): release v0.1.1", {"sorter/herdr-plugin.toml": render_manifest(
+            {"version": "0.1.1", "platforms": ["macos"], "min_herdr_version": "0.9.4"})})
+        status = self.plugin()
+        self.assertEqual((status.state, status.level), ("tag-pending", "breaking"))
+        self.assertTrue(status.breaking)
+        self.assertTrue(any("0.2.0" in warning for warning in status.warnings), status.warnings)
+
+    def test_a_merged_new_plugin_names_the_commit_to_tag(self) -> None:
+        self.repo.add_plugin("lister")
+        landed = self.repo.commit("feat(lister): list things (#3)")
+        self.repo.commit("docs(lister): more", {"lister/README.md": "# more\n"})
+        self.repo.push()
+        status = rs.build(rg.Git(self.repo.root), ["lister"], None, NOW).plugins[0]
+        self.assertEqual((status.state, status.tag_commit), ("untagged", landed))
+
+    def test_a_listed_untagged_plugin_is_tagged_where_the_index_read_it(self) -> None:
+        self.repo.git("tag", "-d", "sorter-v0.1.0")
+        self.repo.git("push", "-q", "origin", ":refs/tags/sorter-v0.1.0")
+        listed = self.repo.commit("docs: root", {"README.md": "# plugins changed\n" + (
+            self.repo.root / "README.md").read_text(encoding="utf-8")})
+        self.repo.push()
+        index = {"schemaVersion": 1, "generatedAt": "2026-10-14T13:30:00Z",
+                 "plugins": [{"fullName": "ACME/plugins", "headCommit": listed,
+                              "manifests": [{"path": "sorter/herdr-plugin.toml", "id": "acme.sorter",
+                                             "version": "0.1.0"}]}]}
+        status = self.plugin(index)
+        self.assertEqual((status.state, status.tag_commit), ("untagged", listed))
+
     def test_a_new_plugin_on_a_branch_awaits_the_merge(self) -> None:
         self.repo.git("switch", "-q", "-c", "feature/lister")
         self.repo.add_plugin("lister")
