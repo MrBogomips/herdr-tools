@@ -178,6 +178,11 @@ def _release(git: Git, folder: str, last: Optional[Tag], version: Optional[str],
         problems.append("manifest version {!r} is not plain X.Y.Z".format(version))
         return _Release("error")
     if last is None:
+        manifest = "{}/{}".format(folder, repo.MANIFEST)
+        if origin_main and git.show_file(origin_main, manifest) is None:
+            warnings.append("new plugin, not on main yet: merge it, then tag {}-v{} on the commit that lands "
+                            "on main".format(folder, version))
+            return _Release("awaiting-merge", next_version=version)
         return _Release("untagged", next_version=version)
     if current < last.version:
         problems.append("manifest {} is behind the last tag {}".format(version, last.name))

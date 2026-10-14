@@ -1,7 +1,7 @@
 """Release notes for an annotated tag: the shipped changes since the last release, grouped."""
 from __future__ import annotations
 
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence
 
 import release_bump as rb
 
@@ -23,6 +23,14 @@ def render(plugin: str, version: str, commits: Sequence[rb.Commit]) -> str:
         if groups[name]:
             lines.extend([name, *groups[name], ""])
     return "\n".join(lines).rstrip() + "\n"
+
+
+def render_first(plugin: str, version: str, description: Optional[str]) -> str:
+    """A plugin's first tag has no previous release to diff against: say what the plugin does."""
+    lines = ["{} {}".format(plugin, version), "", "First release."]
+    if description:
+        lines.extend(["", description])
+    return "\n".join(lines) + "\n"
 
 
 def _ships(commit: rb.Commit) -> bool:

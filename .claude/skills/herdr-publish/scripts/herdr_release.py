@@ -65,7 +65,10 @@ def _preflight(args: argparse.Namespace, git: Git, now: datetime) -> int:
 def _notes(args: argparse.Namespace, git: Git, now: datetime) -> int:
     status = rs.build(git, [args.plugin], None, now).plugins[0]
     version = args.version or status.next_version or status.manifest_version or "?"
-    print(release_notes.render(args.plugin, version, status.commits), end="")
+    if status.last_tag is None:
+        print(release_notes.render_first(args.plugin, version, status.description), end="")
+    else:
+        print(release_notes.render(args.plugin, version, status.commits), end="")
     return 0
 
 

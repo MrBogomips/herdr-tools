@@ -84,6 +84,9 @@ def _next_step(plugin: rs.PluginStatus) -> List[str]:
             plugin.level, plugin.next_version, plugin.folder, plugin.next_version)]
     if plugin.state == "tag-pending":
         return ["next: tag {}-v{} on {}".format(plugin.folder, plugin.next_version, _short(plugin.tag_commit))]
+    if plugin.state == "awaiting-merge" and plugin.last_tag is None:
+        return ["next: merge the new plugin into main, then tag {}-v{} on the commit that lands there".format(
+            plugin.folder, plugin.next_version)]
     if plugin.state == "awaiting-merge":
         return ["next: merge the bump to {} into main, then tag the commit that lands there".format(
             plugin.next_version)]
