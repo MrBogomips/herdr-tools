@@ -65,6 +65,13 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(status.state, "awaiting-merge")
         self.assertIsNone(status.tag_commit)
 
+    def test_a_new_plugin_on_a_branch_awaits_the_merge(self) -> None:
+        self.repo.git("switch", "-q", "-c", "feature/lister")
+        self.repo.add_plugin("lister")
+        self.repo.commit("feat(lister): list things")
+        status = rs.build(rg.Git(self.repo.root), ["lister"], None, NOW).plugins[0]
+        self.assertEqual((status.state, status.next_version), ("awaiting-merge", "0.1.0"))
+
     def test_an_uncommitted_bump_is_a_problem(self) -> None:
         self.repo.write("sorter/herdr-plugin.toml", render_manifest({"version": "0.1.1"}))
         status = self.plugin()

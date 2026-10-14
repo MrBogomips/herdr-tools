@@ -98,6 +98,14 @@ class CliTest(unittest.TestCase):
         self.assertIn("keep ~ first", out)
         self.assertNotIn("after the bump", out)
 
+    def test_notes_for_a_first_release_describe_the_plugin(self) -> None:
+        self.repo.git("tag", "-d", "sorter-v0.1.0")
+        code, out, _ = self.cli("notes", "sorter")
+        self.assertEqual(code, 0)
+        self.assertIn("sorter 0.1.0", out)
+        self.assertIn("First release", out)
+        self.assertIn("Sort things.", out)
+
     def test_outside_git_is_a_usage_error(self) -> None:
         err = io.StringIO()
         with redirect_stdout(io.StringIO()), redirect_stderr(err):

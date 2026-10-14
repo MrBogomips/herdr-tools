@@ -68,7 +68,7 @@ Plugin states:
 | `released` | Nothing shipped since the tag; docs and tests don't count. Say so and stop: users already get docs changes via `plugin update`. |
 | `unreleased` | Shipped files changed since the tag; `next` is the suggested version. |
 | `tag-pending` | The bump is committed on `main`; tag the commit shown. The release covers the commits listed under "in this release, since". Commits listed under "after the bump" wait for the next release. |
-| `awaiting-merge` | The bump is on a branch that is not merged yet. Merge it, then tag the commit that lands on `main`. |
+| `awaiting-merge` | The bump, or a whole new plugin, is on a branch that is not merged yet. Merge it, then tag the commit that lands on `main`. |
 | `error` | Fix the listed problem first, e.g. a bump that is not committed yet, or a manifest behind the latest tag. |
 
 `status` also warns when it could not reach origin to check a tag, and when a tag is lightweight or
