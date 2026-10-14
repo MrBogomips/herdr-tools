@@ -1,15 +1,15 @@
 import io
-import json
 import os
-import socket
 import tempfile
-import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 from unittest import mock
 
+import herdr_api
 import sort_spaces as tool
-from sort_spaces import HerdrError, plan_order, socket_rpc, sort_spaces
+from herdr_api import ConfigError, HerdrError
+from sort_spaces import autosort_enabled, load_settings, plan_order, sort_spaces
 
 
 def ws(workspace_id, label, number, worktree=None):
@@ -125,12 +125,19 @@ class PlanOrderTest(unittest.TestCase):
         self.assertEqual(plan_order(spaces), ["w2", "w1"])
 
 
-class FakeHerdr:
-    """Stands in for the socket: serves a workspace list and applies move_block like the server."""
 
-    def __init__(self, spaces, ignore_moves=False):
+
+class FakeHerdr:
+    """Stands in for the socket: serves a workspace list and applies move_block like the server.
+
+    `ignore_moves` answers that many move_block calls with the unchanged order (a space was
+    created or closed mid-run); `missing_moves` fails that many with workspace_not_found.
+    """
+
+    def __init__(self, spaces, ignore_moves=0, missing_moves=0):
         self.spaces = list(spaces)
         self.ignore_moves = ignore_moves
+        self.missing_moves = missing_moves
         self.calls = []
 
     def __call__(self, method, params):
@@ -138,11 +145,19 @@ class FakeHerdr:
         if method == "workspace.list":
             return {"type": "workspace_list", "workspaces": list(self.spaces)}
         if method == "workspace.move_block":
-            if not self.ignore_moves:
+            if self.missing_moves:
+                self.missing_moves -= 1
+                raise HerdrError("workspace.move_block failed: workspace_not_found: gone", "workspace_not_found")
+            if self.ignore_moves:
+                self.ignore_moves -= 1
+            else:
                 by_id = {space["workspace_id"]: space for space in self.spaces}
                 self.spaces = [by_id[workspace_id] for workspace_id in params["workspace_ids"]]
             return {"type": "workspace_list", "workspaces": list(self.spaces)}
         raise AssertionError("unexpected method " + method)
+
+    def methods(self):
+        return [method for method, _ in self.calls]
 
 
 class SortSpacesTest(unittest.TestCase):
@@ -162,85 +177,118 @@ class SortSpacesTest(unittest.TestCase):
 
         self.assertFalse(changed)
         self.assertEqual(labels, ["~", "alpha"])
-        self.assertEqual([method for method, _ in herdr.calls], ["workspace.list"])
+        self.assertEqual(herdr.methods(), ["workspace.list"])
 
-    def test_fails_when_server_order_does_not_match(self):
-        herdr = FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)], ignore_moves=True)
+    def test_retries_when_the_server_order_does_not_match_once(self):
+        herdr = FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)], ignore_moves=1)
+
+        changed, labels = sort_spaces(herdr)
+
+        self.assertTrue(changed)
+        self.assertEqual(labels, ["alpha", "beta"])
+        self.assertEqual(herdr.methods().count("workspace.move_block"), 2)
+
+    def test_retries_when_a_space_disappeared_mid_run(self):
+        herdr = FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)], missing_moves=1)
+
+        changed, _ = sort_spaces(herdr)
+
+        self.assertTrue(changed)
+
+    def test_fails_when_the_server_order_never_matches(self):
+        herdr = FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)], ignore_moves=3)
 
         with self.assertRaises(HerdrError):
             sort_spaces(herdr)
 
+        self.assertEqual(herdr.methods().count("workspace.move_block"), 3)
 
-class OneShotServer:
-    """A Unix socket server that answers one request line with a canned response."""
+    def test_other_errors_are_not_retried(self):
+        calls = []
 
-    def __init__(self, response):
-        self.directory = tempfile.mkdtemp(prefix="ss")
-        self.path = os.path.join(self.directory, "s.sock")
-        self.request = None
-        self.server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.server.bind(self.path)
-        self.server.listen(1)
-        self.thread = threading.Thread(target=self._serve, args=(response,))
-        self.thread.start()
+        def broken(method, params):
+            calls.append(method)
+            raise HerdrError("workspace.list failed: boom", "boom")
 
-    def _serve(self, response):
-        connection, _ = self.server.accept()
-        with connection:
-            self.request = json.loads(connection.makefile().readline())
-            connection.sendall((json.dumps(response) + "\n").encode())
+        with self.assertRaises(HerdrError):
+            sort_spaces(broken)
 
-    def close(self):
-        self.thread.join(timeout=5)
-        self.server.close()
-        os.unlink(self.path)
-        os.rmdir(self.directory)
+        self.assertEqual(calls, ["workspace.list"])
 
 
-class SocketRpcTest(unittest.TestCase):
-    def test_sends_one_json_line_and_returns_the_result(self):
-        server = OneShotServer({"id": "x", "result": {"type": "workspace_list", "workspaces": []}})
-        try:
-            result = socket_rpc(server.path)("workspace.list", {})
-        finally:
-            server.close()
+class AutosortTest(unittest.TestCase):
+    def test_each_setting_enables_its_events(self):
+        cases = {
+            "off": (False, False),
+            "created": (True, False),
+            "renamed": (False, True),
+            "both": (True, True),
+        }
+        for setting, (on_create, on_rename) in cases.items():
+            with self.subTest(setting=setting):
+                self.assertEqual(autosort_enabled(setting, "created"), on_create)
+                self.assertEqual(autosort_enabled(setting, "renamed"), on_rename)
 
-        self.assertEqual(result, {"type": "workspace_list", "workspaces": []})
-        self.assertEqual(server.request["method"], "workspace.list")
-        self.assertEqual(server.request["params"], {})
 
-    def test_raises_on_an_error_response(self):
-        server = OneShotServer({"id": "x", "error": {"code": "workspace_not_found", "message": "no w9"}})
-        try:
-            with self.assertRaisesRegex(HerdrError, "workspace_not_found: no w9"):
-                socket_rpc(server.path)("workspace.move_block", {"workspace_ids": ["w9"]})
-        finally:
-            server.close()
+class LoadSettingsTest(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.path = Path(self.directory.name) / "config.json"
 
-    def test_raises_on_a_response_that_is_not_an_object(self):
-        server = OneShotServer(["not", "an", "object"])
-        try:
-            with self.assertRaises(HerdrError):
-                socket_rpc(server.path)("workspace.list", {})
-        finally:
-            server.close()
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def test_autosort_is_off_without_a_config_file(self):
+        self.assertEqual(load_settings(self.path)["auto_sort"], "off")
+
+    def test_reads_the_autosort_setting(self):
+        self.path.write_text('{"auto_sort": "both"}')
+
+        self.assertEqual(load_settings(self.path)["auto_sort"], "both")
+
+    def test_rejects_an_unknown_autosort_value(self):
+        self.path.write_text('{"auto_sort": "always"}')
+
+        with self.assertRaisesRegex(ConfigError, r"config\.json.*auto_sort.*always"):
+            load_settings(self.path)
+
+    def test_rejects_an_autosort_value_that_is_not_text(self):
+        self.path.write_text('{"auto_sort": ["created", "renamed"]}')
+
+        with self.assertRaisesRegex(ConfigError, r"config\.json.*auto_sort"):
+            load_settings(self.path)
 
 
 class MainTest(unittest.TestCase):
-    """main() runs from a detached key binding, so every outcome must reach a Herdr toast."""
+    """main() runs from detached key bindings and hooks, so failures must reach a Herdr toast."""
 
-    def run_main(self, call, argv=()):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.config = Path(self.directory.name) / "config.json"
+        self.env = mock.patch.dict(
+            os.environ, {"HERDR_BIN_PATH": "/opt/herdr", "HERDR_PLUGIN_STATE_DIR": self.directory.name}
+        )
+        self.env.start()
+
+    def tearDown(self):
+        self.env.stop()
+        self.directory.cleanup()
+
+    def run_main(self, call, argv=(), auto_sort=None):
+        if auto_sort is not None:
+            self.config.write_text('{"auto_sort": "%s"}' % auto_sort)
         with mock.patch.object(tool, "socket_rpc", return_value=call), mock.patch.object(
-            tool.subprocess, "run"
-        ) as run, mock.patch.dict(os.environ, {"HERDR_BIN_PATH": "/opt/herdr"}), redirect_stdout(
-            io.StringIO()
-        ) as out, redirect_stderr(io.StringIO()):
-            code = tool.main(list(argv))
+            herdr_api.subprocess, "run"
+        ) as run, redirect_stdout(io.StringIO()) as out, redirect_stderr(io.StringIO()):
+            code = tool.main(["--config", str(self.config)] + list(argv))
         toasts = [call_args.args[0] for call_args in run.call_args_list]
         return code, toasts, out.getvalue()
 
+    def unsorted(self):
+        return FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)])
+
     def test_sorting_shows_spaces_sorted(self):
-        code, toasts, _ = self.run_main(FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)]))
+        code, toasts, _ = self.run_main(self.unsorted())
 
         self.assertEqual(code, 0)
         self.assertEqual(toasts, [["/opt/herdr", "notification", "show", "Spaces sorted"]])
@@ -274,14 +322,64 @@ class MainTest(unittest.TestCase):
         self.assertIn("KeyError", toasts[0][5])
 
     def test_dry_run_prints_orders_without_moving_or_toasting(self):
-        herdr = FakeHerdr([ws("w1", "beta", 1), ws("w2", "alpha", 2)])
+        herdr = self.unsorted()
 
         code, toasts, out = self.run_main(herdr, ["--dry-run"])
 
         self.assertEqual(code, 0)
         self.assertEqual(toasts, [])
-        self.assertEqual([method for method, _ in herdr.calls], ["workspace.list"])
+        self.assertEqual(herdr.methods(), ["workspace.list"])
         self.assertIn("target:  alpha, beta", out)
+
+    def test_hook_does_nothing_while_autosort_is_off(self):
+        herdr = self.unsorted()
+
+        code, toasts, _ = self.run_main(herdr, ["--hook", "created"])
+
+        self.assertEqual((code, toasts, herdr.calls), (0, [], []))
+
+    def test_hook_for_a_disabled_event_does_nothing(self):
+        herdr = self.unsorted()
+
+        code, toasts, _ = self.run_main(herdr, ["--hook", "renamed"], auto_sort="created")
+
+        self.assertEqual((code, toasts, herdr.calls), (0, [], []))
+
+    def test_enabled_hook_sorts_without_a_toast(self):
+        herdr = self.unsorted()
+
+        code, toasts, _ = self.run_main(herdr, ["--hook", "renamed"], auto_sort="both")
+
+        self.assertEqual((code, toasts), (0, []))
+        self.assertIn("workspace.move_block", herdr.methods())
+
+    def test_hook_failure_shows_a_toast(self):
+        def failing(method, params):
+            raise HerdrError("workspace.list failed: boom")
+
+        code, toasts, _ = self.run_main(failing, ["--hook", "created"], auto_sort="created")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(toasts[0][3], "Space sort failed")
+
+    def test_a_lasting_hook_failure_toasts_once(self):
+        def failing(method, params):
+            raise HerdrError("workspace.list failed: boom")
+
+        first = self.run_main(failing, ["--hook", "created"], auto_sort="both")
+        second = self.run_main(failing, ["--hook", "renamed"])
+
+        self.assertEqual((first[0], second[0]), (1, 1))
+        self.assertEqual((len(first[1]), len(second[1])), (1, 0))
+
+    def test_bad_config_shows_a_toast_naming_the_file(self):
+        herdr = self.unsorted()
+
+        code, toasts, _ = self.run_main(herdr, ["--hook", "created"], auto_sort="sometimes")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(herdr.calls, [])
+        self.assertIn("config.json", toasts[0][5])
 
 
 if __name__ == "__main__":
