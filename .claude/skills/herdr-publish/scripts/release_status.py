@@ -3,7 +3,7 @@ whether the marketplace index shows origin/main yet. Read-only."""
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Dict, FrozenSet, List, Optional, Sequence, Set, Tuple
 
@@ -87,16 +87,36 @@ def build(git: Git, plugins: Optional[Sequence[str]], index: Optional[dict], now
     state = None
     listed: Dict[str, dict] = {}
     if index is not None:
-        pushed_at = git.ref_set_time("refs/remotes/origin/main", origin_main) if origin_main else None
-        state = ri.repo_state(index, "/".join(slug), origin_main, git.is_ancestor, pushed_at, now)
+        pushed_at = git.push_time("refs/remotes/origin/main", origin_main) if origin_main else None
+        committed_at = git.commit_time(origin_main) if origin_main else None
+        state = ri.repo_state(index, "/".join(slug), origin_main, git.is_ancestor, now, pushed_at, committed_at)
         listed = ri.listed_manifests(ri.find_repo(index, "/".join(slug)))
     remote_tags = git.remote_tags()
     rows = repo.readme_rows(git.root)
-    statuses = tuple(
-        plugin_status(git, folder, origin_main, remote_tags, rows.get(folder), listed.get(folder + "/" + repo.MANIFEST))
-        for folder in folders
+    listed_head = state.listed_head if state else None
+    statuses = []
+    for folder in folders:
+        status = plugin_status(git, folder, origin_main, remote_tags, rows.get(folder),
+                               listed.get(folder + "/" + repo.MANIFEST))
+        misread = _listing_mismatches(git, folder, listed.get(folder + "/" + repo.MANIFEST), listed_head)
+        statuses.append(replace(status, warnings=status.warnings + misread) if misread else status)
+    return StatusReport("/".join(slug), gate(git, origin_main), state, index_error, tuple(statuses))
+
+
+def _listing_mismatches(git: Git, folder: str, listed: Optional[dict], listed_head: Optional[str]) -> Tuple[str, ...]:
+    """Fields the index lists differently from the manifest at the very commit it read."""
+    if not listed or not listed_head:
+        return ()
+    text = git.show_file(listed_head, "{}/{}".format(folder, repo.MANIFEST))
+    if text is None:
+        return ()
+    actual = _summary(text, [], "")
+    return tuple(
+        "the index lists {} {!r} but the manifest at {} says {!r}: an index-side misread; report it upstream if "
+        "the next refresh keeps it".format(field, listed.get(field), listed_head[:7], getattr(actual, field))
+        for field in ("id", "version", "description")
+        if listed.get(field) is not None and listed.get(field) != getattr(actual, field)
     )
-    return StatusReport("/".join(slug), gate(git, origin_main), state, index_error, statuses)
 
 
 def select(git: Git, plugins: Optional[Sequence[str]]) -> List[str]:

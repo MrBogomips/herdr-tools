@@ -136,15 +136,24 @@ class Git:
     def parent(self, sha: str) -> Optional[str]:
         return self.rev(sha + "^")
 
-    def ref_set_time(self, ref: str, sha: str) -> Optional[datetime]:
-        """When the reflog of ref last moved it to sha (push, fetch or clone)."""
-        lines = self.run("log", "-g", "--date=unix", "--format=%H %gd", ref, check=False).splitlines()
+    def push_time(self, ref: str, sha: str) -> Optional[datetime]:
+        """When this checkout pushed ref to sha, from its reflog ("update by push").
+
+        A clone or fetch also moves the ref, but its time says when this checkout learned of the commit,
+        not when it was pushed, so those entries do not count.
+        """
+        lines = self.run("log", "-g", "--date=unix", "--format=%H%x09%gd%x09%gs", ref, check=False).splitlines()
         for line in lines:
-            commit, _, selector = line.partition(" ")
+            commit, selector, subject = (line.split("\t") + ["", ""])[:3]
             match = _REFLOG_TIME.search(selector)
-            if commit == sha and match:
+            if commit == sha and match and subject.startswith("update by push"):
                 return datetime.fromtimestamp(int(match.group(1)), timezone.utc)
         return None
+
+    def commit_time(self, sha: str) -> Optional[datetime]:
+        """Committer date: a lower bound for when the commit was pushed."""
+        stamp = self.run("show", "-s", "--format=%ct", sha, check=False)
+        return datetime.fromtimestamp(int(stamp), timezone.utc) if stamp.isdigit() else None
 
     def last_version_change(self, since: Optional[str], until: str, manifest: str) -> Optional[str]:
         span = "{}..{}".format(since, until) if since else until

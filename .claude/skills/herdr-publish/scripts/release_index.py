@@ -35,6 +35,7 @@ class IndexState:
     next_refresh: Optional[datetime]
     overdue: bool
     message: str
+    certain: bool = True  # False when "pending" rests on an unknown push time
 
 
 def load(source: str) -> Dict[str, Any]:
@@ -108,13 +109,15 @@ def repo_state(
     slug: str,
     origin_head: Optional[str],
     is_ancestor: Callable[[str, str], bool],
-    pushed_at: Optional[datetime],
     now: datetime,
+    pushed_at: Optional[datetime] = None,
+    committed_at: Optional[datetime] = None,
 ) -> IndexState:
     """Compare the listed head with origin/main.
 
-    pushed_at is when origin/main reached its current commit here (reflog), the best local proxy for
-    the push time: a refresh generated before it cannot know the commit yet.
+    pushed_at is when this checkout pushed origin/main's head (None when it was cloned or fetched);
+    committed_at, the head's commit date, bounds the push time from below. A refresh generated before
+    the push cannot know the commit yet ("pending"); one generated after it should ("lagging").
     """
     generated = parse_time(index.get("generatedAt"))
     next_refresh = generated + REFRESH if generated else None
@@ -128,10 +131,15 @@ def repo_state(
     if not (head and origin_head and is_ancestor(head, origin_head)):
         return IndexState("diverged", head, generated, next_refresh, False,
                           "the listed head is not in origin/main's history; fetch, or check for a force push")
-    if pushed_at is None or generated is None or generated < pushed_at:
-        overdue = bool(next_refresh and now > next_refresh + OVERDUE_SLACK)
+    overdue = bool(next_refresh and now > next_refresh + OVERDUE_SLACK)
+    newer = pushed_at or committed_at
+    if generated is None or (newer is not None and generated < newer):
         return IndexState("pending", head, generated, next_refresh, overdue,
                           "the push is newer than the last refresh; it shows up on the next one")
+    if pushed_at is None:
+        return IndexState("pending", head, generated, next_refresh, overdue,
+                          "push time unknown (this checkout did not push it): if the refresh after "
+                          "the next one still lists the old head, treat it as lagging", certain=False)
     return IndexState("lagging", head, generated, next_refresh, False,
                       "a refresh after the push still lists the old head; re-check after the next refresh, "
                       "then run preflight (a malformed manifest is dropped)")
