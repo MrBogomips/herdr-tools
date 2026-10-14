@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import time
 import unittest
 
@@ -88,10 +89,21 @@ class GitTest(unittest.TestCase):
         self.repo.push("sorter-v0.1.0")
         self.assertIn("sorter-v0.1.0", self.git.remote_tags())
 
-    def test_dates_when_origin_main_reached_its_commit(self) -> None:
-        when = self.git.ref_set_time("refs/remotes/origin/main", self.first)
+    def test_dates_a_push_made_from_this_checkout(self) -> None:
+        when = self.git.push_time("refs/remotes/origin/main", self.first)
         self.assertIsNotNone(when)
         self.assertLess(abs(when.timestamp() - time.time()), 120)
+
+    def test_a_fetched_head_has_no_push_time(self) -> None:
+        other = self.repo.tmp / "other"
+        self.repo.git("clone", "-q", str(self.repo.bare), str(other))
+        rg_other = ["git", "-C", str(other)]
+        subprocess.run(rg_other + ["commit", "-q", "--allow-empty", "-m", "elsewhere"], check=True)
+        subprocess.run(rg_other + ["push", "-q", "origin", "main"], check=True)
+        self.repo.git("fetch", "-q", "origin")
+        head = self.repo.git("rev-parse", "origin/main")
+        self.assertIsNone(self.git.push_time("refs/remotes/origin/main", head))
+        self.assertIsNotNone(self.git.commit_time(head))
 
     def test_finds_the_last_commit_that_changed_the_version(self) -> None:
         manifest = (self.repo.root / "sorter/herdr-plugin.toml").read_text(encoding="utf-8")

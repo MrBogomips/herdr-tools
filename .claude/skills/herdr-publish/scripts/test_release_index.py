@@ -41,8 +41,9 @@ def ancestor(older: str, newer: str) -> bool:
 
 
 def state(head: str = OLD, origin: str = NEW, pushed_at: Optional[datetime] = None,
-          now: Optional[datetime] = None) -> ri.IndexState:
-    return ri.repo_state(index(head), "acme/PLUGINS", origin, ancestor, pushed_at, now or GENERATED)
+          committed_at: Optional[datetime] = None, now: Optional[datetime] = None) -> ri.IndexState:
+    return ri.repo_state(index(head), "acme/PLUGINS", origin, ancestor, now or GENERATED,
+                         pushed_at=pushed_at, committed_at=committed_at)
 
 
 class LoadTest(unittest.TestCase):
@@ -114,18 +115,26 @@ class StateTest(unittest.TestCase):
     def test_current_when_the_index_has_origin_main(self) -> None:
         self.assertEqual(state(head=NEW, origin=NEW).name, "current")
 
-    def test_pending_when_the_push_came_after_the_last_refresh(self) -> None:
+    def test_pending_when_this_checkout_pushed_after_the_last_refresh(self) -> None:
         result = state(pushed_at=GENERATED + timedelta(minutes=5), now=GENERATED + timedelta(minutes=10))
-        self.assertEqual(result.name, "pending")
+        self.assertEqual((result.name, result.certain), ("pending", True))
         self.assertEqual(result.next_refresh, GENERATED + timedelta(minutes=30))
         self.assertFalse(result.overdue)
+
+    def test_pending_when_the_head_commit_is_newer_than_the_refresh(self) -> None:
+        # A commit cannot be pushed before it exists, so its date bounds the push time from below.
+        result = state(committed_at=GENERATED + timedelta(minutes=3))
+        self.assertEqual((result.name, result.certain), ("pending", True))
 
     def test_pending_is_overdue_well_after_the_next_refresh(self) -> None:
         result = state(pushed_at=GENERATED + timedelta(minutes=5), now=GENERATED + timedelta(minutes=50))
         self.assertTrue(result.overdue)
 
-    def test_pending_when_the_push_time_is_unknown(self) -> None:
-        self.assertEqual(state(pushed_at=None).name, "pending")
+    def test_an_unknown_push_time_is_said_not_assumed(self) -> None:
+        # Cloned or fetched, not pushed from here: the refresh may already have seen the push.
+        result = state(committed_at=GENERATED - timedelta(hours=1))
+        self.assertEqual((result.name, result.certain), ("pending", False))
+        self.assertIn("unknown", result.message)
 
     def test_lagging_when_a_refresh_after_the_push_kept_the_old_head(self) -> None:
         self.assertEqual(state(pushed_at=GENERATED - timedelta(minutes=5)).name, "lagging")
@@ -134,7 +143,7 @@ class StateTest(unittest.TestCase):
         self.assertEqual(state(head="9" * 40).name, "diverged")
 
     def test_missing_when_the_repo_is_not_listed(self) -> None:
-        result = ri.repo_state(index(), "Initech/other", NEW, ancestor, None, GENERATED)
+        result = ri.repo_state(index(), "Initech/other", NEW, ancestor, GENERATED)
         self.assertEqual(result.name, "missing")
 
 

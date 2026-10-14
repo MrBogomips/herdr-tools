@@ -136,6 +136,18 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(report.index.name, "current")
         self.assertEqual(report.plugins[0].listed_version, "0.1.0")
 
+    def test_flags_an_index_that_misreads_the_listed_manifest(self) -> None:
+        index = {
+            "schemaVersion": 1,
+            "generatedAt": "2026-10-14T13:30:00Z",
+            "plugins": [{"fullName": "ACME/plugins", "headCommit": self.first,
+                         "manifests": [{"path": "sorter/herdr-plugin.toml", "id": "sort", "version": "0.1.0",
+                                        "description": "Sort things."}]}],
+        }
+        warnings = " ".join(self.plugin(index).warnings)
+        self.assertIn("'sort'", warnings)
+        self.assertIn("'acme.sorter'", warnings)
+
     def test_rejects_an_unknown_plugin(self) -> None:
         with self.assertRaises(rs.StatusError):
             rs.build(rg.Git(self.repo.root), ["nope"], None, NOW)
