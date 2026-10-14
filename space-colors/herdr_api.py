@@ -157,11 +157,18 @@ def state_dir(plugin_id: str) -> Path:
 
 
 @contextlib.contextmanager
-def plugin_lock(plugin_id: str, timeout: float = 10.0) -> Iterator[None]:
-    """Serialize runs of one plugin against one Herdr server (hooks can fire back to back)."""
+def plugin_lock(plugin_id: str, timeout: float = 10.0, per_server: bool = True) -> Iterator[None]:
+    """Serialize runs of one plugin (hooks can fire back to back).
+
+    By default only runs against the same Herdr server wait for each other; pass
+    `per_server=False` around files in the state dir, which every server shares. Take the
+    per-server lock first when holding both.
+    """
     directory = state_dir(plugin_id)
-    server = hashlib.sha256(str(socket_path()).encode()).hexdigest()[:12]
-    name = "{}-{}.lock".format(re.sub(r"[^A-Za-z0-9_.-]", "_", plugin_id), server)
+    name = re.sub(r"[^A-Za-z0-9_.-]", "_", plugin_id)
+    if per_server:
+        name += "-" + hashlib.sha256(str(socket_path()).encode()).hexdigest()[:12]
+    name += ".lock"
     directory.mkdir(parents=True, exist_ok=True)
     deadline = time.monotonic() + timeout
     with open(directory / name, "w") as handle:
@@ -214,7 +221,12 @@ def _first_in_a_while(plugin_id: str, message: str) -> bool:
         last = json.loads(stamp.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         last = {}
-    if isinstance(last, dict) and last.get("digest") == digest and now - last.get("at", 0) < FAILURE_TOAST_QUIET_SECONDS:
+    if not isinstance(last, dict):
+        last = {}
+    at = last.get("at")
+    # A stamp from the future (the clock went back) or a damaged one never silences a toast.
+    recent = isinstance(at, (int, float)) and 0 <= now - at < FAILURE_TOAST_QUIET_SECONDS
+    if last.get("digest") == digest and recent:
         return False
     try:
         stamp.parent.mkdir(parents=True, exist_ok=True)

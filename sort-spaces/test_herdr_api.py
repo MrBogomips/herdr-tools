@@ -219,6 +219,20 @@ class PluginLockTest(unittest.TestCase):
         with plugin_lock("me.tool", timeout=0.1):
             pass
 
+    def test_runs_against_different_servers_do_not_block_each_other(self):
+        with mock.patch.dict(os.environ, {"HERDR_SOCKET_PATH": "/run/a.sock"}), plugin_lock("me.tool", timeout=1):
+            with mock.patch.dict(os.environ, {"HERDR_SOCKET_PATH": "/run/b.sock"}):
+                with plugin_lock("me.tool", timeout=0.1):
+                    pass
+
+    def test_a_lock_shared_by_all_servers_blocks_across_servers(self):
+        with mock.patch.dict(os.environ, {"HERDR_SOCKET_PATH": "/run/a.sock"}):
+            with plugin_lock("me.tool", timeout=1, per_server=False):
+                with mock.patch.dict(os.environ, {"HERDR_SOCKET_PATH": "/run/b.sock"}):
+                    with self.assertRaises(LockTimeout):
+                        with plugin_lock("me.tool", timeout=0.1, per_server=False):
+                            pass
+
     def test_different_plugins_do_not_block_each_other(self):
         with plugin_lock("me.one", timeout=1):
             with plugin_lock("me.two", timeout=0.1):
@@ -265,6 +279,22 @@ class ReportFailureTest(unittest.TestCase):
         self.fail("boom", now=1000.0 + herdr_api.FAILURE_TOAST_QUIET_SECONDS + 1)
 
         self.assertEqual(len(self.toasts()), 2)
+
+    def test_a_stamp_from_the_future_does_not_silence_toasts(self):
+        self.fail("boom", now=1000.0 + 3 * 3600)
+        self.fail("boom", now=1000.0)
+
+        self.assertEqual(len(self.toasts()), 2)
+
+    def test_a_damaged_stamp_is_ignored(self):
+        self.fail("boom")
+        stamp = Path(self.directory.name) / herdr_api.FAILURE_STAMP_FILE_NAME
+        recorded = json.loads(stamp.read_text())
+        for content in (json.dumps({**recorded, "at": "soon"}), "[1, 2]", "{oops"):
+            with self.subTest(content=content):
+                stamp.write_text(content)
+                self.fail("boom")
+        self.assertEqual(len(self.toasts()), 4)
 
     def test_manual_runs_always_toast(self):
         self.fail("boom", plugin_id=None)
