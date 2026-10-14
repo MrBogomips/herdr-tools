@@ -13,6 +13,8 @@ import release_manifest as rm
 import release_repo as repo
 from release_git import Git, RawCommit, Tag
 
+NO_SUGGESTION = rb.Suggestion("none", (), ())
+
 
 class StatusError(RuntimeError):
     pass
@@ -42,11 +44,13 @@ class PluginStatus:
     last_tag: Optional[str]
     last_tag_commit: Optional[str]
     listed_version: Optional[str]
-    state: str  # "untagged" | "released" | "unreleased" | "tag-pending" | "error"
+    # "untagged" | "released" | "unreleased" | "tag-pending" | "awaiting-merge" | "error"
+    state: str
     level: str
     next_version: Optional[str]
     tag_commit: Optional[str]
-    commits: Tuple[rb.Commit, ...]
+    commits: Tuple[rb.Commit, ...]  # what the next release contains
+    later: Tuple[rb.Commit, ...]  # commits after a committed bump: not in its tag
     reasons: Tuple[str, ...]
     flags: Tuple[str, ...]
     warnings: Tuple[str, ...]
@@ -60,6 +64,17 @@ class StatusReport:
     index: Optional[ri.IndexState]
     index_error: Optional[str]
     plugins: Tuple[PluginStatus, ...]
+
+
+@dataclass(frozen=True)
+class _Release:
+    """What plugin_status works out from the manifest version against the last tag."""
+    state: str
+    next_version: Optional[str] = None
+    tag_commit: Optional[str] = None
+    commits: Tuple[rb.Commit, ...] = ()
+    later: Tuple[rb.Commit, ...] = ()
+    suggestion: rb.Suggestion = NO_SUGGESTION
 
 
 def build(git: Git, plugins: Optional[Sequence[str]], index: Optional[dict], now: datetime,
@@ -117,54 +132,82 @@ def gate(git: Git, origin_main: Optional[str]) -> GitGate:
 
 def plugin_status(git: Git, folder: str, origin_main: Optional[str], remote_tags: Optional[Set[str]],
                   row: Optional[List[str]], listed: Optional[dict]) -> PluginStatus:
-    path = git.root / folder / repo.MANIFEST
     problems: List[str] = []
     warnings: List[str] = []
-    summary = _summary(path.read_text(encoding="utf-8"), problems, "manifest")
+    summary = _summary((git.root / folder / repo.MANIFEST).read_text(encoding="utf-8"), problems, "manifest")
     tags = git.plugin_tags(folder)
     last = tags[-1] if tags else None
-    commits = _commits(git, folder, last) if last else ()
-    suggestion = _suggest(git, folder, last, summary, commits) if last else rb.Suggestion("none", (), ())
-    state, next_version, tag_commit = _state(git, folder, last, summary.version, suggestion, problems, warnings)
+    release = _release(git, folder, last, summary.version, origin_main, problems, warnings)
     if last:
         warnings.extend(_tag_warnings(git, last, origin_main, remote_tags))
     return PluginStatus(
         folder=folder, id=summary.id, manifest_version=summary.version, description=summary.description,
         readme_row=row[1] if row and len(row) > 1 else None,
         last_tag=last.name if last else None, last_tag_commit=last.commit if last else None,
-        listed_version=(listed or {}).get("version"), state=state, level=suggestion.level,
-        next_version=next_version, tag_commit=tag_commit, commits=commits, reasons=suggestion.reasons,
-        flags=suggestion.flags, warnings=tuple(warnings), problems=tuple(problems),
+        listed_version=(listed or {}).get("version"), state=release.state, level=release.suggestion.level,
+        next_version=release.next_version, tag_commit=release.tag_commit, commits=release.commits,
+        later=release.later, reasons=release.suggestion.reasons, flags=release.suggestion.flags,
+        warnings=tuple(warnings), problems=tuple(problems),
     )
 
 
-def _state(git: Git, folder: str, last: Optional[Tag], version: Optional[str], suggestion: rb.Suggestion,
-           problems: List[str], warnings: List[str]) -> Tuple[str, Optional[str], Optional[str]]:
-    """(state, next version, commit to tag) from the manifest version against the last tag."""
+def _release(git: Git, folder: str, last: Optional[Tag], version: Optional[str], origin_main: Optional[str],
+             problems: List[str], warnings: List[str]) -> _Release:
     current = rb.parse_version(version)
     if current is None:
         problems.append("manifest version {!r} is not plain X.Y.Z".format(version))
-        return "error", None, None
+        return _Release("error")
     if last is None:
-        return "untagged", version, None
-    released = ".".join(str(part) for part in last.version)
+        return _Release("untagged", next_version=version)
     if current < last.version:
         problems.append("manifest {} is behind the last tag {}".format(version, last.name))
-        return "error", None, None
-    suggested = rb.bump(released, suggestion.level)
+        return _Release("error")
     if current == last.version:
-        return ("released", None, None) if suggestion.level == "none" else ("unreleased", suggested, None)
-    if rb.parse_version(suggested) > current:
-        warnings.append("manifest says {} but the changes since {} suggest {}".format(version, last.name, suggested))
+        commits = _commits(git, folder, last.commit, "HEAD")
+        suggestion = _suggest(git, folder, last.commit, "HEAD", commits)
+        if suggestion.level == "none":
+            return _Release("released", commits=commits, suggestion=suggestion)
+        return _Release("unreleased", rb.bump(_version(last), suggestion.level), commits=commits,
+                        suggestion=suggestion)
+    return _bumped(git, folder, last, version or "", origin_main, problems, warnings)
+
+
+def _bumped(git: Git, folder: str, last: Tag, version: str, origin_main: Optional[str],
+            problems: List[str], warnings: List[str]) -> _Release:
+    """The manifest is ahead of the last tag: find the commit that bumped it and check it can be tagged."""
     manifest = "{}/{}".format(folder, repo.MANIFEST)
-    return "tag-pending", version, git.last_version_change(last.commit, "HEAD", manifest)
+    bump = git.last_version_change(last.commit, "HEAD", manifest)
+    if bump is None or _summary(git.show_file(bump, manifest) or "", [], "").version != version:
+        problems.append("the version bump to {} is not committed yet: commit it, then tag that commit".format(version))
+        return _Release("error")
+    commits = _commits(git, folder, last.commit, bump)
+    later = _commits(git, folder, bump, "HEAD")
+    suggestion = _suggest(git, folder, last.commit, bump, commits)
+    suggested = rb.bump(_version(last), suggestion.level)
+    if rb.parse_version(suggested) > rb.parse_version(version):
+        warnings.append("manifest says {} but the changes since {} suggest {}".format(version, last.name, suggested))
+    shipped_later = [commit for commit in later if _ships(commit)]
+    if shipped_later:
+        warnings.append("{} commit(s) after the bump ship code that {}-v{} will not include: release them next".format(
+            len(shipped_later), folder, version))
+    on_main = git.rev("main") is not None and git.is_ancestor(bump, "main")
+    if not (on_main or (origin_main and git.is_ancestor(bump, origin_main))):
+        warnings.append("the bump {} is not on main: merge it first, then tag the commit that lands on main".format(
+            bump[:7]))
+        return _Release("awaiting-merge", version, None, commits, later, suggestion)
+    if origin_main and not git.is_ancestor(bump, origin_main):
+        warnings.append("the bump {} is not on origin/main yet: push main and the tag together (--atomic)".format(
+            bump[:7]))
+    return _Release("tag-pending", version, bump, commits, later, suggestion)
 
 
 def _tag_warnings(git: Git, last: Tag, origin_main: Optional[str], remote_tags: Optional[Set[str]]) -> List[str]:
     warnings = []
     if not last.annotated:
         warnings.append("{} is a lightweight tag; release tags are annotated with the notes".format(last.name))
-    if remote_tags is not None and last.name not in remote_tags:
+    if remote_tags is None:
+        warnings.append("could not check that {} is on origin: origin is unreachable".format(last.name))
+    elif last.name not in remote_tags:
         warnings.append("{} is not on origin yet".format(last.name))
     if origin_main and not git.is_ancestor(last.commit, origin_main):
         warnings.append("{} is not reachable from origin/main (tagged on a branch or before a squash merge?)".format(
@@ -172,8 +215,8 @@ def _tag_warnings(git: Git, last: Tag, origin_main: Optional[str], remote_tags: 
     return warnings
 
 
-def _commits(git: Git, folder: str, last: Tag) -> Tuple[rb.Commit, ...]:
-    raw = git.commits_touching(last.commit, "HEAD", folder)
+def _commits(git: Git, folder: str, since: str, until: str) -> Tuple[rb.Commit, ...]:
+    raw = git.commits_touching(since, until, folder)
     return tuple(_classify(git, folder, commit) for commit in raw if not rb.is_release_commit(commit.subject))
 
 
@@ -191,20 +234,31 @@ def _classify(git: Git, folder: str, commit: RawCommit) -> rb.Commit:
     return rb.Commit(commit.sha, commit.subject, commit.body, tuple(changes))
 
 
-def _suggest(git: Git, folder: str, last: Tag, summary: rm.Summary, commits: Sequence[rb.Commit]) -> rb.Suggestion:
-    old_text = git.show_file(last.commit, "{}/{}".format(folder, repo.MANIFEST))
-    old = _summary(old_text, [], "tagged manifest") if old_text else summary
-    old_keys = _config_keys(git.show_file(last.commit, "{}/config.example.json".format(folder)))
-    config = git.root / folder / "config.example.json"
-    new_keys = _config_keys(config.read_text(encoding="utf-8") if config.exists() else None)
-    return rb.suggest(commits, old, summary, old_keys, new_keys)
+def _suggest(git: Git, folder: str, since: str, until: str, commits: Sequence[rb.Commit]) -> rb.Suggestion:
+    """Compare the manifest and config.example.json contracts at the tag and at `until`."""
+    manifest = "{}/{}".format(folder, repo.MANIFEST)
+    config = "{}/config.example.json".format(folder)
+    new = _summary(git.show_file(until, manifest) or "", [], "")
+    old_text = git.show_file(since, manifest)
+    old = _summary(old_text, [], "") if old_text else new
+    return rb.suggest(commits, old, new, _config_keys(git.show_file(since, config)),
+                      _config_keys(git.show_file(until, config)))
+
+
+def _ships(commit: rb.Commit) -> bool:
+    return any(file.kind in rb.SHIPPED and file.semantic for file in commit.files)
+
+
+def _version(tag: Tag) -> str:
+    return ".".join(str(part) for part in tag.version)
 
 
 def _summary(text: str, problems: List[str], label: str) -> rm.Summary:
     try:
         return rm.summarise(rm.parse(text))
     except rm.ManifestError as exc:
-        problems.append("{} does not parse: {}".format(label, exc))
+        if label:
+            problems.append("{} does not parse: {}".format(label, exc))
         return rm.summarise({})
 
 

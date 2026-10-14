@@ -54,6 +54,17 @@ class CliTest(unittest.TestCase):
             with self.subTest(words=words):
                 self.assertIn(words, out)
 
+    def test_status_shows_what_waits_for_a_merge(self) -> None:
+        self.repo.git("switch", "-q", "-c", "feature/x")
+        self.repo.commit("fix(sorter): keep ~ first", {"sorter/sorter.py": "print('fixed')\n"})
+        self.repo.commit("chore(sorter): release v0.1.1",
+                         {"sorter/herdr-plugin.toml": render_manifest({"version": "0.1.1"})})
+        self.repo.commit("feat(sorter): after the bump", {"sorter/sorter.py": "print('later')\n"})
+        _, out, _ = self.cli("status")
+        for words in ("awaiting-merge", "merge the bump to 0.1.1", "after the bump (not in this release)"):
+            with self.subTest(words=words):
+                self.assertIn(words, out)
+
     def test_status_survives_a_missing_index(self) -> None:
         self.index.unlink()
         code, out, _ = self.cli("status")
@@ -75,6 +86,17 @@ class CliTest(unittest.TestCase):
         self.assertIn("sorter 0.1.1", out)
         self.assertIn("keep ~ first", out)
         self.assertNotIn("explain", out)
+
+    def test_notes_for_a_pending_tag_stop_at_the_bump(self) -> None:
+        self.repo.commit("fix(sorter): keep ~ first", {"sorter/sorter.py": "print('fixed')\n"})
+        self.repo.commit("chore(sorter): release v0.1.1",
+                         {"sorter/herdr-plugin.toml": render_manifest({"version": "0.1.1"})})
+        self.repo.commit("feat(sorter): after the bump", {"sorter/sorter.py": "print('later')\n"})
+        code, out, _ = self.cli("notes", "sorter")
+        self.assertEqual(code, 0)
+        self.assertIn("sorter 0.1.1", out)
+        self.assertIn("keep ~ first", out)
+        self.assertNotIn("after the bump", out)
 
     def test_outside_git_is_a_usage_error(self) -> None:
         err = io.StringIO()

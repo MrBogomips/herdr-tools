@@ -21,7 +21,9 @@ NON_SHIPPING_TYPES = frozenset({"docs", "test", "chore", "ci", "style", "build"}
 
 _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 _CONVENTIONAL = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^)]*)\))?(?P<bang>!)?: ")
-_RELEASE = re.compile(r"^chore(?:\(release\): |(?:\([^)]*\))?: release\b)")
+# Only the subjects the skill writes: `chore(<plugin>): release vX.Y.Z` and `chore(release): …`.
+# A looser match would hide ordinary commits such as "chore(x): release the lock".
+_RELEASE = re.compile(r"^chore(?:\(release\): |\([^)]*\): release v\d+\.\d+\.\d+\b)")
 _DOC_SUFFIXES = (".md", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".txt")
 
 
