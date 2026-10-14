@@ -1,54 +1,78 @@
 # herdr-tools
 
-Small tools for the [Herdr](https://herdr.dev) terminal multiplexer, built on its CLI and socket API.
-Python standard library only; each tool runs with the system `/usr/bin/python3`.
+[![tests](https://github.com/MrBogomips/herdr-tools/actions/workflows/test.yml/badge.svg)](https://github.com/MrBogomips/herdr-tools/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Herdr](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.3-6c71c4.svg)](https://herdr.dev)
 
-| Tool | What it does | Key |
+Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who keep a lot of
+spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
+only the ones you want.
+
+| Plugin | What it does | Install |
 | --- | --- | --- |
-| [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into head / default / bottom groups (name suffix), then by name | `prefix+shift+s` |
+| [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
+| [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
 
-## sort-spaces
+## Better together: a naming scheme
 
-Herdr has no sort setting for spaces: they keep the order you give them by dragging. This tool
-reorders all spaces at once with the socket method `workspace.move_block`. The focused space
-stays focused, worktree children stay under their parent, and running it again on a sorted list
-changes nothing. A Herdr toast reports the result ("Spaces sorted", "Spaces already sorted", or
-"Space sort failed" with the reason).
+Name spaces `CUSTOMER - project`, mark the ones you always want on top with ` +` and the parking
+lot with ` -`:
 
-### Groups
-
-A suffix in the space name chooses its group. Groups are sorted in this order, and inside each
-group spaces sort by name with the suffix removed, ignoring case:
-
-| Group | Name convention | Example |
-| --- | --- | --- |
-| home | the name `~` | `~` (always first) |
-| head | ends with a space and `+` | `LAB +` |
-| default | no suffix | `ACME - API` |
-| bottom | ends with a space and `-` | `SYS -` |
-
-The space before the suffix is required, so names like `C++` or `ACME - API` stay in the
-default group. Worktree children follow their parent's group. To move a space, rename it
-(`prefix+shift+w`), for example to `LAB +`, then press `prefix+shift+s`.
-
-Wire it in `~/.config/herdr/config.toml`, then run `herdr server reload-config`:
-
-```toml
-[[keys.command]]
-key = "prefix+shift+s"
-type = "shell"
-command = "/usr/bin/python3 /path/to/herdr-tools/sort-spaces/sort_spaces.py"
-description = "sort spaces: ~, head (+), default, bottom (-)"
+```
+● ▌~                   home
+● ▌LUMON +             head group, always on top
+○ ▌ACME - api          ┐ one colour per customer (space-colors hashes "ACME"),
+○ ▌ACME - web          ┘ side by side (sort-spaces sorts by name)
+● ▌Globex - etl
+○ ▌Initech - crm
+○ ▌SYS -               bottom group
 ```
 
-From a terminal inside Herdr:
+With sort-spaces' `"auto_sort": "both"` and space-colors' `"assign": "sticky"`, a new or renamed
+space lands in its place with its customer's colour, with no key to press; customers keep apart
+colours as long as there are fewer of them than colours (15 at most).
+
+## Install
+
+Every plugin lives in its own folder with its manifest (`herdr-plugin.toml`), code, tests and
+README. Herdr installs a single folder of a GitHub repository:
 
 ```bash
-/usr/bin/python3 sort-spaces/sort_spaces.py --dry-run   # print current and target order only
-/usr/bin/python3 sort-spaces/sort_spaces.py             # sort now
+herdr plugin install MrBogomips/herdr-tools/<plugin>   # one plugin
+herdr plugin update                                    # update installed plugins
+herdr plugin uninstall mrbogomips.<plugin>             # remove one
 ```
 
-It uses `$HERDR_SOCKET_PATH` (set inside Herdr panes and key commands), falling back to
-`~/.config/herdr/herdr.sock`. Space numbers and next/previous-space navigation follow the new order.
+Herdr shows the manifest and the commands it will run before installing. Plugins are ordinary
+code running as your user, so read them first; these are short Python scripts.
 
-Tests: `cd sort-spaces && /usr/bin/python3 -m unittest -v`
+Requirements:
+
+- Herdr 0.9.3 or newer, on macOS or Linux.
+- `python3` 3.9 or newer on the `PATH`. The system Python of macOS is enough; the plugins use the
+  standard library only, so there is nothing else to install.
+
+Each plugin's README explains its key bindings and its `config.json`, which lives in
+`herdr plugin config-dir <plugin id>`.
+
+## Develop
+
+```bash
+git clone https://github.com/MrBogomips/herdr-tools
+herdr plugin link "$PWD/herdr-tools/space-colors"   # run your working copy
+cd herdr-tools/space-colors && python3 -m unittest -v
+```
+
+- One folder per plugin: `herdr-plugin.toml`, `README.md`, `config.example.json`, the code and
+  its `test_*.py` next to it. Plugin ids are `mrbogomips.<folder>`.
+- `herdr_api.py` (socket client, config loading, locking, toasts) is copied into every plugin so
+  each one installs alone. Edit it in one plugin and copy it to the others; CI fails while the
+  copies differ.
+- Code stays compatible with Python 3.9 (`/usr/bin/python3` on macOS) and uses the standard
+  library only. CI runs every plugin's tests on macOS with the system Python and on Ubuntu.
+- `herdr api schema --json` prints the socket API of your Herdr build; the
+  [plugin docs](https://herdr.dev/docs/plugins/) describe manifests, hooks and actions.
+
+## License
+
+[MIT](LICENSE)
