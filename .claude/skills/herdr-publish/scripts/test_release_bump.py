@@ -127,7 +127,9 @@ class SuggestTest(unittest.TestCase):
         new = summary(tables=TABLES.replace('id = "sort"', 'id = "order"'))
         result = suggest([commit("refactor(sorter): rename", ("herdr-plugin.toml", True))], new=new)
         self.assertEqual(result.level, "breaking")
-        self.assertTrue(any("sort" in reason for reason in result.reasons), result.reasons)
+        # The breaking reasons name the exact binding users must change, for the release notes.
+        self.assertTrue(any("acme.sorter.sort" in reason for reason in result.breaking), result.breaking)
+        self.assertFalse(any("adds" in reason for reason in result.breaking), result.breaking)
 
     def test_removing_a_config_key_is_breaking(self) -> None:
         result = suggest([commit("fix(sorter): x", ("config.example.json", True))], new_keys=("other",))

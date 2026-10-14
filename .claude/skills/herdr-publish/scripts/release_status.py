@@ -55,6 +55,7 @@ class PluginStatus:
     flags: Tuple[str, ...]
     warnings: Tuple[str, ...]
     problems: Tuple[str, ...]
+    breaking: Tuple[str, ...] = ()  # contract breaks, for the Breaking section of the notes
 
 
 @dataclass(frozen=True)
@@ -167,7 +168,7 @@ def plugin_status(git: Git, folder: str, origin_main: Optional[str], remote_tags
         listed_version=(listed or {}).get("version"), state=release.state, level=release.suggestion.level,
         next_version=release.next_version, tag_commit=release.tag_commit, commits=release.commits,
         later=release.later, reasons=release.suggestion.reasons, flags=release.suggestion.flags,
-        warnings=tuple(warnings), problems=tuple(problems),
+        warnings=tuple(warnings), problems=tuple(problems), breaking=release.suggestion.breaking,
     )
 
 

@@ -9,7 +9,7 @@ from typing import List, Tuple
 import herdr_release
 import release_bump as rb
 import release_notes
-from repo_fixture import TempRepo, render_manifest
+from repo_fixture import TABLES, TempRepo, render_manifest
 
 NOW = "2026-10-14T14:00:00Z"
 
@@ -98,6 +98,15 @@ class CliTest(unittest.TestCase):
         self.assertIn("keep ~ first", out)
         self.assertNotIn("after the bump", out)
 
+    def test_notes_call_out_a_renamed_action(self) -> None:
+        manifest = render_manifest(tables=TABLES.replace('id = "sort"', 'id = "order"'))
+        self.repo.commit("refactor(sorter): rename the action", {"sorter/herdr-plugin.toml": manifest})
+        code, out, _ = self.cli("notes", "sorter")
+        self.assertEqual(code, 0)
+        self.assertIn("sorter 0.2.0", out)
+        self.assertIn("Breaking", out)
+        self.assertIn("acme.sorter.sort", out)
+
     def test_notes_for_a_first_release_describe_the_plugin(self) -> None:
         self.repo.git("tag", "-d", "sorter-v0.1.0")
         code, out, _ = self.cli("notes", "sorter")
@@ -134,6 +143,12 @@ class NotesTest(unittest.TestCase):
                 self.assertIn("- {} (abcdef1)".format(line), text)
         self.assertNotIn("readme", text)
         self.assertNotIn("more", text)
+
+    def test_contract_breaks_are_listed_as_breaking(self) -> None:
+        text = release_notes.render("sorter", "0.2.0", [self.commit("refactor(sorter): rename", "herdr-plugin.toml")],
+                                    breaking=("removes action 'sort': key bindings to acme.sorter.sort stop working",))
+        breaking = text.split("Breaking\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("acme.sorter.sort", breaking)
 
     def test_says_so_when_nothing_ships(self) -> None:
         text = release_notes.render("sorter", "0.1.0", [self.commit("docs: x", "README.md")])

@@ -68,7 +68,7 @@ def _notes(args: argparse.Namespace, git: Git, now: datetime) -> int:
     if status.last_tag is None:
         print(release_notes.render_first(args.plugin, version, status.description), end="")
     else:
-        print(release_notes.render(args.plugin, version, status.commits), end="")
+        print(release_notes.render(args.plugin, version, status.commits, status.breaking), end="")
     return 0
 
 
