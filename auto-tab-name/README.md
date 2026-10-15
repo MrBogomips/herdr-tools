@@ -9,11 +9,12 @@ Tabs you name yourself are left alone.
                          repo_branch            initech@main
 ```
 
-Herdr shows a tab nobody named as its number. This plugin renames those tabs after the folder their
-pane is in (the folder of the program running in the foreground, by default), and updates the name
-when the folder changes. A tab you rename by hand stops following its folder until you say so. Names
-are written with the socket method `tab.rename`, and only for the tabs whose name changes: a run with
-nothing to change writes nothing.
+Herdr shows a tab nobody named as its position number: 1 for the first tab of a workspace, 2 for the
+second, and so on. This plugin renames those tabs after the folder their pane is in (the folder of
+the program running in the foreground, by default), and updates the name when the folder changes. A
+tab you rename by hand stops following its folder until you say so. Names are written with the
+socket method `tab.rename`, and only for the tabs whose name changes: a run with nothing to change
+writes nothing.
 
 ## Install
 
@@ -27,7 +28,7 @@ Bind the actions you want in `~/.config/herdr/config.toml` and run `herdr server
 
 ```toml
 [[keys.command]]
-key = "prefix+shift+t"
+key = "prefix+alt+c"
 type = "plugin_action"
 command = "mrbogomips.auto-tab-name.configure"
 description = "configure auto tab names"
@@ -45,7 +46,9 @@ command = "mrbogomips.auto-tab-name.follow"
 description = "make this tab follow its folder"
 ```
 
-The plugin has six actions; each one reports its result as a Herdr toast:
+The plugin has six actions. Every one of them toasts when it fails; on success `toggle`, `sync`,
+`follow` and `unfollow` report their result as a Herdr toast, while `configure` just opens the popup
+and `refresh` stays quiet:
 
 | Action | What it does |
 | --- | --- |
@@ -54,7 +57,7 @@ The plugin has six actions; each one reports its result as a Herdr toast:
 | `sync` | Names every followed tab now, even with `auto_sync` off |
 | `follow` | Makes the current tab follow its folder again and names it now |
 | `unfollow` | Keeps the current tab's name as it is and stops renaming it |
-| `refresh` | Quiet `sync` for the shell hook below: honours `auto_sync`, toasts only on failure |
+| `refresh` | The quiet hook run, for the shell hook below: names the followed tabs only when `auto_sync` is on, toasts only on failure |
 
 Without a key binding, `herdr plugin action invoke --plugin mrbogomips.auto-tab-name <action>` runs
 any of them.
@@ -64,8 +67,8 @@ any of them.
 Settings live in `config.json` in the plugin's config directory (`herdr plugin config-dir
 mrbogomips.auto-tab-name` prints it). The file is optional and read on every run, so changes apply
 at once. The `configure` action opens a popup menu that edits the same file: type an item's number
-to change it, `s` saves and syncs the names, `q` leaves without saving. `toggle` and the popup both
-write `config.json`.
+to change it, `s` saves (and syncs the names when `auto_sync` is on), `q` leaves without saving.
+`toggle` and the popup both write `config.json`.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -94,17 +97,21 @@ For `~/tools/initech/sort`, inside the repository `initech` on branch `main`:
 A linked worktree shows the name of its main repository, a submodule the name of its own folder.
 The repository is found by reading `.git` (no `git` process runs).
 
-When a name is longer than `max_length`, `basename`, `repo` and `repo_branch` keep the start and
-end with `…` (`Globex-billing-ser…`); `last_n` and `home_path` keep the end and start with `…`
-(`…/acme/web/frontend`), where the folder you are in is.
+When a name is longer than `max_length` (24 by default), `basename`, `repo` and `repo_branch` keep
+the start and end with `…` (the folder `globex-billing-reconciliation` gives
+`globex-billing-reconcil…`); `last_n` and `home_path` keep the end and start with `…`
+(`~/work/acme/apps/web/frontend` gives `…/acme/apps/web/frontend`), where the folder you are in is.
 
 ## Which tabs follow their folder
 
-- A new tab shows its number, so it follows its folder from the start.
-- Renaming a tab by hand (to anything but its number) stops it following: your name stays.
-- `follow` makes the tab follow again, and so does renaming it back to its number.
-- `unfollow` stops following and keeps the current name; on a tab that still shows its number it
-  pins that number as the name, so moving the tab does not bring it back into sync.
+- A new tab shows its position number (the number Herdr shows for an unnamed tab), so it follows
+  its folder from the start.
+- Renaming a tab by hand (to anything but its position number) stops it following: your name stays.
+- `follow` makes the tab follow again, and so does renaming it back to its position number.
+- `unfollow` stops following and keeps the current name; on a tab that still shows its position
+  number it pins that number as the name, so a new position (a tab before it closes or moves) does
+  not bring it back into sync. Such a tab already shows that number, so renaming it back changes
+  nothing: `follow` resumes it.
 - A tab already named like its folder when the plugin starts counts as followed, so a Herdr restart
   changes nothing.
 
@@ -146,8 +153,13 @@ Both run only inside Herdr (`HERDR_ENV` is set) and in the background.
 - Herdr reports only the globally focused pane, so a tab with several panes uses the pane you
   focused last in it, or its first pane when none was focused yet.
 - A tab renamed through the API keeps its name for good: Herdr has no way back to the automatic
-  number. That is why `unfollow` pins the number, and why renaming a tab back to its number by hand
-  is what resumes following.
+  position number. That is why `unfollow` pins the number the tab shows, and why renaming a tab back
+  to its position number (the number Herdr shows for an unnamed tab) by hand is what resumes
+  following; for a tab `unfollow` pinned, use `follow`.
+- Another plugin's pane (an overlay, a split or a tab) focused in a tab names the tab after that
+  pane's folder until the focus returns to another pane of the tab.
+- With `repo` or `repo_branch`, a git repository in your home folder (dotfiles, say) makes every
+  folder under home that is not in another repository show as that repository.
 - With `foreground_cwd` the name follows the program in the foreground, which is not always the
   shell's folder (an agent started in another folder, for instance). Use `"source": "cwd"` for the
   shell's folder.
