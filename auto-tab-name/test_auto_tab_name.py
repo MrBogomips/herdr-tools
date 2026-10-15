@@ -219,15 +219,38 @@ class ReconcileHookTest(CliTestCase):
         self.assertEqual(len(toasts), 1)
         self.assertIn(str(self.config), " ".join(toasts[0]))
 
-    def test_rename_failure_exits_1_toasts_and_saves_no_state(self):
-        herdr = self.one_tab()
+    def two_tabs(self):
+        return FakeHerdr(
+            [tab("t1", number=1), tab("t2", number=2)],
+            [pane("p1", "t1", "/work/acme"), pane("p2", "t2", "/work/globex")],
+        )
+
+    def test_rename_failure_stops_the_batch_exits_1_toasts_and_saves_no_state(self):
+        herdr = self.two_tabs()
         herdr.failures["tab.rename"] = HerdrError("tab.rename failed: boom", "boom")
 
         code, toasts, _, _, _ = self.run_main(["reconcile", "--hook"], herdr)
 
         self.assertEqual(code, 1)
         self.assertEqual(len(toasts), 1)
+        self.assertEqual(herdr.methods().count("tab.rename"), 1)
         self.assertEqual(self.state_files(), [])
+
+    def test_a_tab_closed_before_its_rename_is_skipped_and_dropped(self):
+        herdr = self.two_tabs()
+
+        def closing_t1_first(method, params):
+            if method == "tab.rename" and params["tab_id"] == "t1":
+                herdr.close("t1")  # closed between tab.list and its rename
+            return herdr(method, params)
+
+        code, toasts, out, _, _ = self.run_main(["reconcile", "--hook"], closing_t1_first)
+
+        self.assertEqual((code, toasts), (0, []))
+        self.assertEqual(herdr.label("t2"), "globex")
+        self.assertIn("skipped t1", out)
+        states = json.loads(self.state_files()[0].read_text())["tabs"]
+        self.assertEqual(set(states), {"t2"})
 
     def test_malformed_list_result_is_a_bad_result_failure(self):
         def malformed(method, params):
@@ -359,6 +382,16 @@ class ToggleTest(CliTestCase):
         self.assertEqual(toasts[0][3], "Auto tab names not toggled")
         self.assertEqual(self.config.read_text(), '{"format": "nope"}')
 
+    def test_a_failed_sync_after_turning_on_says_the_switch_holds(self):
+        self.write_config(auto_sync=False)
+        herdr = FakeHerdr([], [], failures={"tab.list": HerdrError("socket gone", "socket")})
+
+        code, toasts, _, _, _ = self.run_main(["toggle"], herdr)
+
+        self.assertEqual(code, 1)
+        self.assertTrue(json.loads(self.config.read_text())["auto_sync"])
+        self.assertEqual(toasts, [toast("Auto tab names on; names not updated", "socket gone")])
+
 
 class FollowTest(CliTestCase):
     def test_follow_renames_a_hand_named_tab_and_toasts(self):
@@ -422,6 +455,18 @@ class FollowTest(CliTestCase):
         self.assertEqual(code, 1)
         self.assertEqual(toasts[0][3], "Tab not followed")
 
+    def test_a_failed_rename_after_following_says_the_tab_follows(self):
+        herdr = self.one_tab(name="Notes")
+        herdr.failures["tab.rename"] = HerdrError("tab.rename failed: boom", "boom")
+        os.environ["HERDR_TAB_ID"] = "t1"
+
+        code, toasts, _, _, _ = self.run_main(["follow"], herdr)
+
+        self.assertEqual(code, 1)
+        self.assertEqual(toasts, [toast("Tab followed; name not updated", "tab.rename failed: boom")])
+        states = json.loads(self.state_files()[0].read_text())["tabs"]
+        self.assertTrue(states["t1"]["follow"])
+
     def test_follow_with_auto_sync_off_renames_only_that_tab(self):
         self.write_config(auto_sync=False)
         herdr = FakeHerdr(
@@ -464,18 +509,25 @@ class ConfigureTest(CliTestCase):
         self.assertEqual(self.argvs, [POPUP_ARGV])
         rpc.assert_not_called()
 
-    def test_failures_toast_naming_the_config_path(self):
+    def test_failures_toast_the_reason_and_the_config_path(self):
+        error = json.dumps({"error": {"code": "plugin_not_found", "message": "no such plugin"}})
         cases = {
-            "exit status": subprocess.CompletedProcess(POPUP_ARGV, 2, "", "no such plugin"),
-            "error object": subprocess.CompletedProcess(POPUP_ARGV, 0, json.dumps({"error": {"message": "nope"}}), ""),
+            "error on stderr": (1, "", error + "\n", "no such plugin"),
+            "error on stdout": (1, error, "", "no such plugin"),
+            "error with status 0": (0, json.dumps({"error": {"message": "nope"}}), "", "nope"),
+            "error without a message": (1, "", '{"error": "denied"}', '{"error": "denied"}'),
+            "plain text": (2, "", "boom\n", "herdr exited with status 2: boom"),
+            "no output": (2, "", "", "herdr exited with status 2"),
         }
-        for name, popup in cases.items():
+        for name, (status, stdout, stderr, reason) in cases.items():
             with self.subTest(name):
+                popup = subprocess.CompletedProcess(POPUP_ARGV, status, stdout, stderr)
+
                 code, toasts, _, _, _ = self.run_main(["configure"], popup=popup)
 
                 self.assertEqual(code, 1)
                 self.assertEqual(toasts[0][3], "Configuration popup not opened")
-                self.assertIn(str(self.config), toasts[0][5])
+                self.assertEqual(toasts[0][5], "{}; edit {} instead".format(reason, self.config))
 
     def test_a_timeout_toasts_naming_the_config_path(self):
         with mock.patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired(POPUP_ARGV, 5)):
@@ -529,6 +581,35 @@ class MenuTest(CliTestCase):
         code, _, _, _, _ = self.run_menu(EOFError())
 
         self.assertEqual(code, 1)
+
+    def test_a_failed_sync_after_saving_says_the_settings_are_saved(self):
+        self.write_config(auto_sync=True)
+        herdr = FakeHerdr([], [], failures={"tab.list": HerdrError("socket gone", "socket")})
+
+        code, toasts, _, _, _ = self.run_menu(["4", "30", "s"], herdr)
+
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(self.config.read_text())["max_length"], 30)
+        self.assertEqual(toasts, [toast("Settings saved; names not updated", "socket gone")])
+
+    def test_ctrl_c_closes_the_popup_quietly(self):
+        cases = {
+            "at the bad config wait": ('{"depth": 0}', KeyboardInterrupt(), 1),
+            "at a menu prompt": ("{}", ["4", KeyboardInterrupt()], 0),
+        }
+        for name, (content, answers, expected) in cases.items():
+            with self.subTest(name):
+                self.config.write_text(content)
+
+                code, toasts, _, err, _ = self.run_menu(answers)
+
+                self.assertEqual((code, toasts, err), (expected, [], ""))
+
+    def test_ctrl_c_while_saving_closes_the_popup_quietly(self):
+        with mock.patch.object(tool, "reconcile_locked", side_effect=KeyboardInterrupt):
+            code, toasts, _, err, _ = self.run_menu(["s"], self.one_tab())
+
+        self.assertEqual((code, toasts, err), (0, [], ""))
 
 
 if __name__ == "__main__":
