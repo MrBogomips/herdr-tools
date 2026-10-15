@@ -5,9 +5,97 @@ min_herdr_version = "0.9.3"
 description = "Name each tab after the folder of its pane (folder, repo, path or branch), keep it in sync as you move around, and leave alone the tabs you name yourself."
 platforms = ["macos", "linux"]
 
+# A `cd` fires no event Herdr can hook (`pane.updated` cannot be hooked), so names catch up on focus
+# and lifecycle events instead; a run with nothing to change writes nothing.
+[[startup]]
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "tab.created"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "tab.focused"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "tab.moved"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "tab.renamed"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "tab.closed"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "pane.created"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "pane.closed"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "pane.focused"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "pane.moved"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+event = "workspace.focused"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
 [[actions]]
 id = "sync"
 title = "Sync tab names"
 description = "Name every followed tab after the folder of its pane now, even with auto sync off."
 contexts = ["global", "workspace", "tab", "pane"]
 command = ["python3", "auto_tab_name.py", "sync"]
+
+[[actions]]
+id = "toggle"
+title = "Toggle auto tab names"
+description = "Turn automatic tab naming on or off."
+contexts = ["global", "workspace", "tab", "pane"]
+command = ["python3", "auto_tab_name.py", "toggle"]
+
+[[actions]]
+id = "follow"
+title = "Follow this tab's folder"
+description = "Name the current tab after the folder of its pane and keep it in sync."
+contexts = ["tab", "pane"]
+command = ["python3", "auto_tab_name.py", "follow"]
+
+[[actions]]
+id = "unfollow"
+title = "Keep this tab's name"
+description = "Stop renaming the current tab and keep the name it has now."
+contexts = ["tab", "pane"]
+command = ["python3", "auto_tab_name.py", "unfollow"]
+
+[[actions]]
+id = "configure"
+title = "Configure auto tab names"
+description = "Open the configuration popup."
+contexts = ["global", "workspace", "tab", "pane"]
+command = ["python3", "auto_tab_name.py", "configure"]
+
+[[actions]]
+id = "refresh"
+title = "Refresh tab names (quiet)"
+description = "For the shell hook: update tab names like an event hook does, and toast only on failure."
+contexts = ["global", "workspace", "tab", "pane"]
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[panes]]
+id = "configure"
+title = "Auto Tab Name"
+placement = "popup"
+width = 60
+height = 16
+command = ["python3", "auto_tab_name.py", "menu"]
