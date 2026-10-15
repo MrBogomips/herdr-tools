@@ -57,10 +57,11 @@ and `refresh` stays quiet:
 | `sync` | Names every followed tab now, even with `auto_sync` off |
 | `follow` | Makes the current tab follow its folder again and names it now |
 | `unfollow` | Keeps the current tab's name as it is and stops renaming it |
-| `refresh` | The quiet hook run, for the shell hook below: names the followed tabs only when `auto_sync` is on, toasts only on failure |
+| `refresh` | The quiet hook run, for the [shell integration](#shell-integration-optional): names the followed tabs only when `auto_sync` is on, toasts only on failure |
 
-Without a key binding, `herdr plugin action invoke --plugin mrbogomips.auto-tab-name <action>` runs
-any of them.
+Without a key binding, run any of them from a terminal inside Herdr with
+`herdr plugin action invoke mrbogomips.auto-tab-name.<action>` (`follow` and `unfollow` act on the
+current tab).
 
 ## Configuration
 
@@ -76,7 +77,7 @@ to change it, `s` saves (and syncs the names when `auto_sync` is on), `q` leaves
 | `format` | string | `"basename"` | What the name shows, see below |
 | `depth` | integer, 1 or more | `2` | Folders shown by `last_n` |
 | `max_length` | integer, 0 or more | `24` | Longest name, cut with `…`; `0` means no limit |
-| `source` | string | `"foreground_cwd"` | `"foreground_cwd"`: folder of the foreground program (an agent's folder, say); `"cwd"`: folder of the shell. Either one falls back to the other when it is unknown |
+| `source` | string | `"foreground_cwd"` | `"foreground_cwd"`: folder of the program in the foreground (an agent's folder, say); `"cwd"`: folder of the shell. See [Which folder](#which-folder-source) |
 | `home_tilde` | boolean | `true` | Write the home folder as `~` |
 
 `config.example.json` holds the defaults. Unknown keys and wrong values make the run fail with the
@@ -102,6 +103,36 @@ the start and end with `…` (the folder `globex-billing-reconciliation` gives
 `globex-billing-reconcil…`); `last_n` and `home_path` keep the end and start with `…`
 (`~/work/acme/apps/web/frontend` gives `…/acme/apps/web/frontend`), where the folder you are in is.
 
+### Which folder (`source`)
+
+A pane runs a shell, and often a program inside the shell: a coding agent, an editor, a build.
+Herdr reports two folders for each pane:
+
+| `source` | Folder |
+| --- | --- |
+| `cwd` | The shell's folder: it changes when you `cd` |
+| `foreground_cwd` | The folder of the program in the foreground, the one using the terminal now |
+
+At the prompt the program in the foreground is the shell itself, so the two are the same, and they
+stay the same for a program that runs in the folder it was started in (an editor, `htop`). They
+differ when a program moves to another folder while it runs, as a coding agent does when it starts
+working in a worktree. Started in `~/tools/initech` (branch `main`), an agent working in the worktree
+`~/tools/initech/.worktrees/login` (branch `feature/login`) gives:
+
+| `format` | `"cwd"` | `"foreground_cwd"` |
+| --- | --- | --- |
+| `basename` | `initech` | `login` |
+| `repo_branch` | `initech@main` | `initech@feature/login` |
+
+- `foreground_cwd` (the default) names the tab after the folder the work happens in: with agents in
+  worktrees, each tab tells which worktree or branch its agent is on. A long command that runs in
+  another folder, such as `(cd build && make)`, can name the tab `build` while it runs, if a hook
+  runs meanwhile (a focus change, say).
+- `cwd` follows only your `cd` in the shell: steadier, but the tab of an agent working in a
+  worktree keeps the name of the folder the agent was started in.
+
+When Herdr cannot tell one of the two folders, the plugin uses the other.
+
 ## Which tabs follow their folder
 
 - A new tab shows its position number (the number Herdr shows for an unnamed tab), so it follows
@@ -118,38 +149,66 @@ the start and end with `…` (the folder `globex-billing-reconciliation` gives
 Herdr asks for a name when you create a tab (`ui.prompt_new_tab_name`, on by default). Leave the
 name empty to get an automatic one; type a name to keep it.
 
-## Instant updates on `cd` (optional)
+## Shell integration (optional)
 
 Herdr has no event for `cd`, so without more a name catches up at the next focus change, tab or
-pane change. To update it right away, call the `refresh` action from your shell:
+pane change. To rename the tab as soon as you change folder, have your shell call the quiet
+`refresh` action: add the lines for your shell to its startup file and open a new shell.
+
+### zsh
 
 ```zsh
 # ~/.zshrc
-if [[ -n $HERDR_ENV ]]; then
+if [[ $HERDR_ENV == 1 && -n $HERDR_BIN_PATH ]]; then
   autoload -Uz add-zsh-hook
-  _auto_tab_name_chpwd() { herdr plugin action invoke --plugin mrbogomips.auto-tab-name refresh >/dev/null 2>&1 &! }
+  _auto_tab_name_chpwd() { "$HERDR_BIN_PATH" plugin action invoke mrbogomips.auto-tab-name.refresh >/dev/null 2>&1 &! }
   add-zsh-hook chpwd _auto_tab_name_chpwd
 fi
 ```
 
+`chpwd` runs after every change of folder.
+
+### bash
+
 ```bash
 # ~/.bashrc
-if [[ -n $HERDR_ENV ]]; then
+if [[ ${HERDR_ENV-} == 1 && -n ${HERDR_BIN_PATH-} ]]; then
   _auto_tab_name_prompt() {
     [[ $PWD == "${_auto_tab_name_pwd-}" ]] && return
     _auto_tab_name_pwd=$PWD
-    (herdr plugin action invoke --plugin mrbogomips.auto-tab-name refresh >/dev/null 2>&1 &)
+    ("$HERDR_BIN_PATH" plugin action invoke mrbogomips.auto-tab-name.refresh >/dev/null 2>&1 &)
   }
   PROMPT_COMMAND="_auto_tab_name_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 fi
 ```
 
-Both run only inside Herdr (`HERDR_ENV` is set) and in the background.
+bash has no hook on `cd`: this runs before each prompt and calls `refresh` only when the folder
+changed. It keeps the `PROMPT_COMMAND` you already have and works with the bash 3.2 of macOS.
+
+### fish
+
+```fish
+# ~/.config/fish/config.fish
+if test "$HERDR_ENV" = 1; and set -q HERDR_BIN_PATH
+    function _auto_tab_name_pwd --on-variable PWD
+        "$HERDR_BIN_PATH" plugin action invoke mrbogomips.auto-tab-name.refresh >/dev/null 2>&1 &
+        disown
+    end
+end
+```
+
+The function runs whenever `PWD` changes; `disown` keeps fish from reporting the finished job.
+
+All three run only inside Herdr (`HERDR_ENV` is `1`) and call the Herdr binary that owns the pane
+(`HERDR_BIN_PATH`, so `herdr` need not be on your `PATH`). They run it in the background and discard
+its output, so the prompt never waits. `refresh` renames only when `auto_sync` is on and toasts only
+on failure. The shell reports only its own `cd`: a program that changes folder while it runs (see
+[Which folder](#which-folder-source)) is seen at the next focus change.
 
 ## Limits
 
-- No Herdr event fires on `cd` (`pane.updated` cannot be hooked): without the shell hook a name
-  catches up at the next focus or tab change.
+- No Herdr event fires on `cd` (`pane.updated` cannot be hooked): without the
+  [shell integration](#shell-integration-optional) a name catches up at the next focus or tab change.
 - Herdr reports only the globally focused pane, so a tab with several panes uses the pane you
   focused last in it, or its first pane when none was focused yet.
 - A tab renamed through the API keeps its name for good: Herdr has no way back to the automatic
@@ -160,9 +219,9 @@ Both run only inside Herdr (`HERDR_ENV` is set) and in the background.
   pane's folder until the focus returns to another pane of the tab.
 - With `repo` or `repo_branch`, a git repository in your home folder (dotfiles, say) makes every
   folder under home that is not in another repository show as that repository.
-- With `foreground_cwd` the name follows the program in the foreground, which is not always the
-  shell's folder (an agent started in another folder, for instance). Use `"source": "cwd"` for the
-  shell's folder.
+- With `foreground_cwd` a command that runs in another folder can rename the tab while it runs, and
+  a program that changes folder is seen only at the next focus change: see
+  [Which folder](#which-folder-source).
 - State (which tabs follow, the last pane of each) lives in the plugin's state directory, one file
   per Herdr server.
 
