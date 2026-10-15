@@ -11,43 +11,43 @@ platforms = ["macos", "linux"]
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "tab.created"
+on = "tab.created"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "tab.focused"
+on = "tab.focused"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "tab.moved"
+on = "tab.moved"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "tab.renamed"
+on = "tab.renamed"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "tab.closed"
+on = "tab.closed"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "pane.created"
+on = "pane.created"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "pane.closed"
+on = "pane.closed"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "pane.focused"
+on = "pane.focused"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "pane.moved"
+on = "pane.moved"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
-event = "workspace.focused"
+on = "workspace.focused"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[actions]]
