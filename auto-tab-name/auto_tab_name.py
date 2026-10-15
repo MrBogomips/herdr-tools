@@ -32,7 +32,7 @@ from herdr_api import (
 )
 from menu import run_menu
 from naming import tab_label
-from plan import Rename, plan_tabs, set_follow
+from plan import Rename, auto_labels, plan_tabs, set_follow
 from state import load_states, save_states, state_file
 
 PLUGIN_ID = "mrbogomips.auto-tab-name"
@@ -56,8 +56,7 @@ def _list_records(call: Call, method: str, key: str) -> List[Dict[str, Any]]:
 def list_tabs(call: Call) -> List[Dict[str, Any]]:
     tabs = _list_records(call, "tab.list", "tabs")
     for item in tabs:
-        if not (isinstance(item.get("tab_id"), str) and isinstance(item.get("label"), str)
-                and isinstance(item.get("number"), int)):
+        if not all(isinstance(item.get(key), str) for key in ("tab_id", "workspace_id", "label")):
             raise HerdrError("unexpected tab.list result", "bad_result")
     return tabs
 
@@ -154,11 +153,13 @@ def _set_follow(tab_id: str, follow: bool, config: Config) -> str:
     with plugin_lock(PLUGIN_ID):
         call = socket_rpc(socket_path(), TOOL)
         state_path = state_file(PLUGIN_ID)
-        tab = next((item for item in list_tabs(call) if item["tab_id"] == tab_id), None)
+        tabs = list_tabs(call)
+        tab = next((item for item in tabs if item["tab_id"] == tab_id), None)
         if tab is None:
             raise HerdrError("tab {} not found".format(tab_id), "tab_not_found")
-        if not follow and tab["label"] == str(tab["number"]):
-            # Pin the automatic label: a new number would otherwise read as "renamed back to its number".
+        if not follow and tab["label"] == auto_labels(tabs)[tab_id]:
+            # Pin the automatic label, the tab's position: once a tab in front of it closes, its new
+            # position would otherwise read as "renamed back to its automatic name".
             call("tab.rename", {"tab_id": tab_id, "label": tab["label"]})
         save_states(state_path, set_follow(load_tab_states(state_path), tab, follow))
         if not follow:

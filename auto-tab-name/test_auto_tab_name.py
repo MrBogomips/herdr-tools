@@ -16,8 +16,9 @@ HOME = "/home/lumon"
 POPUP_ARGV = ["/opt/herdr", "plugin", "pane", "open", "--plugin", "mrbogomips.auto-tab-name", "--entrypoint", "configure"]
 
 
-def tab(tab_id, label, number, workspace_id="w1"):
-    return {"tab_id": tab_id, "workspace_id": workspace_id, "label": label, "number": number, "focused": False}
+def tab(tab_id, name=None, number=1, workspace_id="w1"):
+    """A Herdr tab; `name` None means nobody named it, so Herdr shows its position."""
+    return {"tab_id": tab_id, "workspace_id": workspace_id, "name": name, "number": number, "focused": False}
 
 
 def pane(pane_id, tab_id, cwd, focused=False, foreground_cwd=None):
@@ -27,7 +28,8 @@ def pane(pane_id, tab_id, cwd, focused=False, foreground_cwd=None):
 class FakeHerdr:
     """Stands in for the socket: serves tabs and panes and applies tab.rename like the server.
 
-    `failures` maps a method to the HerdrError it raises.
+    Like Herdr, a tab nobody named is listed with its 1-based position in its workspace as its
+    label, while its `number` never changes. `failures` maps a method to the HerdrError it raises.
     """
 
     def __init__(self, tabs, panes, failures=None):
@@ -41,22 +43,40 @@ class FakeHerdr:
         if method in self.failures:
             raise self.failures[method]
         if method == "tab.list":
-            return {"type": "tab_list", "tabs": [dict(item) for item in self.tabs]}
+            return {"type": "tab_list", "tabs": self.listed()}
         if method == "pane.list":
             return {"type": "pane_list", "panes": list(self.panes)}
         if method == "tab.rename":
             for item in self.tabs:
                 if item["tab_id"] == params["tab_id"]:
-                    item["label"] = params["label"]
-                    return {"type": "tab_info", "tab": dict(item)}
+                    item["name"] = params["label"]
+                    return {"type": "tab_info", "tab": self.info(params["tab_id"])}
             raise HerdrError("tab.rename failed: tab_not_found: gone", "tab_not_found")
         raise AssertionError("unexpected method " + method)
+
+    def listed(self):
+        positions = {}
+        listed = []
+        for item in self.tabs:
+            workspace_id = item["workspace_id"]
+            positions[workspace_id] = positions.get(workspace_id, 0) + 1
+            info = {key: value for key, value in item.items() if key != "name"}
+            info["label"] = item["name"] if item["name"] is not None else str(positions[workspace_id])
+            listed.append(info)
+        return listed
+
+    def info(self, tab_id):
+        return next(item for item in self.listed() if item["tab_id"] == tab_id)
+
+    def close(self, tab_id):
+        self.tabs = [item for item in self.tabs if item["tab_id"] != tab_id]
+        self.panes = [item for item in self.panes if item["tab_id"] != tab_id]
 
     def methods(self):
         return [method for method, _ in self.calls]
 
     def label(self, tab_id):
-        return next(item["label"] for item in self.tabs if item["tab_id"] == tab_id)
+        return self.info(tab_id)["label"]
 
 
 def toast(title, body=None):
@@ -115,8 +135,17 @@ class CliTestCase(unittest.TestCase):
     def state_files(self):
         return list(self.root.glob("tabs-*.json"))
 
-    def one_tab(self, label="1", cwd="/work/acme"):
-        return FakeHerdr([tab("t1", label, 1)], [pane("p1", "t1", cwd, focused=True)])
+    def one_tab(self, name=None, cwd="/work/acme"):
+        return FakeHerdr([tab("t1", name)], [pane("p1", "t1", cwd, focused=True)])
+
+    def three_tabs_after_closing_the_second(self):
+        """Herdr then lists t3 as "2", its position, while its number stays 3."""
+        herdr = FakeHerdr(
+            [tab("t1", number=1), tab("t2", number=2), tab("t3", number=3)],
+            [pane("p1", "t1", "/work/acme"), pane("p2", "t2", "/work/lumon"), pane("p3", "t3", "/work/globex")],
+        )
+        herdr.close("t2")
+        return herdr
 
 
 class ReconcileHookTest(CliTestCase):
@@ -130,6 +159,14 @@ class ReconcileHookTest(CliTestCase):
         self.assertEqual(herdr.label("t1"), "acme")
         self.assertIn("renamed t1: 1 -> acme", out)
         self.assertEqual(len(self.state_files()), 1)
+
+    def test_hook_names_a_tab_whose_number_is_not_its_position(self):
+        herdr = self.three_tabs_after_closing_the_second()
+
+        code, _, _, _, _ = self.run_main(["reconcile", "--hook"], herdr)
+
+        self.assertEqual(code, 0)
+        self.assertEqual((herdr.label("t1"), herdr.label("t3")), ("acme", "globex"))
 
     def test_second_hook_run_changes_nothing_and_writes_no_state(self):
         herdr = self.one_tab()
@@ -201,6 +238,24 @@ class ReconcileHookTest(CliTestCase):
         self.assertEqual(code, 1)
         self.assertIn("unexpected tab.list result", err)
         self.assertEqual(len(toasts), 1)
+
+    def test_malformed_tab_list_is_a_bad_result_failure(self):
+        good = FakeHerdr([tab("t1")], []).info("t1")
+        shapes = {
+            "missing tab_id": {k: v for k, v in good.items() if k != "tab_id"},
+            "missing workspace_id": {k: v for k, v in good.items() if k != "workspace_id"},
+            "label not text": dict(good, label=7),
+        }
+        for name, bad in shapes.items():
+            with self.subTest(name):
+
+                def answer(method, params, bad=bad):
+                    return {"type": "tab_list", "tabs": [bad]}
+
+                code, _, _, err, _ = self.run_main(["reconcile"], answer)
+
+                self.assertEqual(code, 1)
+                self.assertIn("unexpected tab.list result", err)
 
     def test_malformed_pane_list_is_a_bad_result_failure(self):
         good = pane("p1", "t1", "/work/acme", focused=True)
@@ -307,7 +362,7 @@ class ToggleTest(CliTestCase):
 
 class FollowTest(CliTestCase):
     def test_follow_renames_a_hand_named_tab_and_toasts(self):
-        herdr = self.one_tab(label="Notes")
+        herdr = self.one_tab(name="Notes")
         os.environ["HERDR_TAB_ID"] = "t1"
 
         code, toasts, _, _, _ = self.run_main(["follow"], herdr)
@@ -343,7 +398,7 @@ class FollowTest(CliTestCase):
                 self.assertIn("no current tab", toasts[0][5])
 
     def test_context_json_is_the_fallback_for_the_current_tab(self):
-        herdr = self.one_tab(label="Notes")
+        herdr = self.one_tab(name="Notes")
         os.environ["HERDR_PLUGIN_CONTEXT_JSON"] = json.dumps({"tab_id": "t1"})
 
         code, _, _, _, _ = self.run_main(["follow"], herdr)
@@ -370,7 +425,7 @@ class FollowTest(CliTestCase):
     def test_follow_with_auto_sync_off_renames_only_that_tab(self):
         self.write_config(auto_sync=False)
         herdr = FakeHerdr(
-            [tab("t1", "Notes", 1), tab("t2", "2", 2)],
+            [tab("t1", "Notes", 1), tab("t2", number=2)],
             [pane("p1", "t1", "/work/acme"), pane("p2", "t2", "/work/globex")],
         )
         os.environ["HERDR_TAB_ID"] = "t1"
@@ -380,22 +435,24 @@ class FollowTest(CliTestCase):
         self.assertEqual(herdr.label("t1"), "acme")
         self.assertEqual(herdr.label("t2"), "2")
 
-    def test_unfollow_pins_a_never_renamed_tab_against_renumbering(self):
-        herdr = self.one_tab()
-        os.environ["HERDR_TAB_ID"] = "t1"
+    def test_unfollow_pins_an_automatic_tab_against_position_shifts(self):
+        herdr = self.three_tabs_after_closing_the_second()
+        os.environ["HERDR_TAB_ID"] = "t3"
 
         code, toasts, _, _, _ = self.run_main(["unfollow"], herdr)
 
         self.assertEqual(code, 0)
-        self.assertIn(("tab.rename", {"tab_id": "t1", "label": "1"}), herdr.calls)
-        self.assertEqual(toasts, [toast("Tab name kept", "1")])
+        self.assertIn(("tab.rename", {"tab_id": "t3", "label": "2"}), herdr.calls)
+        self.assertEqual(toasts, [toast("Tab name kept", "2")])
 
-        herdr.tabs[0]["number"] = 2  # a tab moved in front: Herdr renumbers, the label stays
+        herdr.close("t1")  # t3 moves to position 1 and keeps the pinned "2"
         herdr.calls.clear()
         self.run_main(["reconcile", "--hook"], herdr)
 
         self.assertNotIn("tab.rename", herdr.methods())
-        self.assertEqual(herdr.label("t1"), "1")
+        self.assertEqual(herdr.label("t3"), "2")
+        states = json.loads(self.state_files()[0].read_text())["tabs"]
+        self.assertFalse(states["t3"]["follow"])
 
 
 class ConfigureTest(CliTestCase):
