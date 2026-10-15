@@ -3,17 +3,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
 
 from herdr_api import socket_path, state_dir
+from jsonfile import write_json_atomic
 
 VERSION = 1
 HASH_LENGTH = 12
-JSON_INDENT = 2
 TEXT_KEYS = ("written", "seen", "pane")
 
 
@@ -68,14 +66,4 @@ def _parse_entry(tab_id: str, entry: Any) -> TabState:
 
 def save_states(path: Path, states: Mapping[str, TabState]) -> None:
     """Write the states atomically, so a crash never leaves half a file."""
-    document = {"version": VERSION, "tabs": {tab_id: asdict(state) for tab_id, state in states.items()}}
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8") as output:
-            json.dump(document, output, indent=JSON_INDENT)
-            output.write("\n")
-        os.replace(temporary, path)
-    except BaseException:
-        os.unlink(temporary)
-        raise
+    write_json_atomic(path, {"version": VERSION, "tabs": {tab_id: asdict(state) for tab_id, state in states.items()}})
