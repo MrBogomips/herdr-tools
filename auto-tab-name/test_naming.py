@@ -72,6 +72,13 @@ class FormatTests(unittest.TestCase):
         tab_label(CWD + "/", config, HOME, repo_of=lambda path: seen.append(path))
         self.assertEqual(seen, [Path(CWD)])
 
+    def test_root_or_missing_home_never_becomes_tilde(self) -> None:
+        config = dataclasses.replace(Config(), format="home_path", max_length=0)
+        for home in ("/", "//", ""):
+            with self.subTest(home=home):
+                self.assertEqual(tab_label("/usr/bin", config, home, repo_of=fixed(None)), "/usr/bin")
+                self.assertEqual(tab_label("/", config, home, repo_of=fixed(None)), "/")
+
 
 class TruncationTests(unittest.TestCase):
     def test_right_formats_cut_the_end(self) -> None:

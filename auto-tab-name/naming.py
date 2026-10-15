@@ -27,8 +27,9 @@ def tab_label(cwd: Optional[str], config: Config, home: str,
 
 
 def _display_path(folder: str, config: Config, home: str) -> str:
-    base = os.path.normpath(home)
-    if config.home_tilde and (folder == base or folder.startswith(base.rstrip(SEPARATOR) + SEPARATOR)):
+    # A home of "/" (or none) would turn every path into "~...": leave the paths as they are.
+    base = os.path.normpath(home).rstrip(SEPARATOR) if home else ""
+    if config.home_tilde and base and (folder == base or folder.startswith(base + SEPARATOR)):
         return TILDE + folder[len(base):]
     return folder
 
