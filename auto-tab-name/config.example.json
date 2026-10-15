@@ -1,0 +1,8 @@
+{
+  "auto_sync": true,
+  "format": "basename",
+  "depth": 2,
+  "max_length": 24,
+  "source": "foreground_cwd",
+  "home_tilde": true
+}
