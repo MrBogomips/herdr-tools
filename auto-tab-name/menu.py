@@ -89,7 +89,7 @@ def _edit(item: Item, config: Config, read: Reader, write: Writer) -> Config:
 
 
 def _item_for(choice: str) -> Optional[Item]:
-    if choice.isdigit() and 1 <= int(choice) <= len(ITEMS):
+    if choice.isdecimal() and 1 <= int(choice) <= len(ITEMS):  # isdigit() lets "²" through to int()
         return ITEMS[int(choice) - 1]
     return None
 
