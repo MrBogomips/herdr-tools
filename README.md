@@ -15,6 +15,7 @@ has its own.
 
 | Plugin | What it does | Install |
 | --- | --- | --- |
+| [auto-tab-name](auto-tab-name/) | Names each tab after the folder of its pane (folder, repo, path or branch) and keeps it in sync as you move around; tabs you rename by hand are left alone | `herdr plugin install MrBogomips/herdr-tools/auto-tab-name` |
 | [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
 | [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
 
