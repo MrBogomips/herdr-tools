@@ -1,14 +1,12 @@
 """auto-tab-name settings: read config.json, validate it, and write it back."""
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Tuple
 
 from herdr_api import ConfigError, load_json_config
+from jsonfile import write_json_atomic
 
 FORMATS = ("basename", "repo", "last_n", "home_path", "repo_branch")
 SOURCES = ("foreground_cwd", "cwd")
@@ -24,7 +22,6 @@ DEFAULTS: Dict[str, Any] = {
 BOOL_KEYS = ("auto_sync", "home_tilde")
 MIN_DEPTH = 1
 MIN_MAX_LENGTH = 0
-JSON_INDENT = 2
 
 
 @dataclass(frozen=True)
@@ -79,13 +76,4 @@ def config_to_dict(config: Config) -> Dict[str, Any]:
 
 def save_config(path: Path, config: Config) -> None:
     """Write the config atomically, so a crash never leaves half a file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8") as output:
-            json.dump(config_to_dict(config), output, indent=JSON_INDENT)
-            output.write("\n")
-        os.replace(temporary, path)
-    except BaseException:
-        os.unlink(temporary)
-        raise
+    write_json_atomic(path, config_to_dict(config))
