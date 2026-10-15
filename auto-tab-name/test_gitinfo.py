@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 from typing import Optional
 
@@ -136,6 +137,34 @@ class UnreadableTests(GitInfoTestCase):
         # A stray .git above the temp dir would be found; it must then lie outside it.
         if info is not None:
             self.assertNotIn(self.dir, [info.root, *info.root.parents])
+
+    def test_permission_error_on_every_probe_gives_none(self) -> None:
+        root = self.make_repo("ACME")
+        with mock.patch.object(Path, "is_dir", side_effect=PermissionError), \
+                mock.patch.object(Path, "is_file", side_effect=PermissionError):
+            self.assertIsNone(find_repo(root))
+
+    def test_unreadable_candidate_is_skipped_and_the_walk_continues(self) -> None:
+        root = self.make_repo("ACME")
+        sub = root / "locked"
+        sub.mkdir()
+        real_is_dir = Path.is_dir
+
+        def is_dir(path: Path) -> bool:
+            if path == sub / ".git":
+                raise PermissionError(13, "denied")
+            return real_is_dir(path)
+
+        with mock.patch.object(Path, "is_dir", is_dir):
+            self.assertEqual(find_repo(sub).root, root)
+
+    def test_failing_resolve_of_commondir_never_raises(self) -> None:
+        main = self.make_repo("Globex")
+        gitdir = self.make_gitdir(main / ".git" / "worktrees" / "wt1", commondir="../..")
+        root = self.make_checkout(self.dir / "wt-feature", "gitdir: {}".format(gitdir))
+        with mock.patch.object(Path, "resolve", side_effect=RuntimeError("Symlink loop")):
+            info = find_repo(root)
+        self.assertEqual((info.name, info.root), ("Globex", root))
 
 
 if __name__ == "__main__":

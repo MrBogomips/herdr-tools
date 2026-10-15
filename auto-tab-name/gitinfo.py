@@ -5,7 +5,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 GIT_ENTRY = ".git"
 GITDIR_PREFIX = "gitdir:"
@@ -28,11 +28,19 @@ def find_repo(path: Path) -> Optional[RepoInfo]:
     start = Path(os.path.normpath(str(path)))
     for root in (start, *start.parents):
         entry = root / GIT_ENTRY
-        if entry.is_dir():
+        if _probe(entry, Path.is_dir):
             return RepoInfo(root.name, root, _read_ref(entry))
-        if entry.is_file():
+        if _probe(entry, Path.is_file):
             return _from_git_file(root, entry)
     return None
+
+
+def _probe(entry: Path, check: Callable[[Path], bool]) -> bool:
+    """Whether `check` holds for `entry`; an unreadable candidate (EACCES, ...) is not a repo."""
+    try:
+        return check(entry)
+    except (OSError, RuntimeError):
+        return False
 
 
 def _from_git_file(root: Path, entry: Path) -> Optional[RepoInfo]:
@@ -55,7 +63,10 @@ def _linked_name(root: Path, gitdir: Path) -> str:
     common = _read_text(gitdir / "commondir")
     if not common:
         return root.name
-    shared = (gitdir / common).resolve()
+    try:
+        shared = (gitdir / common).resolve()
+    except (OSError, RuntimeError):  # symlink loop or unreadable path: keep the lexical path
+        shared = Path(os.path.normpath(str(gitdir / common)))
     if shared.name == GIT_ENTRY:
         return shared.parent.name
     if shared.name.endswith(BARE_SUFFIX):
