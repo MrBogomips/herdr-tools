@@ -61,6 +61,11 @@ class ChoiceTest(unittest.TestCase):
         self.assertEqual(result, Config())
         self.assertTrue(any("zzz" in line for line in written))
 
+    def test_superscript_digit_is_an_unknown_choice(self):
+        result, written, _ = drive(["²", "s"])
+        self.assertEqual(result, Config())
+        self.assertTrue(any("²" in line for line in written))
+
 
 class ToggleAndCycleTest(unittest.TestCase):
     def test_toggle_auto_sync(self):
@@ -99,6 +104,11 @@ class NumberPromptTest(unittest.TestCase):
         result, written, _ = drive(["3", "abc", "s"])
         self.assertEqual(result.depth, 2)
         self.assertTrue(any("abc" in line for line in written))
+
+    def test_depth_superscript_digit_is_rejected(self):
+        result, written, _ = drive(["3", "²", "s"])
+        self.assertEqual(result.depth, 2)
+        self.assertTrue(any("²" in line for line in written))
 
     def test_max_length_zero_accepted(self):
         self.assertEqual(drive(["4", "0", "s"])[0].max_length, 0)
