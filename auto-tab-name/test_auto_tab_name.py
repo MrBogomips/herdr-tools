@@ -202,6 +202,41 @@ class ReconcileHookTest(CliTestCase):
         self.assertIn("unexpected tab.list result", err)
         self.assertEqual(len(toasts), 1)
 
+    def test_malformed_pane_list_is_a_bad_result_failure(self):
+        good = pane("p1", "t1", "/work/acme", focused=True)
+        shapes = {
+            "not a list": None,
+            "missing focused": {k: v for k, v in good.items() if k != "focused"},
+            "missing pane_id": {k: v for k, v in good.items() if k != "pane_id"},
+            "missing tab_id": {k: v for k, v in good.items() if k != "tab_id"},
+            "focused not a bool": dict(good, focused="yes"),
+            "cwd not text": dict(good, cwd=7),
+            "foreground_cwd not text": dict(good, foreground_cwd=["x"]),
+        }
+        for name, bad in shapes.items():
+            with self.subTest(name):
+                herdr = self.one_tab()
+
+                def answer(method, params, bad=bad):
+                    if method == "pane.list":
+                        return {"type": "pane_list", "panes": bad if bad is None else [bad]}
+                    return herdr(method, params)
+
+                code, toasts, _, err, _ = self.run_main(["reconcile"], answer)  # unthrottled: every shape toasts
+
+                self.assertEqual(code, 1)
+                self.assertIn("unexpected pane.list result", err)
+                self.assertIn("unexpected pane.list result", toasts[0][5])
+
+    def test_reconcile_without_hook_honours_auto_sync_off(self):
+        self.write_config(auto_sync=False)
+
+        code, toasts, _, _, rpc = self.run_main(["reconcile"], self.one_tab())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(toasts, [])
+        rpc.assert_not_called()
+
     def test_damaged_state_file_warns_on_stderr_and_recovers(self):
         herdr = self.one_tab()
         self.run_main(["reconcile", "--hook"], herdr)

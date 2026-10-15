@@ -63,7 +63,13 @@ def list_tabs(call: Call) -> List[Dict[str, Any]]:
 
 
 def list_panes(call: Call) -> List[Dict[str, Any]]:
-    return _list_records(call, "pane.list", "panes")
+    panes = _list_records(call, "pane.list", "panes")
+    for item in panes:
+        folders_ok = all(isinstance(item.get(key), (str, type(None))) for key in ("cwd", "foreground_cwd"))
+        if not (isinstance(item.get("pane_id"), str) and isinstance(item.get("tab_id"), str)
+                and isinstance(item.get("focused"), bool) and folders_ok):
+            raise HerdrError("unexpected pane.list result", "bad_result")
+    return panes
 
 
 def load_tab_states(path: Path) -> Dict[str, Any]:
@@ -117,7 +123,7 @@ def current_tab_id() -> str:
 
 def cmd_reconcile(args: argparse.Namespace, path: Path) -> int:
     config = load_config(path)
-    if args.hook and not config.auto_sync:
+    if not config.auto_sync:
         return 0
     reconcile_locked(config)
     return 0
@@ -236,7 +242,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", help="config file (default: the plugin config dir)")
     commands = parser.add_subparsers(dest="command", required=True)
     reconcile = commands.add_parser("reconcile", help="rename the tabs that follow their folder")
-    reconcile.add_argument("--hook", action="store_true", help="run as a hook: silent, honours auto_sync")
+    reconcile.add_argument("--hook", action="store_true", help="run as a hook: failures toast at most once in a while")
     for name, help_text in (
         ("sync", "rename the tabs now, whatever auto_sync says"),
         ("toggle", "switch auto_sync on or off"),
