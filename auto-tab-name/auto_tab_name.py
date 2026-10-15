@@ -13,9 +13,10 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Set, Tuple
 
 from config import Config, load_config, save_config
 from herdr_api import (
@@ -39,6 +40,25 @@ PLUGIN_ID = "mrbogomips.auto-tab-name"
 TOOL = "auto-tab-name"
 CONFIGURE_ENTRYPOINT = "configure"
 NO_TAB_MESSAGE = "no current tab: run this from a tab"
+TAB_NOT_FOUND = "tab_not_found"
+
+
+class AfterSaveError(Exception):
+    """A step after a saved change failed; `title` says the change holds, so a retry won't undo it."""
+
+    def __init__(self, title: str, cause: Exception) -> None:
+        super().__init__(str(cause))
+        self.title = title
+        self.cause = cause
+
+
+@contextmanager
+def after_save(title: str) -> Iterator[None]:
+    """Report a failure inside the block under `title` instead of the command's own failure title."""
+    try:
+        yield
+    except Exception as err:  # noqa: BLE001 - main() reports it like any other failure
+        raise AfterSaveError(title, err) from err
 
 
 def renamed_summary(count: int) -> Optional[str]:
@@ -81,8 +101,9 @@ def load_tab_states(path: Path) -> Dict[str, Any]:
 def reconcile_tabs(call: Call, config: Config, state_path: Path, only: Optional[set] = None) -> List[Rename]:
     """Rename the tabs that should follow their folder; the caller holds the plugin lock.
 
-    Nothing is saved when a rename fails: the tabs already renamed are recognised as ours on the
-    next run, because their label equals the name computed for them.
+    A tab that closed before its rename is skipped and forgotten. Nothing is saved when another
+    rename fails: the tabs already renamed are recognised as ours on the next run, because their
+    label equals the name computed for them.
     """
     tabs = list_tabs(call)
     panes = list_panes(call)
@@ -93,13 +114,30 @@ def reconcile_tabs(call: Call, config: Config, state_path: Path, only: Optional[
         label_for=lambda cwd: tab_label(cwd, config, home),
         source=config.source, only=only,
     )
-    old_labels = {item["tab_id"]: item["label"] for item in tabs}
-    for rename in plan.renames:
-        call("tab.rename", {"tab_id": rename.tab_id, "label": rename.label})
+    renames, closed = _apply_renames(call, plan.renames, {item["tab_id"]: item["label"] for item in tabs})
+    new_states = {tab_id: state for tab_id, state in plan.states.items() if tab_id not in closed}
+    if new_states != states:
+        save_states(state_path, new_states)
+    return renames
+
+
+def _apply_renames(call: Call, renames: Sequence[Rename],
+                   old_labels: Mapping[str, str]) -> Tuple[List[Rename], Set[str]]:
+    """Make the renames; returns the ones made and the tabs that closed before theirs."""
+    done: List[Rename] = []
+    closed: Set[str] = set()
+    for rename in renames:
+        try:
+            call("tab.rename", {"tab_id": rename.tab_id, "label": rename.label})
+        except HerdrError as err:
+            if err.code != TAB_NOT_FOUND:
+                raise
+            closed.add(rename.tab_id)
+            print("skipped {}: the tab closed before its rename".format(rename.tab_id))
+            continue
+        done.append(rename)
         print("renamed {}: {} -> {}".format(rename.tab_id, old_labels[rename.tab_id], rename.label))
-    if dict(plan.states) != states:
-        save_states(state_path, plan.states)
-    return list(plan.renames)
+    return done, closed
 
 
 def reconcile_locked(config: Config, only: Optional[set] = None) -> List[Rename]:
@@ -144,7 +182,9 @@ def cmd_toggle(args: argparse.Namespace, path: Path) -> int:
     if not config.auto_sync:
         notify("Auto tab names off")
         return 0
-    notify("Auto tab names on", renamed_summary(len(reconcile_locked(config))))
+    with after_save("Auto tab names on; names not updated"):
+        renames = reconcile_locked(config)
+    notify("Auto tab names on", renamed_summary(len(renames)))
     return 0
 
 
@@ -156,7 +196,7 @@ def _set_follow(tab_id: str, follow: bool, config: Config) -> str:
         tabs = list_tabs(call)
         tab = next((item for item in tabs if item["tab_id"] == tab_id), None)
         if tab is None:
-            raise HerdrError("tab {} not found".format(tab_id), "tab_not_found")
+            raise HerdrError("tab {} not found".format(tab_id), TAB_NOT_FOUND)
         if not follow and tab["label"] == auto_labels(tabs)[tab_id]:
             # Pin the automatic label, the tab's position: once a tab in front of it closes, its new
             # position would otherwise read as "renamed back to its automatic name".
@@ -164,7 +204,8 @@ def _set_follow(tab_id: str, follow: bool, config: Config) -> str:
         save_states(state_path, set_follow(load_tab_states(state_path), tab, follow))
         if not follow:
             return tab["label"]
-        renames = reconcile_tabs(call, config, state_path, None if config.auto_sync else {tab_id})
+        with after_save("Tab followed; name not updated"):
+            renames = reconcile_tabs(call, config, state_path, None if config.auto_sync else {tab_id})
         return next((item.label for item in renames if item.tab_id == tab_id), tab["label"])
 
 
@@ -191,13 +232,28 @@ def _popup_failure(command: List[str]) -> Optional[str]:
         done = subprocess.run(command, capture_output=True, text=True, timeout=SOCKET_TIMEOUT_SECONDS)
     except (OSError, subprocess.SubprocessError) as err:
         return str(err)
-    if done.returncode != 0:
-        return "herdr exited with status {}: {}".format(done.returncode, done.stderr.strip())
+    reason = _error_answer(done.stderr) or _error_answer(done.stdout)
+    if reason or done.returncode == 0:
+        return reason
+    output = done.stderr.strip() or done.stdout.strip()
+    status = "herdr exited with status {}".format(done.returncode)
+    return "{}: {}".format(status, output) if output else status
+
+
+def _error_answer(output: str) -> Optional[str]:
+    """The reason given by a herdr `{"error": {"code": ..., "message": ...}}` answer.
+
+    That is the message, or the raw text when there is none; None when `output` is no error answer.
+    """
     try:
-        answer = json.loads(done.stdout)
+        answer = json.loads(output)
     except ValueError:
         return None
-    return json.dumps(answer["error"]) if isinstance(answer, dict) and "error" in answer else None
+    if not isinstance(answer, dict) or "error" not in answer:
+        return None
+    error = answer["error"]
+    message = error.get("message") if isinstance(error, dict) else None
+    return message.strip() if isinstance(message, str) and message.strip() else output.strip()
 
 
 def cmd_configure(args: argparse.Namespace, path: Path) -> int:
@@ -209,22 +265,34 @@ def cmd_configure(args: argparse.Namespace, path: Path) -> int:
 
 def cmd_menu(args: argparse.Namespace, path: Path) -> int:
     try:
+        return _menu(path)
+    except KeyboardInterrupt:  # Ctrl-C just closes the popup
+        return 0
+
+
+def _menu(path: Path) -> int:
+    try:
         config = load_config(path)
     except ConfigError as err:
-        print(err)
-        print("Fix the file, or delete it to start over, then open this menu again. Press Enter.")
-        try:
-            input()
-        except EOFError:
-            pass
-        return 1
+        return _show_bad_config(err)
     edited = run_menu(config, input, print)
     if edited is None:
         return 0
     save_config(path, edited)
-    renames = reconcile_locked(edited) if edited.auto_sync else []
+    with after_save("Settings saved; names not updated"):
+        renames = reconcile_locked(edited) if edited.auto_sync else []
     notify("Auto tab name settings saved", renamed_summary(len(renames)))
     return 0
+
+
+def _show_bad_config(err: ConfigError) -> int:
+    print(err)
+    print("Fix the file, or delete it to start over, then open this menu again. Press Enter.")
+    try:
+        input()
+    except (EOFError, KeyboardInterrupt):
+        pass
+    return 1
 
 
 COMMANDS: Mapping[str, Tuple[Callable[[argparse.Namespace, Path], int], str]] = {
@@ -262,6 +330,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     hook = getattr(args, "hook", False)
     try:
         return handler(args, config_path(PLUGIN_ID, args.config))
+    except AfterSaveError as err:
+        return report_failure(TOOL, err.title, err.cause, PLUGIN_ID if hook else None)
     except Exception as err:  # noqa: BLE001 - a detached hook or key binding has no other place to report
         return report_failure(TOOL, failure_title, err, PLUGIN_ID if hook else None)
 
