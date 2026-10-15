@@ -60,8 +60,10 @@ and `refresh` stays quiet:
 | `refresh` | The quiet hook run, for the [shell integration](#shell-integration-optional): names the followed tabs only when `auto_sync` is on, toasts only on failure |
 
 Without a key binding, run any of them from a terminal inside Herdr with
-`herdr plugin action invoke mrbogomips.auto-tab-name.<action>` (`follow` and `unfollow` act on the
-current tab).
+`herdr plugin action invoke mrbogomips.auto-tab-name.<action> >/dev/null` (`follow` and `unfollow`
+act on the current tab). The result arrives as a toast: what the command prints is Herdr's JSON
+record of the run it started (`"status":"running"`), which `>/dev/null` hides. Errors still show, on
+stderr.
 
 ## Configuration
 
