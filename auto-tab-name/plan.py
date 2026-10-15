@@ -26,6 +26,7 @@ def plan_tabs(tabs: Sequence[Mapping[str, Any]], panes: Sequence[Mapping[str, An
     """Decide the renames and the new state map; pure, the inputs are never changed."""
     panes_by_tab = _group_panes(panes)
     focused = {item["tab_id"]: item["pane_id"] for item in panes if item["focused"]}
+    automatic = auto_labels(tabs)
     renames: List[Rename] = []
     new_states: Dict[str, TabState] = {}
     for tab in tabs:
@@ -34,12 +35,27 @@ def plan_tabs(tabs: Sequence[Mapping[str, Any]], panes: Sequence[Mapping[str, An
         state = _with_pane(previous, focused.get(tab_id))
         tab_panes = panes_by_tab.get(tab_id, [])
         desired = _desired_label(_source_pane(state, tab_panes), source, label_for)
-        state = replace(state, follow=_follows(previous, tab["label"], str(tab["number"]), desired))
+        state = replace(state, follow=_follows(previous, tab["label"], automatic[tab_id], desired))
         state, rename = _settle(state, tab, desired, only)
         new_states[tab_id] = state
         if rename is not None:
             renames.append(rename)
     return Plan(tuple(renames), new_states)
+
+
+def auto_labels(tabs: Sequence[Mapping[str, Any]]) -> Dict[str, str]:
+    """The label Herdr shows for each tab nobody named: its 1-based position in its workspace.
+
+    `tab.list` gives the tabs of each workspace in order. A tab's `number` is never reused, so it
+    differs from the position once a tab before it closes.
+    """
+    counts: Dict[str, int] = {}
+    labels: Dict[str, str] = {}
+    for tab in tabs:
+        workspace_id = tab["workspace_id"]
+        counts[workspace_id] = counts.get(workspace_id, 0) + 1
+        labels[tab["tab_id"]] = str(counts[workspace_id])
+    return labels
 
 
 def set_follow(states: Mapping[str, TabState], tab: Mapping[str, Any], follow: bool) -> Dict[str, TabState]:
@@ -82,14 +98,14 @@ def _desired_label(source_pane: Optional[Mapping[str, Any]], source: str,
     return None
 
 
-def _follows(previous: Optional[TabState], label: str, number: str, desired: Optional[str]) -> bool:
-    """Whether the tab follows its folder after this run (rule 4)."""
+def _follows(previous: Optional[TabState], label: str, automatic: str, desired: Optional[str]) -> bool:
+    """Whether the tab follows its folder after this run (rule 4); `automatic` is its position."""
     if previous is None:
-        return label == number or (desired is not None and label == desired)
+        return label == automatic or (desired is not None and label == desired)
     if previous.follow:
-        # Anything but our last label, the default number or the folder is a manual rename.
-        return label in (previous.written, number, desired)
-    return label == number and previous.seen != label
+        # Anything but our last label, the automatic one or the folder is a manual rename.
+        return label in (previous.written, automatic, desired)
+    return label == automatic and previous.seen != label
 
 
 def _settle(state: TabState, tab: Mapping[str, Any], desired: Optional[str],

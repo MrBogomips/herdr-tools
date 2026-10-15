@@ -3,7 +3,7 @@ import os
 import unittest
 from typing import Any, Dict, List, Optional
 
-from plan import Plan, Rename, plan_tabs, set_follow
+from plan import Plan, Rename, auto_labels, plan_tabs, set_follow
 from state import TabState
 
 
@@ -11,8 +11,8 @@ def label_for(cwd: str) -> Optional[str]:
     return os.path.basename(cwd)
 
 
-def tab(tab_id: str, label: str, number: int) -> Dict[str, Any]:
-    return {"tab_id": tab_id, "label": label, "number": number}
+def tab(tab_id: str, label: str, number: int, workspace_id: str = "wA") -> Dict[str, Any]:
+    return {"tab_id": tab_id, "workspace_id": workspace_id, "label": label, "number": number}
 
 
 def pane(pane_id: str, tab_id: str, cwd: Optional[str] = None, foreground_cwd: Optional[str] = None,
@@ -67,10 +67,18 @@ class FollowedTabTest(PlanTestCase):
         self.assertEqual(plan.renames, ())
         self.assertEqual(plan.states["wA:t1"], TabState(True, "globex", "globex", None))
 
-    def test_reset_to_number_stays_followed_and_is_renamed(self) -> None:
-        states = {"wA:t1": TabState(True, "acme", "acme", None)}
-        plan = self.plan([tab("wA:t1", "2", 2)], [pane("wA:p1", "wA:t1", foreground_cwd="/work/acme")], states)
-        self.assertEqual(self.renames(plan), [("wA:t1", "acme")])
+    def test_reset_to_its_position_stays_followed_and_is_renamed(self) -> None:
+        states = {"wA:t2": TabState(True, "acme", "acme", None)}
+        tabs = [tab("wA:t1", "Lumon", 1), tab("wA:t2", "2", 2)]
+        plan = self.plan(tabs, [pane("wA:p2", "wA:t2", foreground_cwd="/work/acme")], states)
+        self.assertEqual(self.renames(plan), [("wA:t2", "acme")])
+
+    def test_renamed_to_its_number_but_not_its_position_stops_following(self) -> None:
+        states = {"wA:t3": TabState(True, "globex", "globex", None)}
+        tabs = [tab("wA:t1", "Lumon", 1), tab("wA:t3", "3", 3)]
+        plan = self.plan(tabs, [pane("wA:p3", "wA:t3", foreground_cwd="/work/globex")], states)
+        self.assertEqual(plan.renames, ())
+        self.assertFalse(plan.states["wA:t3"].follow)
 
 
 class UnfollowedTabTest(PlanTestCase):
@@ -91,6 +99,55 @@ class UnfollowedTabTest(PlanTestCase):
         plan = self.plan([tab("wA:t1", "Lumon", 1)], [pane("wA:p1", "wA:t1", foreground_cwd="/work/initech")], states)
         self.assertEqual(plan.renames, ())
         self.assertEqual(plan.states["wA:t1"], TabState(False, None, "Lumon", None))
+
+
+class AutomaticLabelTest(PlanTestCase):
+    """Herdr shows an unnamed tab as its position in its workspace; `number` is never reused."""
+
+    def test_auto_labels_count_positions_per_workspace(self) -> None:
+        tabs = [tab("wA:t1", "x", 1, "wA"), tab("wB:t1", "x", 1, "wB"), tab("wA:t3", "x", 3, "wA")]
+        self.assertEqual(auto_labels(tabs), {"wA:t1": "1", "wB:t1": "1", "wA:t3": "2"})
+
+    def test_tab_after_a_closed_one_is_automatic_at_its_position(self) -> None:
+        tabs = [tab("wA:t1", "1", 1), tab("wA:t3", "2", 3)]  # tab 2 was closed
+        panes = [pane("wA:p1", "wA:t1", foreground_cwd="/work/acme"),
+                 pane("wA:p3", "wA:t3", foreground_cwd="/work/globex")]
+        plan = self.plan(tabs, panes)
+        self.assertEqual(self.renames(plan), [("wA:t1", "acme"), ("wA:t3", "globex")])
+        self.assertTrue(plan.states["wA:t3"].follow)
+
+    def test_label_equal_to_its_number_but_not_its_position_is_a_name(self) -> None:
+        tabs = [tab("wA:t1", "1", 1), tab("wA:t3", "3", 3)]
+        panes = [pane("wA:p3", "wA:t3", foreground_cwd="/work/globex")]
+        plan = self.plan(tabs, panes)
+        self.assertEqual(plan.renames, ())
+        self.assertEqual(plan.states["wA:t3"], TabState(False, None, "3", None))
+
+    def test_positions_count_within_each_workspace(self) -> None:
+        tabs = [tab("wA:t1", "1", 1, "wA"), tab("wA:t2", "2", 2, "wA"),
+                tab("wB:t1", "2", 1, "wB"), tab("wB:t2", "2", 2, "wB")]
+        plan = self.plan(tabs, [])
+        follows = {tab_id: state.follow for tab_id, state in plan.states.items()}
+        self.assertEqual(follows, {"wA:t1": True, "wA:t2": True, "wB:t1": False, "wB:t2": True})
+
+    def test_interleaved_workspaces_keep_their_own_count(self) -> None:
+        tabs = [tab("wA:t1", "1", 1, "wA"), tab("wB:t1", "1", 1, "wB"), tab("wA:t2", "2", 2, "wA")]
+        plan = self.plan(tabs, [])
+        self.assertTrue(all(state.follow for state in plan.states.values()))
+
+    def test_pinned_unfollowed_tab_stays_unfollowed_when_positions_shift(self) -> None:
+        states = {"wA:t3": TabState(False, "2", "2", None)}  # unfollow pinned "2" at position 2
+        tabs = [tab("wA:t3", "2", 3)]  # the tab in front closed: position 1, the name stays "2"
+        plan = self.plan(tabs, [pane("wA:p3", "wA:t3", foreground_cwd="/work/globex")], states)
+        self.assertEqual(plan.renames, ())
+        self.assertEqual(plan.states["wA:t3"], TabState(False, "2", "2", None))
+
+    def test_unpinned_unfollowed_tab_reads_as_renamed_back_when_positions_shift(self) -> None:
+        states = {"wA:t3": TabState(False, None, "2", None)}  # automatic "2", never pinned
+        tabs = [tab("wA:t3", "1", 3)]  # the tab in front closed: Herdr now shows "1"
+        plan = self.plan(tabs, [pane("wA:p3", "wA:t3", foreground_cwd="/work/globex")], states)
+        self.assertEqual(self.renames(plan), [("wA:t3", "globex")])
+        self.assertTrue(plan.states["wA:t3"].follow)
 
 
 class SourcePaneTest(PlanTestCase):
