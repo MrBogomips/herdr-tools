@@ -8,6 +8,11 @@ Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who 
 spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
 only the ones you want.
 
+<img src="space-colors/docs/sidebar.svg" alt="Herdr spaces sidebar: ACME - api and ACME - web share one colour, every other customer has its own" width="248">
+
+The spaces sidebar with space-colors: both `ACME` spaces share one colour, and every other customer
+has its own.
+
 | Plugin | What it does | Install |
 | --- | --- | --- |
 | [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
