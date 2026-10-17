@@ -10,7 +10,6 @@ local M = {}
 -- Lower comes first. Statuses Herdr may add later rank with "unknown".
 local PRIORITY = { blocked = 1, done = 2, unknown = 3, idle = 4, working = 5 }
 local GLYPH = { blocked = "⏸", done = "✓", unknown = "?", idle = "·", working = "◐" }
-local MENUBAR = "⧗"
 
 -- The status the user should see: a done agent already viewed counts as idle.
 function M.status(agent, seen)
@@ -143,15 +142,24 @@ function M.menu(rows, err)
   return items
 end
 
--- The menu bar title; with an error the count is unknown, which must not look like "nothing waits".
+-- The menu bar title, shown next to the icon: the count when something waits, nothing otherwise.
+-- With an error the count is unknown, which must not look like "nothing waits".
 function M.title(count, err)
   if err then
-    return MENUBAR .. " ?"
+    return "?"
   end
   if not count or count == 0 then
-    return MENUBAR
+    return ""
   end
-  return MENUBAR .. " " .. count
+  return tostring(count)
+end
+
+-- Which icon the menu bar shows: "down" when Herdr cannot be read, "waiting" while agents wait.
+function M.state(count, err)
+  if err then
+    return "down"
+  end
+  return (count or 0) > 0 and "waiting" or "idle"
 end
 
 -- Statuses this module does not know, sorted, each once: Herdr may add or rename one, and such an

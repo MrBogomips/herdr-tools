@@ -209,14 +209,22 @@ return {
   end,
 
   menubar_title_shows_the_count_only_when_something_waits = function()
-    h.eq(attention.title(0), "⧗")
-    h.eq(attention.title(2), "⧗ 2")
-    h.eq(attention.title(nil), "⧗")
+    h.eq(attention.title(0), "")
+    h.eq(attention.title(2), "2")
+    h.eq(attention.title(nil), "")
   end,
 
   menubar_title_says_it_cannot_tell_when_herdr_fails = function()
-    h.eq(attention.title(0, "Herdr is not running"), "⧗ ?")
-    h.eq(attention.title(3, "Herdr is not answering"), "⧗ ?")
+    h.eq(attention.title(0, "Herdr is not running"), "?")
+    h.eq(attention.title(3, "Herdr is not answering"), "?")
+  end,
+
+  menubar_icon_state_follows_the_count_unless_herdr_fails = function()
+    h.eq(attention.state(0), "idle")
+    h.eq(attention.state(nil), "idle")
+    h.eq(attention.state(2), "waiting")
+    h.eq(attention.state(0, "Herdr is not running"), "down")
+    h.eq(attention.state(3, "Herdr is not answering"), "down")
   end,
 
   unknownStatuses_lists_each_status_herdr_added_once = function()
