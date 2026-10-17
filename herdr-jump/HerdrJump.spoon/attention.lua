@@ -143,11 +143,30 @@ function M.menu(rows, err)
   return items
 end
 
-function M.title(count)
+-- The menu bar title; with an error the count is unknown, which must not look like "nothing waits".
+function M.title(count, err)
+  if err then
+    return MENUBAR .. " ?"
+  end
   if not count or count == 0 then
     return MENUBAR
   end
   return MENUBAR .. " " .. count
+end
+
+-- Statuses this module does not know, sorted, each once: Herdr may add or rename one, and such an
+-- agent is never counted.
+function M.unknownStatuses(agents)
+  local found, list = {}, {}
+  for _, agent in ipairs(agents) do
+    local status = agent.agent_status
+    if status ~= nil and PRIORITY[status] == nil and not found[status] then
+      found[status] = true
+      list[#list + 1] = tostring(status)
+    end
+  end
+  table.sort(list)
+  return list
 end
 
 return M

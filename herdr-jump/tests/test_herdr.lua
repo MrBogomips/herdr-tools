@@ -2,11 +2,11 @@ local h = ...
 local herdr = h.load("herdr")
 
 -- Replaces the socket round trip (Hammerspoon only) with a canned reply and records the requests.
-local function fakeCall(result, err)
+local function fakeCall(result, err, detail)
   local sent = {}
   herdr.call = function(socketPath, request, callback)
     sent[#sent + 1] = { socketPath = socketPath, request = request }
-    callback(result, err)
+    callback(result, err, detail)
   end
   return sent
 end
@@ -31,6 +31,18 @@ return {
     fakeCall(nil, "Herdr is not running")
     local got = capture(function(cb) herdr.listAgents("/tmp/acme.sock", cb) end)
     h.eq({ got[1], got[2] }, { nil, "Herdr is not running" })
+  end,
+
+  listAgents_passes_on_the_details_of_a_failed_call_for_the_log = function()
+    fakeCall(nil, "unexpected reply from Herdr", "not JSON: <html>")
+    local got = capture(function(cb) herdr.listAgents("/tmp/acme.sock", cb) end)
+    h.eq({ got[1], got[2], got[3] }, { nil, "unexpected reply from Herdr", "not JSON: <html>" })
+  end,
+
+  listAgents_reports_how_many_malformed_agents_it_dropped = function()
+    fakeCall({ type = "agent_list", agents = { { pane_id = "w1:p1" }, "junk" } }, nil)
+    local got = capture(function(cb) herdr.listAgents("/tmp/acme.sock", cb) end)
+    h.eq({ got[1], got[2], got[3] }, { { { pane_id = "w1:p1" } }, nil, "dropped 1 malformed agent(s)" })
   end,
 
   listAgents_rejects_a_reply_that_is_not_an_agent_list = function()
@@ -90,8 +102,14 @@ return {
     h.eq(err, "agent target zz:p9 not found (agent_not_found)")
   end,
 
+  parse_keeps_an_error_without_message_or_given_as_text = function()
+    h.eq({ herdr.parse({ id = "x", error = { code = "internal" } }) }, { nil, "Herdr error (internal)" })
+    h.eq({ herdr.parse({ id = "x", error = { message = "socket busy" } }) }, { nil, "socket busy" })
+    h.eq({ herdr.parse({ id = "x", error = "server shutting down" }) }, { nil, "server shutting down" })
+  end,
+
   parse_rejects_anything_that_is_not_a_reply = function()
-    for _, reply in ipairs({ "text", 7, {}, { id = "x" }, { error = "boom" } }) do
+    for _, reply in ipairs({ "text", 7, {}, { id = "x" }, { error = 42 } }) do
       local result, err = herdr.parse(reply)
       h.eq(result, nil)
       h.eq(err, "unexpected reply from Herdr")
@@ -109,5 +127,22 @@ return {
     local agents, err = herdr.agents({ type = "pane_info" })
     h.eq(agents, nil)
     h.eq(err, "unexpected reply from Herdr")
+  end,
+
+  agents_rejects_a_list_that_is_not_a_table = function()
+    h.eq({ herdr.agents({ type = "agent_list", agents = "none" }) }, { nil, "unexpected reply from Herdr" })
+  end,
+
+  agents_drops_malformed_entries_and_counts_them = function()
+    local good = { pane_id = "wA:p2", agent_status = "done", completion_seq = 4, state_change_seq = 9 }
+    local list = {
+      good,
+      "junk",
+      { agent_status = "idle" },
+      { pane_id = 'x" , "y' },
+      { pane_id = "wB:p1", completion_seq = "7" },
+      { pane_id = "wC:p1", state_change_seq = {} },
+    }
+    h.eq({ herdr.agents({ type = "agent_list", agents = list }) }, { { good }, nil, 5 })
   end,
 }

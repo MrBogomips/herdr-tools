@@ -63,6 +63,8 @@ function obj:init()
   -- Every agent list read is numbered; a reply older than one already applied is dropped.
   self.requested = 0
   self.applied = 0
+  -- Agent statuses this Spoon does not know, already logged once.
+  self.reportedStatuses = {}
 end
 
 --- HerdrJump:bindHotkeys(mapping)
@@ -81,6 +83,9 @@ end
 --- Starts tracking the previous app, the menu bar counter and the agent list polling.
 function obj:start()
   local stored = hs.settings.get(SEEN_KEY)
+  if stored ~= nil and type(stored) ~= "table" then
+    self.logger.w("ignoring a malformed " .. SEEN_KEY .. " setting: " .. hs.inspect(stored))
+  end
   self.seen = type(stored) == "table" and stored or {}
   self.watcher = hs.application.watcher.new(function(_, event, app)
     if event ~= hs.application.watcher.activated or app == nil then
@@ -104,6 +109,7 @@ function obj:start()
       self.menubar:setMenu(function() return self:_menu() end)
     else
       self.logger.e("could not create the menu bar item")
+      hs.alert.show("HerdrJump: no menu bar counter (see the Hammerspoon console)")
     end
   end
   self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
@@ -141,7 +147,7 @@ end
 function obj:refresh(onDone)
   self.requested = self.requested + 1
   local generation = self.requested
-  herdr.listAgents(self.socketPath, function(agents, err)
+  herdr.listAgents(self.socketPath, function(agents, err, detail)
     -- A slow reply sent before a jump would mark the wrong agent as seen.
     if generation < self.applied then
       if onDone then
@@ -151,11 +157,16 @@ function obj:refresh(onDone)
     end
     self.applied = generation
     if err then
+      -- Logged when it starts, not on every poll while Herdr stays down.
       if err ~= self.err then
-        self.logger.w("agent list: " .. err)
+        self.logger.w("agent list: " .. err .. (detail and (" (" .. detail .. ")") or ""))
       end
       self.agents, self.err = {}, err
     else
+      if detail then
+        self.logger.w("agent list: " .. detail)
+      end
+      self:_reportUnknownStatuses(agents)
       self.agents, self.err = agents, nil
       local seen = attention.updateSeen(self.seen, agents, itermInFront(self.itermBundleID))
       if not attention.sameSeen(seen, self.seen) then
@@ -164,13 +175,23 @@ function obj:refresh(onDone)
       end
     end
     if self.menubar then
-      self.menubar:setTitle(attention.title(attention.count(self.agents, self.seen)))
+      self.menubar:setTitle(attention.title(attention.count(self.agents, self.seen), self.err))
       self.menubar:setTooltip(self.err or "Herdr agents")
     end
     if onDone then
       onDone()
     end
   end)
+end
+
+-- Agents with such a status are never counted, so say it once in the log.
+function obj:_reportUnknownStatuses(agents)
+  for _, status in ipairs(attention.unknownStatuses(agents)) do
+    if not self.reportedStatuses[status] then
+      self.reportedStatuses[status] = true
+      self.logger.w("unknown agent status '" .. status .. "': listed, never counted")
+    end
+  end
 end
 
 function obj:_rows()
@@ -204,8 +225,8 @@ function obj:toggleIterm()
       self.logger.e("cannot activate " .. self.itermBundleID)
       hs.alert.show("HerdrJump: cannot open iTerm (" .. self.itermBundleID .. ")")
     end
-  elseif action == "back" then
-    previous:activate()
+  elseif action == "back" and not previous:activate() then
+    self.logger.w("cannot go back to " .. tostring(previous:name()))
   end
 end
 
@@ -213,6 +234,10 @@ end
 --- Method
 --- Opens the agents picker, most urgent first; the list is refreshed once while it is open.
 function obj:showAgents()
+  if self.chooser == nil then
+    hs.alert.show("HerdrJump is stopped: call spoon.HerdrJump:start()")
+    return
+  end
   if self.err then
     hs.alert.show("HerdrJump: " .. self.err)
     self:refresh()
@@ -226,9 +251,16 @@ function obj:showAgents()
   self.chooser:choices(self:_rows())
   self.chooser:show()
   self:refresh(function()
-    if self.chooser and self.chooser:isVisible() then
-      self.chooser:choices(self:_rows())
+    if not (self.chooser and self.chooser:isVisible()) then
+      return
     end
+    if self.err then
+      -- An empty picker would look like "no agents": close it and say why.
+      self.chooser:hide()
+      hs.alert.show("HerdrJump: " .. self.err)
+      return
+    end
+    self.chooser:choices(self:_rows())
   end)
 end
 
@@ -245,9 +277,11 @@ function obj:jump(paneId)
     local problem, blocked = iterm.raiseHerdr(self.itermBundleID)
     if problem then
       self.logger.w("raise: " .. problem)
-    end
-    if blocked then
-      hs.alert.show("HerdrJump: allow Hammerspoon to control iTerm2 in System Settings › Privacy & Security › Automation")
+      if blocked then
+        hs.alert.show("HerdrJump: allow Hammerspoon to control iTerm2 in System Settings › Privacy & Security › Automation")
+      else
+        hs.alert.show("HerdrJump: " .. problem)
+      end
     end
     self:refresh()
   end)
