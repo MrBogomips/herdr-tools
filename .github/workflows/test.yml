@@ -57,3 +57,23 @@ jobs:
             (cd "$scripts" && ${{ matrix.python }} -m unittest -v)
             echo "::endgroup::"
           done
+
+  # Companions (folders without herdr-plugin.toml) written in Lua: their pure modules run under
+  # plain Lua 5.4, the version Hammerspoon embeds.
+  lua:
+    name: lua companions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.4
+        run: sudo apt-get update -q && sudo apt-get install -y -q lua5.4
+      - name: Run each companion's tests
+        run: |
+          set -eu
+          lua5.4 -v
+          for runner in */tests/run.lua; do
+            [ -f "$runner" ] || continue
+            echo "::group::$runner"
+            lua5.4 "$runner"
+            echo "::endgroup::"
+          done
