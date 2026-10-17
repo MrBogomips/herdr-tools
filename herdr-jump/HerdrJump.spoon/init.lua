@@ -1,0 +1,256 @@
+--- === HerdrJump ===
+---
+--- One key back to iTerm, one key to the Herdr agent that needs you, and a menu bar counter of
+--- the agents waiting for you (blocked on a question, or done and not yet seen).
+---
+--- Download: https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump
+
+local obj = {}
+obj.__index = obj
+
+obj.name = "HerdrJump"
+obj.version = "0.1.0"
+obj.author = "Giovanni Costagliola"
+obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
+obj.license = "MIT - https://opensource.org/licenses/MIT"
+
+local function load(name)
+  return dofile(hs.spoons.resourcePath(name .. ".lua"))
+end
+
+local attention = load("attention")
+local herdr = load("herdr")
+local iterm = load("iterm")
+
+local SEEN_KEY = "HerdrJump.seen"
+local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
+
+--- HerdrJump.socketPath
+--- Variable
+--- The Herdr server socket.
+obj.socketPath = os.getenv("HOME") .. "/.config/herdr/herdr.sock"
+
+--- HerdrJump.itermBundleID
+--- Variable
+--- The bundle id of iTerm2.
+obj.itermBundleID = "com.googlecode.iterm2"
+
+--- HerdrJump.pollSeconds
+--- Variable
+--- How often the menu bar asks Herdr for the agent list.
+obj.pollSeconds = 3
+
+--- HerdrJump.showMenubar
+--- Variable
+--- Whether to show the menu bar counter.
+obj.showMenubar = true
+
+--- HerdrJump.defaultHotkeys
+--- Variable
+--- ⌃⌥⌘I back to iTerm (again: back to the previous app), ⌃⌥⌘A the agents picker.
+obj.defaultHotkeys = {
+  iterm = { { "ctrl", "alt", "cmd" }, "i" },
+  agents = { { "ctrl", "alt", "cmd" }, "a" },
+}
+
+obj.logger = hs.logger.new("HerdrJump")
+
+function obj:init()
+  self.agents = {}
+  self.err = nil
+  self.seen = {}
+  self.previousApp = nil
+  -- Every agent list read is numbered; a reply older than one already applied is dropped.
+  self.requested = 0
+  self.applied = 0
+end
+
+--- HerdrJump:bindHotkeys(mapping)
+--- Method
+--- Binds `iterm` and `agents`, e.g. `spoon.HerdrJump:bindHotkeys(spoon.HerdrJump.defaultHotkeys)`.
+function obj:bindHotkeys(mapping)
+  hs.spoons.bindHotkeysToSpec({
+    iterm = function() self:toggleIterm() end,
+    agents = function() self:showAgents() end,
+  }, mapping)
+  return self
+end
+
+--- HerdrJump:start()
+--- Method
+--- Starts tracking the previous app, the menu bar counter and the agent list polling.
+function obj:start()
+  local stored = hs.settings.get(SEEN_KEY)
+  self.seen = type(stored) == "table" and stored or {}
+  self.watcher = hs.application.watcher.new(function(_, event, app)
+    if event ~= hs.application.watcher.activated or app == nil then
+      return
+    end
+    local id = app:bundleID()
+    -- The picker activates Hammerspoon: going "back" there would be useless.
+    if id ~= self.itermBundleID and id ~= HAMMERSPOON then
+      self.previousApp = app
+    end
+  end):start()
+  self.chooser = hs.chooser.new(function(choice)
+    if choice then
+      self:jump(choice.paneId)
+    end
+  end)
+  self.chooser:searchSubText(true)
+  if self.showMenubar then
+    self.menubar = hs.menubar.new()
+    if self.menubar then
+      self.menubar:setMenu(function() return self:_menu() end)
+    else
+      self.logger.e("could not create the menu bar item")
+    end
+  end
+  self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
+  self:refresh()
+  return self
+end
+
+--- HerdrJump:stop()
+--- Method
+--- Stops polling and removes the menu bar item and the picker.
+function obj:stop()
+  for _, name in ipairs({ "timer", "watcher" }) do
+    if self[name] then
+      self[name]:stop()
+      self[name] = nil
+    end
+  end
+  for _, name in ipairs({ "menubar", "chooser" }) do
+    if self[name] then
+      self[name]:delete()
+      self[name] = nil
+    end
+  end
+  return self
+end
+
+local function itermInFront(bundleID)
+  local front = hs.application.frontmostApplication()
+  return front ~= nil and front:bundleID() == bundleID
+end
+
+--- HerdrJump:refresh([onDone])
+--- Method
+--- Asks Herdr for the agents, updates the seen record and the menu bar.
+function obj:refresh(onDone)
+  self.requested = self.requested + 1
+  local generation = self.requested
+  herdr.listAgents(self.socketPath, function(agents, err)
+    -- A slow reply sent before a jump would mark the wrong agent as seen.
+    if generation < self.applied then
+      if onDone then
+        onDone()
+      end
+      return
+    end
+    self.applied = generation
+    if err then
+      if err ~= self.err then
+        self.logger.w("agent list: " .. err)
+      end
+      self.agents, self.err = {}, err
+    else
+      self.agents, self.err = agents, nil
+      local seen = attention.updateSeen(self.seen, agents, itermInFront(self.itermBundleID))
+      if not attention.sameSeen(seen, self.seen) then
+        self.seen = seen
+        hs.settings.set(SEEN_KEY, seen)
+      end
+    end
+    if self.menubar then
+      self.menubar:setTitle(attention.title(attention.count(self.agents, self.seen)))
+      self.menubar:setTooltip(self.err or "Herdr agents")
+    end
+    if onDone then
+      onDone()
+    end
+  end)
+end
+
+function obj:_rows()
+  return attention.rows(self.agents, self.seen)
+end
+
+function obj:_menu()
+  local menu = {}
+  for i, item in ipairs(attention.menu(self:_rows(), self.err)) do
+    local pane = item.paneId
+    menu[i] = {
+      title = item.title,
+      tooltip = item.tooltip,
+      disabled = item.disabled,
+      fn = pane and function() self:jump(pane) end or nil,
+    }
+  end
+  return menu
+end
+
+--- HerdrJump:toggleIterm()
+--- Method
+--- Brings iTerm forward; from iTerm, goes back to the app used before it.
+function obj:toggleIterm()
+  local front = hs.application.frontmostApplication()
+  local previous = self.previousApp
+  local hasPrevious = previous ~= nil and previous:isRunning()
+  local action = iterm.toggleAction(front and front:bundleID(), self.itermBundleID, hasPrevious)
+  if action == "show-iterm" then
+    if not iterm.show(self.itermBundleID) then
+      self.logger.e("cannot activate " .. self.itermBundleID)
+      hs.alert.show("HerdrJump: cannot open iTerm (" .. self.itermBundleID .. ")")
+    end
+  elseif action == "back" then
+    previous:activate()
+  end
+end
+
+--- HerdrJump:showAgents()
+--- Method
+--- Opens the agents picker, most urgent first; the list is refreshed once while it is open.
+function obj:showAgents()
+  if self.err then
+    hs.alert.show("HerdrJump: " .. self.err)
+    self:refresh()
+    return
+  end
+  if #self.agents == 0 then
+    hs.alert.show("HerdrJump: no Herdr agents")
+    self:refresh()
+    return
+  end
+  self.chooser:choices(self:_rows())
+  self.chooser:show()
+  self:refresh(function()
+    if self.chooser and self.chooser:isVisible() then
+      self.chooser:choices(self:_rows())
+    end
+  end)
+end
+
+--- HerdrJump:jump(paneId)
+--- Method
+--- Focuses the agent in Herdr, then brings forward the iTerm session that runs Herdr.
+function obj:jump(paneId)
+  herdr.focus(self.socketPath, paneId, function(err)
+    if err then
+      self.logger.e("focus " .. tostring(paneId) .. ": " .. err)
+      hs.alert.show("HerdrJump: " .. err)
+      return
+    end
+    local problem, blocked = iterm.raiseHerdr(self.itermBundleID)
+    if problem then
+      self.logger.w("raise: " .. problem)
+    end
+    if blocked then
+      hs.alert.show("HerdrJump: allow Hammerspoon to control iTerm2 in System Settings › Privacy & Security › Automation")
+    end
+    self:refresh()
+  end)
+end
+
+return obj
