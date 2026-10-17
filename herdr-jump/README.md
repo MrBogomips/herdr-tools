@@ -87,12 +87,13 @@ The script asks nothing and prints what it does:
   icon), or appends the three HerdrJump lines to yours;
 - reloads Hammerspoon, or starts it.
 
-To read the script first, or to stay on a release:
+To read the script first, or to install a branch or a release tag (`herdr-jump-vX.Y.Z`, when one
+has been cut) instead of `main`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh -o install.sh
 less install.sh
-sh install.sh --ref herdr-jump-v0.2.0   # a tag or a branch; main by default
+sh install.sh --ref <branch-or-tag>
 ```
 
 From a clone, `ln -s "$PWD/herdr-jump/HerdrJump.spoon" ~/.hammerspoon/Spoons/HerdrJump.spoon`

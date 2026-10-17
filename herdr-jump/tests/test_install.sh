@@ -35,8 +35,11 @@ make_stubs() {
   stub curl 'out=""; while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
 [ -e "$STUB_STATE/download-fails" ] && exit 22
 cp "$STUB_TARBALL" "$out"' bin
-  stub brew 'touch "$STUB_STATE/hammerspoon-installed"' bin-brew
-  stub hs 'exit 0' bin-hs
+  # brew and hs fail when handed something on stdin: run from `curl | sh`, bash reads the script
+  # from the pipe one line at a time, so a child that reads stdin eats the rest of the script
+  # (the real hs runs what it reads as Lua).
+  stub brew 'if read -r line; then exit 1; fi; touch "$STUB_STATE/hammerspoon-installed"' bin-brew
+  stub hs 'if read -r line; then exit 65; fi; exit 0' bin-hs
 }
 make_stubs
 
@@ -46,10 +49,12 @@ passed=0
 failed=0
 current=""
 homes=0
-# Knobs for the next run; run_install_keep resets them.
+# Knobs for the next run; run_install_keep resets them. PIPED=1 feeds the script to sh on
+# stdin, as `curl | sh` does.
 WITH_BREW=1
 WITH_HS=0
 STUB_UNAME=Darwin
+PIPED=0
 
 fail() {
   failed=$((failed + 1))
@@ -66,12 +71,19 @@ run_install_keep() {
   path="$root/bin"
   [ "$WITH_BREW" = 1 ] && path="$path:$root/bin-brew"
   [ "$WITH_HS" = 1 ] && path="$path:$root/bin-hs"
-  PATH="$path:/usr/bin:/bin" STUB_STATE="$STUB_STATE" STUB_LOG="$STUB_LOG" STUB_TARBALL="$tarball" \
-    STUB_UNAME="$STUB_UNAME" sh "$script" "$@" > "$STUB_STATE/out" 2>&1
+  export STUB_STATE STUB_LOG STUB_UNAME
+  STUB_TARBALL="$tarball"
+  export STUB_TARBALL
+  if [ "$PIPED" = 1 ]; then
+    cat "$script" | PATH="$path:/usr/bin:/bin" sh -s -- "$@" > "$STUB_STATE/out" 2>&1
+  else
+    PATH="$path:/usr/bin:/bin" sh "$script" "$@" > "$STUB_STATE/out" 2>&1
+  fi
   status=$?
   WITH_BREW=1
   WITH_HS=0
   STUB_UNAME=Darwin
+  PIPED=0
 }
 
 # run_install [options]: a fresh, empty HOME, then the script.
@@ -248,6 +260,27 @@ help_describes_the_options() {
   assert_output "force"
 }
 
+piped_into_sh_the_whole_script_runs_even_when_brew_reads_stdin() {
+  PIPED=1
+  run_install
+  assert_status 0
+  assert_called "brew install --cask hammerspoon"
+  assert_same "$(spoon)/init.lua" "$here/../HerdrJump.spoon/init.lua"
+  assert_output "done:"
+}
+
+piped_into_sh_a_running_hammerspoon_is_still_reloaded_through_hs() {
+  fresh_home
+  touch "$HOME/.stub/hammerspoon-running" "$HOME/.stub/hammerspoon-installed"
+  WITH_HS=1
+  PIPED=1
+  run_install_keep
+  assert_status 0
+  assert_called "hs -c hs.reload()"
+  assert_not_called "killall"
+  assert_output "done:"
+}
+
 for t in \
   a_fresh_mac_gets_hammerspoon_the_spoon_and_the_example_init \
   an_installed_hammerspoon_is_not_installed_again \
@@ -262,7 +295,9 @@ for t in \
   ref_chooses_the_archive_to_download \
   another_system_is_refused \
   an_unknown_option_is_refused_with_a_hint \
-  help_describes_the_options
+  help_describes_the_options \
+  piped_into_sh_the_whole_script_runs_even_when_brew_reads_stdin \
+  piped_into_sh_a_running_hammerspoon_is_still_reloaded_through_hs
 do
   test_case "$t"
 done
