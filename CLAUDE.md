@@ -24,6 +24,19 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
+## Companions (top-level folders without a manifest)
+
+- A companion works with Herdr from outside it; today only `herdr-jump/`, a Hammerspoon Spoon in Lua.
+  It must never contain a `herdr-plugin.toml`: without one, the marketplace index, the plugin CI jobs and
+  the `herdr-publish` helper all skip it.
+- Lua code stays compatible with Lua 5.4 (Hammerspoon embeds 5.4; Homebrew `lua` can be newer), with no
+  dependencies. Logic lives in pure modules (no `hs.*` at load time) with the tests; `init.lua` is glue.
+- Tests: `lua herdr-jump/tests/run.lua`. The CI job `lua` runs every `*/tests/run.lua` with `lua5.4`.
+- Listed in the root README "Companions" table. Not released by `herdr-publish`: it ships with `main`;
+  an annotated tag `herdr-jump-vX.Y.Z` only when the user asks.
+- Live check: Hammerspoon loads the Spoon through `~/.hammerspoon/Spoons/HerdrJump.spoon`, a symlink to
+  the main checkout; `hs -c 'hs.reload()'` reloads it (the `hs` CLI needs `require("hs.ipc")`).
+
 ## Releasing
 
 - A plugin reaches the Herdr marketplace (herdr.dev/plugins) by landing on `main`: the index lists every
