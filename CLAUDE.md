@@ -32,10 +32,15 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Lua code stays compatible with Lua 5.4 (Hammerspoon embeds 5.4; Homebrew `lua` can be newer), with no
   dependencies. Logic lives in pure modules (no `hs.*` at load time) with the tests; `init.lua` is glue.
 - Tests: `lua herdr-jump/tests/run.lua`. The CI job `lua` runs every `*/tests/run.lua` with `lua5.4`.
+- Users install with `herdr-jump/install.sh` (`curl … | sh` from GitHub, POSIX sh, no clone); its tests
+  `sh herdr-jump/tests/test_install.sh` stub the system commands and run on `/bin/sh` and dash. The CI
+  job `unittest` runs every `*/tests/test_*.sh`. Keep `shellcheck -s sh` clean.
 - Listed in the root README "Companions" table. Not released by `herdr-publish`: it ships with `main`;
-  an annotated tag `herdr-jump-vX.Y.Z` only when the user asks.
+  an annotated tag `herdr-jump-vX.Y.Z` only when the user asks (`install.sh --ref` pins one).
 - Live check: Hammerspoon loads the Spoon through `~/.hammerspoon/Spoons/HerdrJump.spoon`, a symlink to
-  the main checkout; `hs -c 'hs.reload()'` reloads it (the `hs` CLI needs `require("hs.ipc")`).
+  the main checkout (point it at a worktree to test a branch, then back); `hs -c 'hs.reload()'` reloads it
+  and exits non-zero while the connection drops, which is normal (the `hs` CLI needs `require("hs.ipc")`).
+  `install.sh` refuses to replace that symlink unless `--force` is passed.
 
 ## Releasing
 

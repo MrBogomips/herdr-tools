@@ -1,4 +1,4 @@
--- ~/.hammerspoon/init.lua with HerdrJump. Link the Spoon first (see README.md).
+-- ~/.hammerspoon/init.lua with HerdrJump; install.sh copies it when you have none (see README.md).
 
 hs.uploadCrashData(false) -- no crash reports sent to Hammerspoon's crash collector
 hs.autoLaunch(true) -- start Hammerspoon at login
