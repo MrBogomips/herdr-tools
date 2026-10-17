@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.1.0"
+obj.version = "0.2.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -20,6 +20,7 @@ end
 
 local attention = load("attention")
 local herdr = load("herdr")
+local icon = load("icon")
 local iterm = load("iterm")
 
 local SEEN_KEY = "HerdrJump.seen"
@@ -47,7 +48,7 @@ obj.pollSeconds = 5
 
 --- HerdrJump.showMenubar
 --- Variable
---- Whether to show the menu bar counter.
+--- Whether to show the menu bar icon and counter.
 obj.showMenubar = true
 
 --- HerdrJump.defaultHotkeys
@@ -112,6 +113,9 @@ function obj:start()
     self.menubar = hs.menubar.new()
     if self.menubar then
       self.menubar:setMenu(function() return self:_menu() end)
+      self.icons = { idle = icon.image("idle"), waiting = icon.image("waiting"), down = icon.image("down") }
+      self.iconState = nil
+      self:_updateMenubar(0, nil)
     else
       self.logger.e("could not create the menu bar item")
       hs.alert.show("HerdrJump: no menu bar counter (see the Hammerspoon console)")
@@ -123,10 +127,7 @@ function obj:start()
     self.err = "herdr not found at " .. self.herdrBin
     self.logger.e(self.err .. ": set spoon.HerdrJump.herdrBin to the output of `which herdr`")
     hs.alert.show("HerdrJump: " .. self.err)
-    if self.menubar then
-      self.menubar:setTitle(attention.title(0, self.err))
-      self.menubar:setTooltip(self.err)
-    end
+    self:_updateMenubar(0, self.err)
     return self
   end
   self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
@@ -150,11 +151,27 @@ function obj:stop()
       self[name] = nil
     end
   end
+  self.icons, self.iconState = nil, nil
   return self
 end
 
 function obj:_conn()
   return { bin = self.herdrBin, socket = self.socketPath }
+end
+
+-- The menu bar item for a count of waiting agents, or for an error: the icon follows the state,
+-- the title carries the count.
+function obj:_updateMenubar(count, err)
+  if not self.menubar then
+    return
+  end
+  local state = attention.state(count, err)
+  if state ~= self.iconState then
+    self.iconState = state
+    self.menubar:setIcon(self.icons[state], true)
+  end
+  self.menubar:setTitle(attention.title(count, err))
+  self.menubar:setTooltip(err or "Herdr agents")
 end
 
 local function itermInFront(bundleID)
@@ -195,10 +212,7 @@ function obj:refresh(onDone)
         hs.settings.set(SEEN_KEY, seen)
       end
     end
-    if self.menubar then
-      self.menubar:setTitle(attention.title(attention.count(self.agents, self.seen), self.err))
-      self.menubar:setTooltip(self.err or "Herdr agents")
-    end
+    self:_updateMenubar(attention.count(self.agents, self.seen), self.err)
     if onDone then
       onDone()
     end
