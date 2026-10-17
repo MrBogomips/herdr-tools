@@ -57,6 +57,17 @@ jobs:
             (cd "$scripts" && ${{ matrix.python }} -m unittest -v)
             echo "::endgroup::"
           done
+      # Companions' shell scripts (herdr-jump/install.sh) must run on macOS's /bin/sh; with the
+      # system commands stubbed, the tests also run on Ubuntu's dash.
+      - name: Run each companion's shell tests
+        run: |
+          set -eu
+          for test in */tests/test_*.sh; do
+            [ -f "$test" ] || continue
+            echo "::group::$test"
+            sh "$test"
+            echo "::endgroup::"
+          done
 
   # Companions (folders without herdr-plugin.toml) written in Lua: their pure modules run under
   # plain Lua 5.4, the version Hammerspoon embeds.
