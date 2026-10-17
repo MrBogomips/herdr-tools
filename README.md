@@ -19,6 +19,15 @@ has its own.
 | [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
 | [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
 
+### Companions
+
+Tools that work with Herdr from outside it. They are not plugins: `herdr plugin install` does not
+handle them and the marketplace does not list them; each README explains its install.
+
+| Companion | What it does | Runs in |
+| --- | --- | --- |
+| [herdr-jump](herdr-jump/) | From any macOS app: one key back to iTerm, one key to a Spotlight-style list of your agents (blocked first, then done), and a menu bar counter of the agents waiting for you | [Hammerspoon](https://www.hammerspoon.org) |
+
 ## Better together: a naming scheme
 
 Name spaces `CUSTOMER - project`, mark the ones you always want on top with ` +` and the parking
