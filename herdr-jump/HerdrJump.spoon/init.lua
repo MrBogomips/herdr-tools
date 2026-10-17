@@ -25,9 +25,14 @@ local iterm = load("iterm")
 local SEEN_KEY = "HerdrJump.seen"
 local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
 
+--- HerdrJump.herdrBin
+--- Variable
+--- The herdr binary (absolute: Hammerspoon's PATH does not include Homebrew).
+obj.herdrBin = "/opt/homebrew/bin/herdr"
+
 --- HerdrJump.socketPath
 --- Variable
---- The Herdr server socket.
+--- The Herdr server socket, passed to herdr as HERDR_SOCKET_PATH.
 obj.socketPath = os.getenv("HOME") .. "/.config/herdr/herdr.sock"
 
 --- HerdrJump.itermBundleID
@@ -37,8 +42,8 @@ obj.itermBundleID = "com.googlecode.iterm2"
 
 --- HerdrJump.pollSeconds
 --- Variable
---- How often the menu bar asks Herdr for the agent list.
-obj.pollSeconds = 3
+--- How often the menu bar asks Herdr for the agent list (one short `herdr agent list` run).
+obj.pollSeconds = 5
 
 --- HerdrJump.showMenubar
 --- Variable
@@ -112,6 +117,18 @@ function obj:start()
       hs.alert.show("HerdrJump: no menu bar counter (see the Hammerspoon console)")
     end
   end
+  -- A wrong path would make hs.task log a launch failure on every poll: say it once, don't poll.
+  local binary = hs.fs.attributes(self.herdrBin)
+  if binary == nil or binary.mode ~= "file" then
+    self.err = "herdr not found at " .. self.herdrBin
+    self.logger.e(self.err .. ": set spoon.HerdrJump.herdrBin to the output of `which herdr`")
+    hs.alert.show("HerdrJump: " .. self.err)
+    if self.menubar then
+      self.menubar:setTitle(attention.title(0, self.err))
+      self.menubar:setTooltip(self.err)
+    end
+    return self
+  end
   self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
   self:refresh()
   return self
@@ -136,6 +153,10 @@ function obj:stop()
   return self
 end
 
+function obj:_conn()
+  return { bin = self.herdrBin, socket = self.socketPath }
+end
+
 local function itermInFront(bundleID)
   local front = hs.application.frontmostApplication()
   return front ~= nil and front:bundleID() == bundleID
@@ -147,7 +168,7 @@ end
 function obj:refresh(onDone)
   self.requested = self.requested + 1
   local generation = self.requested
-  herdr.listAgents(self.socketPath, function(agents, err, detail)
+  herdr.listAgents(self:_conn(), function(agents, err, detail)
     -- A slow reply sent before a jump would mark the wrong agent as seen.
     if generation < self.applied then
       if onDone then
@@ -268,7 +289,7 @@ end
 --- Method
 --- Focuses the agent in Herdr, then brings forward the iTerm session that runs Herdr.
 function obj:jump(paneId)
-  herdr.focus(self.socketPath, paneId, function(err)
+  herdr.focus(self:_conn(), paneId, function(err)
     if err then
       self.logger.e("focus " .. tostring(paneId) .. ": " .. err)
       hs.alert.show("HerdrJump: " .. err)
