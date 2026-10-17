@@ -20,7 +20,8 @@ menu bar:  ⧗ 2   (click: the same list as a menu)
 ```
 
 This is not a Herdr plugin: it runs in Hammerspoon, outside Herdr, and talks to the Herdr server
-through its socket. It has no `herdr-plugin.toml`, so the plugin marketplace does not list it.
+through the `herdr` command line. It has no `herdr-plugin.toml`, so the plugin marketplace does
+not list it.
 
 ## What it does
 
@@ -34,7 +35,7 @@ through its socket. It has no `herdr-plugin.toml`, so the plugin marketplace doe
   running the Herdr client come forward.
 - **Menu bar `⧗ N`.** N counts the `blocked` and unseen `done` agents; with nothing waiting it
   shows `⧗` alone, and `⧗ ?` when Herdr cannot be read (the menu says why). Click it for the same
-  list as a menu.
+  list as a menu. macOS adds it left of the other menu bar icons, on the main display.
 
 ### Seen agents
 
@@ -74,16 +75,17 @@ Set these before `start()`:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `socketPath` | `~/.config/herdr/herdr.sock` | The Herdr server socket |
+| `herdrBin` | `/opt/homebrew/bin/herdr` | The `herdr` binary (Hammerspoon's PATH has no Homebrew) |
+| `socketPath` | `~/.config/herdr/herdr.sock` | The Herdr server socket, passed as `HERDR_SOCKET_PATH` |
 | `itermBundleID` | `com.googlecode.iterm2` | The app to bring forward |
-| `pollSeconds` | `3` | How often the agent list is read |
+| `pollSeconds` | `5` | How often the agent list is read |
 | `showMenubar` | `true` | Show the `⧗` counter |
 
 Other keys: pass your own mapping instead of `defaultHotkeys`.
 
 ```lua
 hs.loadSpoon("HerdrJump")
-spoon.HerdrJump.pollSeconds = 5
+spoon.HerdrJump.pollSeconds = 10
 spoon.HerdrJump:bindHotkeys({
   iterm = { { "ctrl", "alt", "cmd" }, "t" },
   agents = { { "ctrl", "alt", "cmd" }, "space" },
@@ -93,11 +95,13 @@ spoon.HerdrJump:start()
 
 ## How it works
 
-- Every `pollSeconds` it sends `agent.list` on the Herdr socket and reads one line back. The
-  server answers one request per connection, then closes it; no `herdr` process is spawned.
-  Herdr can push status events, but only one pane per subscription, so polling is cheaper.
-- A jump sends `agent.focus` with the pane id, then finds the Herdr client's terminal with `ps`
-  and selects the iTerm session on that tty, with its tab and window.
+- Every `pollSeconds` it runs `herdr agent list` (about 0.1 s), which prints the agents as JSON on
+  stdout; errors come as a JSON envelope on stderr. Herdr can push status events, but only one
+  pane per subscription, so polling is simpler.
+- A jump runs `herdr agent focus <pane id>`, then finds the Herdr client's terminal with `ps` and
+  selects the iTerm session on that tty, with its tab and window.
+- It does not use `hs.socket` on Herdr's socket: in Hammerspoon 1.1.1, connecting `hs.socket` to
+  a Unix socket aborts Hammerspoon (GCDAsyncSocket throws while building the peer's URL).
 
 ## Limits
 
@@ -112,14 +116,16 @@ spoon.HerdrJump:start()
 - The Hammerspoon console (menu bar icon → Console) shows the `HerdrJump` log lines: failed
   agent list reads with the raw reply, dropped malformed agents, agent statuses it does not know,
   focus errors and why the iTerm session could not be selected.
-- `⧗ ?` and "Herdr is not running" in the menu: there is no socket; start Herdr. "cannot connect
-  to Herdr": a socket file is left but no server answers it (a crashed server); restart Herdr.
+- `⧗ ?` and "Herdr is not running" in the menu: no Herdr server answers on `socketPath`; start
+  Herdr. "cannot run /opt/homebrew/bin/herdr": set `herdrBin` to the output of `which herdr`.
   The counter recovers on the next poll.
+- No `⧗` in sight: look left of the other icons on the main display; a crowded menu bar can push
+  it out, as for any app.
 - An alert after a jump says why the Herdr tab could not be selected; iTerm still comes forward.
 
 ## Tests
 
-The pure modules (ranking, seen record, socket replies, client detection, AppleScript) run under
+The pure modules (ranking, seen record, herdr replies, client detection, AppleScript) run under
 plain Lua 5.4 or newer, without Hammerspoon:
 
 ```bash
