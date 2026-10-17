@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="68" viewBox="0 0 440 68" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <title>The HerdrJump menu bar item in its three states</title>
+  <rect width="440" height="68" rx="8" fill="#2a2a2e"/>
+  <!-- Each icon is the Spoon's drawing in 18-point menu bar coordinates, shown at 2x. The front
+       agent first paints the background over what it covers, which keeps a gap between the two. -->
+
+  <!-- nothing waiting: outlined -->
+  <g transform="translate(22 14) scale(2)" fill="none" stroke="#ffffff" stroke-width="1.4">
+    <circle cx="12" cy="5.2" r="2.8"/>
+    <path d="M 7.4 13.6 A 4.6 4.6 0 0 1 16.6 13.6 Z"/>
+    <g fill="#2a2a2e" stroke="none">
+      <circle cx="6.5" cy="6.4" r="4.2"/>
+      <path d="M 0 16.5 A 6.5 6.5 0 0 1 13 16.5 Z"/>
+      <rect x="3.2" y="6.4" width="6.6" height="10.1"/>
+    </g>
+    <circle cx="6.5" cy="6.4" r="3.3"/>
+    <path d="M 0.9 16.5 A 5.6 5.6 0 0 1 12.1 16.5 Z"/>
+  </g>
+  <text x="22" y="62" font-size="11" fill="#9b9b9f">nothing waiting</text>
+
+  <!-- two agents waiting: solid, with the count -->
+  <g transform="translate(168 14) scale(2)" fill="#ffffff">
+    <circle cx="12" cy="5.2" r="2.8"/>
+    <path d="M 7.4 13.6 A 4.6 4.6 0 0 1 16.6 13.6 Z"/>
+    <g fill="#2a2a2e">
+      <circle cx="6.5" cy="6.4" r="4.2"/>
+      <path d="M 0 16.5 A 6.5 6.5 0 0 1 13 16.5 Z"/>
+      <rect x="3.2" y="6.4" width="6.6" height="10.1"/>
+    </g>
+    <circle cx="6.5" cy="6.4" r="3.3"/>
+    <path d="M 0.9 16.5 A 5.6 5.6 0 0 1 12.1 16.5 Z"/>
+  </g>
+  <text x="212" y="41" font-size="28" fill="#ffffff">2</text>
+  <text x="168" y="62" font-size="11" fill="#9b9b9f">2 agents wait for you</text>
+
+  <!-- Herdr cannot be read: outlined, with a question mark -->
+  <g transform="translate(314 14) scale(2)" fill="none" stroke="#ffffff" stroke-width="1.4">
+    <circle cx="12" cy="5.2" r="2.8"/>
+    <path d="M 7.4 13.6 A 4.6 4.6 0 0 1 16.6 13.6 Z"/>
+    <g fill="#2a2a2e" stroke="none">
+      <circle cx="6.5" cy="6.4" r="4.2"/>
+      <path d="M 0 16.5 A 6.5 6.5 0 0 1 13 16.5 Z"/>
+      <rect x="3.2" y="6.4" width="6.6" height="10.1"/>
+    </g>
+    <circle cx="6.5" cy="6.4" r="3.3"/>
+    <path d="M 0.9 16.5 A 5.6 5.6 0 0 1 12.1 16.5 Z"/>
+  </g>
+  <text x="358" y="41" font-size="28" fill="#ffffff">?</text>
+  <text x="314" y="62" font-size="11" fill="#9b9b9f">Herdr cannot be read</text>
+</svg>
