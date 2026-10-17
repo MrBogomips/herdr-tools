@@ -47,6 +47,18 @@ return {
     h.eq(iterm.raiseScript({ "ttys035" }, ITERM), nil)
   end,
 
+  script_failure_flags_a_refused_automation_permission = function()
+    local details = { NSAppleScriptErrorNumber = -1743, NSAppleScriptErrorMessage = "Not authorized to send Apple events to iTerm2." }
+    h.eq({ iterm.scriptFailure(details) }, { "Not authorized to send Apple events to iTerm2.", true })
+  end,
+
+  script_failure_reports_other_errors_without_the_permission_hint = function()
+    local details = { NSAppleScriptErrorNumber = -1728, NSAppleScriptErrorMessage = "Can't get session 2." }
+    h.eq({ iterm.scriptFailure(details) }, { "Can't get session 2.", false })
+    h.eq({ iterm.scriptFailure(nil) }, { "AppleScript failed", false })
+    h.eq({ iterm.scriptFailure({ NSAppleScriptErrorNumber = -2700 }) }, { "AppleScript error -2700", false })
+  end,
+
   toggle_from_another_app_shows_iterm = function()
     h.eq(iterm.toggleAction("com.microsoft.edgemac", ITERM, true), "show-iterm")
     h.eq(iterm.toggleAction(nil, ITERM, false), "show-iterm")

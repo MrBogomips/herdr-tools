@@ -33,7 +33,8 @@ through its socket. It has no `herdr-plugin.toml`, so the plugin marketplace doe
   folder), Enter to jump: Herdr focuses the agent's pane and the iTerm window, tab and session
   running the Herdr client come forward.
 - **Menu bar `⧗ N`.** N counts the `blocked` and unseen `done` agents; with nothing waiting it
-  shows `⧗` alone. Click it for the same list as a menu.
+  shows `⧗` alone, and `⧗ ?` when Herdr cannot be read (the menu says why). Click it for the same
+  list as a menu.
 
 ### Seen agents
 
@@ -109,9 +110,12 @@ spoon.HerdrJump:start()
 ## Troubleshooting
 
 - The Hammerspoon console (menu bar icon → Console) shows the `HerdrJump` log lines: failed
-  agent list reads, focus errors and why the iTerm session could not be selected.
-- `⧗` with nothing listed and "Herdr is not running" in the menu: the socket is missing; start
-  Herdr. The counter recovers on the next poll.
+  agent list reads with the raw reply, dropped malformed agents, agent statuses it does not know,
+  focus errors and why the iTerm session could not be selected.
+- `⧗ ?` and "Herdr is not running" in the menu: there is no socket; start Herdr. "cannot connect
+  to Herdr": a socket file is left but no server answers it (a crashed server); restart Herdr.
+  The counter recovers on the next poll.
+- An alert after a jump says why the Herdr tab could not be selected; iTerm still comes forward.
 
 ## Tests
 

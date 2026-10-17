@@ -71,6 +71,21 @@ function M.raiseScript(ttys, bundleID)
   }, "\n")
 end
 
+-- errAEEventNotPermitted: the user has not allowed Hammerspoon to control iTerm2.
+local NOT_PERMITTED = -1743
+
+-- A message for an hs.osascript error dictionary, and whether it is the Automation permission.
+function M.scriptFailure(details)
+  if type(details) ~= "table" then
+    return "AppleScript failed", false
+  end
+  local number, message = details.NSAppleScriptErrorNumber, details.NSAppleScriptErrorMessage
+  if type(message) ~= "string" or message == "" then
+    message = number and ("AppleScript error " .. tostring(number)) or "AppleScript failed"
+  end
+  return message, number == NOT_PERMITTED
+end
+
 -- What the "back to iTerm" key does: "show-iterm", "back" to the previous app, or "stay".
 function M.toggleAction(frontBundleID, itermBundleID, hasPrevious)
   if frontBundleID ~= itermBundleID then
@@ -84,25 +99,35 @@ function M.show(bundleID)
   return hs.application.launchOrFocusByBundleID(bundleID)
 end
 
+-- Falls back to activating the whole app, and says so when even that fails.
+local function fallBack(bundleID, reason, blocked)
+  if not M.show(bundleID) then
+    reason = reason .. "; iTerm could not be activated either"
+  end
+  return reason, blocked
+end
+
 -- Brings forward the iTerm session that runs the Herdr client; falls back to the whole app.
 -- Returns nil on success, or a short reason the exact session could not be selected, plus true
--- when the AppleScript itself failed (usually the Automation permission) and the user must act.
+-- when macOS refused the Automation permission and the user must allow it.
 function M.raiseHerdr(bundleID)
-  local ps = hs.execute("/bin/ps -axo tty=,command=")
+  local ps, listed = hs.execute("/bin/ps -axo tty=,command=")
+  if not listed then
+    return fallBack(bundleID, "cannot list processes with ps", false)
+  end
   local script = M.raiseScript(M.clientTtys(ps), bundleID)
   if not script then
-    M.show(bundleID)
-    return "no Herdr client found", false
+    return fallBack(bundleID, "no Herdr client is running in a terminal", false)
   end
   local ok, result, details = hs.osascript.applescript(script)
   if ok and result == "raised" then
     return nil, false
   end
-  M.show(bundleID)
   if not ok then
-    return "AppleScript failed: " .. hs.inspect(details), true
+    local message, blocked = M.scriptFailure(details)
+    return fallBack(bundleID, "cannot select the Herdr tab: " .. message, blocked)
   end
-  return "no iTerm session runs the Herdr client", false
+  return fallBack(bundleID, "no iTerm session runs the Herdr client", false)
 end
 
 return M

@@ -213,4 +213,20 @@ return {
     h.eq(attention.title(2), "⧗ 2")
     h.eq(attention.title(nil), "⧗")
   end,
+
+  menubar_title_says_it_cannot_tell_when_herdr_fails = function()
+    h.eq(attention.title(0, "Herdr is not running"), "⧗ ?")
+    h.eq(attention.title(3, "Herdr is not answering"), "⧗ ?")
+  end,
+
+  unknownStatuses_lists_each_status_herdr_added_once = function()
+    local agents = {
+      agent("w1:p1", "blocked"),
+      agent("w2:p1", "waiting_input"),
+      agent("w3:p1", "waiting_input"),
+      agent("w4:p1", "paused"),
+      agent("w5:p1", nil),
+    }
+    h.eq(attention.unknownStatuses(agents), { "paused", "waiting_input" })
+  end,
 }
