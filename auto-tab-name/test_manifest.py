@@ -34,6 +34,13 @@ class ManifestTest(unittest.TestCase):
         for local_id in local_ids:
             self.assertNotIn(".", local_id)
 
+    def test_an_agent_changing_state_refreshes_the_names(self):
+        # An agent that moves to a worktree fires no focus event: its state change is the first hook.
+        hooks = {event: json.loads(command) for event, command in
+                 re.findall(r'^\[\[events\]\]\non = "([^"]*)"\ncommand = (\[.*\])$', MANIFEST, re.MULTILINE)}
+        self.assertEqual(hooks.get("pane.agent_status_changed"),
+                         ["python3", "auto_tab_name.py", "reconcile", "--hook"])
+
     def test_the_config_example_is_valid_json(self):
         self.assertIsInstance(json.loads((HERE / "config.example.json").read_text(encoding="utf-8")), dict)
 

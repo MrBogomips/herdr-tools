@@ -16,7 +16,8 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
   newline-delimited JSON (`herdr api schema --json` prints the schema for the installed binary).
 - Hooks (`[[startup]]`, `[[events]]`) are silent on success and toast only on failure; actions toast
   their result. Not every event can be hooked: `herdr plugin link` warns about unknown names
-  (`pane.updated` and `layout.updated` cannot be hooked on 0.9.3).
+  (`pane.updated` and `layout.updated` cannot be hooked on 0.9.3). `pane.agent_status_changed` can,
+  and it is the only hook that follows an agent changing folder (into a worktree, say).
 - `min_herdr_version` is the oldest version actually verified (`herdr status server` shows the
   running server, which can lag behind the installed binary).
 - Every plugin is listed in the root `README.md` table; its own README documents install, key

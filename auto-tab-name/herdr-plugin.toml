@@ -6,7 +6,8 @@ description = "Name each tab after the folder of its pane (folder, repo, path or
 platforms = ["macos", "linux"]
 
 # A `cd` fires no event Herdr can hook (`pane.updated` cannot be hooked), so names catch up on focus
-# and lifecycle events instead; a run with nothing to change writes nothing.
+# and lifecycle events instead, and on an agent's state change, which follows an agent moving to a
+# worktree; a run with nothing to change writes nothing.
 [[startup]]
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
@@ -48,6 +49,10 @@ command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[events]]
 on = "workspace.focused"
+command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
+
+[[events]]
+on = "pane.agent_status_changed"
 command = ["python3", "auto_tab_name.py", "reconcile", "--hook"]
 
 [[actions]]
