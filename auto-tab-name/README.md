@@ -127,9 +127,12 @@ working in a worktree. Started in `~/tools/initech` (branch `main`), an agent wo
 | `repo_branch` | `initech@main` | `initech@feature/login` |
 
 - `foreground_cwd` (the default) names the tab after the folder the work happens in: with agents in
-  worktrees, each tab tells which worktree or branch its agent is on. A long command that runs in
-  another folder, such as `(cd build && make)`, can name the tab `build` while it runs, if a hook
-  runs meanwhile (a focus change, say).
+  worktrees, each tab tells which worktree or branch its agent is on. Herdr has no event for a
+  folder change, so the name follows at the agent's next change of state (ready, working, done,
+  waiting for an answer): when an agent started in a worktree gets ready, and at the latest when
+  the turn that moved it ends. A program that is not an agent is seen at the next focus change, tab
+  or pane change. A long command that runs in another folder, such as `(cd build && make)`, can
+  name the tab `build` while it runs, if a hook runs meanwhile (a focus change, say).
 - `cwd` follows only your `cd` in the shell: steadier, but the tab of an agent working in a
   worktree keeps the name of the folder the agent was started in.
 
@@ -205,7 +208,8 @@ All three run only inside Herdr (`HERDR_ENV` is `1`) and call the Herdr binary t
 (`HERDR_BIN_PATH`, so `herdr` need not be on your `PATH`). They run it in the background and discard
 its output, so the prompt never waits. `refresh` renames only when `auto_sync` is on and toasts only
 on failure. The shell reports only its own `cd`: a program that changes folder while it runs (see
-[Which folder](#which-folder-source)) is seen at the next focus change.
+[Which folder](#which-folder-source)) is seen at the next focus change, or for an agent at its next
+change of state.
 
 ## Limits
 
@@ -222,8 +226,8 @@ on failure. The shell reports only its own `cd`: a program that changes folder w
 - With `repo` or `repo_branch`, a git repository in your home folder (dotfiles, say) makes every
   folder under home that is not in another repository show as that repository.
 - With `foreground_cwd` a command that runs in another folder can rename the tab while it runs, and
-  a program that changes folder is seen only at the next focus change: see
-  [Which folder](#which-folder-source).
+  a program that changes folder is seen only at the next focus change, or for an agent at its next
+  change of state: see [Which folder](#which-folder-source).
 - State (which tabs follow, the last pane of each) lives in the plugin's state directory, one file
   per Herdr server.
 
