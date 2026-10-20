@@ -1,8 +1,8 @@
 id = "mrbogomips.auto-tab-name"
 name = "Auto Tab Name"
-version = "0.1.0"
+version = "0.2.0"
 min_herdr_version = "0.9.3"
-description = "Name each tab after the folder of its pane (folder, repo, path or branch), keep it in sync as you move around, and leave alone the tabs you name yourself."
+description = "Name each tab after the folder of its pane (folder, repo, path or branch), keep it in sync as you and your agents move around (into a worktree, say), and leave alone the tabs you name yourself."
 platforms = ["macos", "linux"]
 
 # A `cd` fires no event Herdr can hook (`pane.updated` cannot be hooked), so names catch up on focus
