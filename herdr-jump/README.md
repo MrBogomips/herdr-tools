@@ -13,10 +13,14 @@ not list it.
 ## Use cases
 
 - **An agent asks for a permission while you are in the browser.** The icon turns solid with a
-  count. `⌃⌥⌘A` opens the picker with that agent on top; Enter lands you on its pane, with the
-  iTerm window, tab and session running Herdr in front.
-- **Several agents finish while you are in a meeting.** The count says how many. The picker lists
-  them `done` first, latest first; each one leaves the count once you have looked at it.
+  count. `⌃⌥⌘A` opens the picker with that agent on top and how long it has waited; Enter lands
+  you on its pane, with the iTerm window, tab and session running Herdr in front.
+- **Several agents finish while you are in a meeting.** The count says how many. The picker queues
+  them oldest first, each with its wait ("done 25m · since 10:40"), so you serve them in turn;
+  each one leaves the count once you have looked at it.
+- **Following the latest answers instead of the queue.** Tab in the picker sorts newest first
+  (LIFO): among the `done` agents, the one that just finished is on top (`blocked` ones still come
+  first). Tab again sorts every agent by name. The choice is remembered.
 - **Back and forth between iTerm and the app you were in.** `⌃⌥⌘I` brings iTerm forward on the
   window you used last, Space or display included; pressed again from iTerm, it goes back to the
   app you came from.
@@ -28,23 +32,53 @@ not list it.
 | Key | What happens |
 | --- | --- |
 | `⌃⌥⌘I` | Activates iTerm2. Herdr keeps its focused pane, so you land where you left. From iTerm, goes back to the previous app. |
-| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the latest change first. Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the iTerm window, tab and session running the Herdr client come forward. |
+| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the iTerm window, tab and session running the Herdr client come forward. |
+| `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 ```
 ⌃⌥⌘A  (from any app)
-┌──────────────────────────────────┐
-│ ⏸ ACME-API-Fixing-Auth           │
-│   blocked · acme-api             │
-│ ✓ GLOBEX-ETL-Reviewing-Loader    │
-│   done · globex-etl              │
-│ · LUMON-Planning-Offsite         │
-│   idle · lumon                   │
-│ ◐ INITECH-CRM-Implementing-UI    │
-│   working · initech-crm          │
-└──────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│ Filter agents · sorted FIFO (Tab to change)                   │
+├───────────────────────────────────────────────────────────────┤
+│ (⏸) ACME-API-Fixing-Auth                                      │
+│     blocked 12m · since 09:41 · acme-api                      │
+│ (✓) GLOBEX-ETL-Reviewing-Loader                               │
+│     done 4m · since 09:49 · globex-etl                        │
+│ ( ) LUMON-Planning-Offsite                                    │
+│     idle 2h 5m · lumon                                        │
+│ (◐) INITECH-CRM-Implementing-UI                               │
+│     working 1m · initech-crm                                  │
+│     ⏸ blocked  ✓ done, not seen  ? unknown  ○ idle  ◐ working │
+│     Sorted FIFO · Tab: LIFO, name · Enter: jump               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 Both keys can be changed, see [Configure](#configure).
+
+## Symbols
+
+Each row starts with a colored icon; the status and its time under the title take the same color.
+A filled icon waits for you, an outlined one does not. The last row of the picker is the legend
+(it cannot be chosen), and the menu bar drop-down has a Legend submenu with the icons.
+
+| Icon | Color | Status |
+| --- | --- | --- |
+| Disc with pause bars | orange | `blocked`: waiting on a permission or a question |
+| Disc with a check mark | green | `done`: finished, not seen yet |
+| Ring with `?` | purple | `unknown`: a status HerdrJump does not know (listed, never counted) |
+| Empty ring | grey | `idle`, or `done` and already seen |
+| Half-filled ring | blue | `working` |
+
+## Waiting times
+
+Herdr reports no times, only counters, so HerdrJump notes when it sees each agent change state and
+shows how long ago that was: `12m`, `1h 5m`, `2d 3h`, with the start time for agents that wait for
+you (`since 09:41`, `Tue 23:05` within the week). The time is the poll that saw the change, so it
+can be up to `pollSeconds` late. `≥12m · since ≤09:41` means the change happened while HerdrJump
+could not see it (Hammerspoon was not running, or Herdr did not answer): the agent has waited at
+least that long, since that time or earlier.
+The times live in Hammerspoon's settings (`HerdrJump.since`) and survive a reload; the queue order
+comes from Herdr's own change counter, so it is exact either way.
 
 ## Menu bar
 
@@ -53,6 +87,9 @@ Both keys can be changed, see [Configure](#configure).
 | Two outlined agents | Nothing waits for you |
 | Two solid agents and a number | That many agents are `blocked`, or `done` and not seen yet |
 | Two outlined agents and `?` | Herdr cannot be read; the menu says why |
+
+Click it for the drop-down: the agents in the picker's order, each with its icon and wait, then
+**Sort by** (FIFO, LIFO, by name; the checked one is in use) and **Legend**.
 
 macOS adds the item left of the other menu bar icons, on the main display. The count can lag by
 up to `pollSeconds`.
@@ -121,6 +158,9 @@ Set these before `start()`:
 | `itermBundleID` | `com.googlecode.iterm2` | The app to bring forward |
 | `pollSeconds` | `5` | How often the agent list is read |
 | `showMenubar` | `true` | Show the menu bar icon and count |
+| `defaultOrder` | `"fifo"` | The sort until you choose one: `"fifo"`, `"lifo"` or `"name"`; your last choice (Tab, menu) wins |
+
+`spoon.HerdrJump:setOrder("lifo")` sorts from a script, like Tab, and is remembered too.
 
 Other keys: pass your own mapping instead of `defaultHotkeys`.
 
@@ -142,7 +182,8 @@ spoon.HerdrJump:start()
 - A jump runs `herdr agent focus <pane id>`, then finds the Herdr client's terminal with `ps` and
   selects the iTerm session on that tty, with its tab and window.
 - The icon is drawn with `hs.canvas` as a template image, so macOS tints it for light and dark
-  menu bars; the count is the item's title.
+  menu bars; the count is the item's title. The status icons are drawn the same way, in color.
+- Tab is bound only while the picker is open, and released when it closes.
 - It does not use `hs.socket` on Herdr's socket: in Hammerspoon 1.1.1, connecting `hs.socket` to
   a Unix socket aborts Hammerspoon (GCDAsyncSocket throws while building the peer's URL).
 
@@ -168,7 +209,7 @@ spoon.HerdrJump:start()
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (ranking, seen record, icon geometry, herdr replies, iTerm), Lua 5.4 or newer
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, seen record, wait times, icons, herdr replies, iTerm), Lua 5.4 or newer
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 

@@ -26,7 +26,7 @@ handle them and the marketplace does not list them; each README explains its ins
 
 | Companion | What it does | Runs in |
 | --- | --- | --- |
-| [herdr-jump](herdr-jump/) | From any macOS app: one key back to iTerm, one key to a Spotlight-style list of your agents (blocked first, then done), and a menu bar icon that counts the agents waiting for you. Installed with one line of `curl` piped to `sh` | [Hammerspoon](https://www.hammerspoon.org) |
+| [herdr-jump](herdr-jump/) | From any macOS app: one key back to iTerm, one key to a Spotlight-style list of your agents (blocked first, then done, oldest wait first, with how long each has waited), and a menu bar icon that counts the agents waiting for you. Installed with one line of `curl` piped to `sh` | [Hammerspoon](https://www.hammerspoon.org) |
 
 ## Better together: a naming scheme
 
