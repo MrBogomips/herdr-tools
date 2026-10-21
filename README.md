@@ -28,6 +28,11 @@ handle them and the marketplace does not list them; each README explains its ins
 | --- | --- | --- |
 | [herdr-jump](herdr-jump/) | From any macOS app: one key back to iTerm, one key to a Spotlight-style list of your agents (blocked first, then done, oldest wait first, with how long each has waited), and a menu bar icon that counts the agents waiting for you. Installed with one line of `curl` piped to `sh` | [Hammerspoon](https://www.hammerspoon.org) |
 
+<img src="herdr-jump/docs/picker.png" alt="The herdr-jump picker: blocked agents with orange pause icons on top, then finished ones with green check marks, each with how long it has waited, then the idle and working agents" width="720">
+
+herdr-jump's picker, with fictional agents: every agent that waits for you, in the order it
+started waiting, one key away from any app.
+
 ## Better together: a naming scheme
 
 Name spaces `CUSTOMER - project`, mark the ones you always want on top with ` +` and the parking

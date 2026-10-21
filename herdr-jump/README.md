@@ -4,7 +4,14 @@ A [Hammerspoon](https://www.hammerspoon.org) Spoon for macOS that gets you back 
 agents from any app: one key back to iTerm, one key to the agent that needs you, and a menu bar
 icon that counts the agents waiting for you.
 
-<img src="docs/menubar.svg" alt="The menu bar item: two outlined agents while nothing waits, two solid agents with a count while some wait, outlined with a question mark when Herdr cannot be read" width="440">
+Run five agents at once and they queue up for you: a permission here, a finished review there.
+HerdrJump lines them up first come, first served, tells you how long each one has waited, and
+takes you to its pane with Enter, whatever app you are in.
+
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, waiting 12 and 3 minutes, then two finished agents with green check marks, waiting 25 and 4 minutes, then an idle agent and two working ones; the last row is the legend of the icons" width="800">
+
+The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
+first; then the others. Tab sorts newest first or by name.
 
 It is not a Herdr plugin: it runs in Hammerspoon, outside Herdr, and talks to the Herdr server
 through the `herdr` command line. It has no `herdr-plugin.toml`, so the plugin marketplace does
@@ -35,24 +42,6 @@ not list it.
 | `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the iTerm window, tab and session running the Herdr client come forward. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
-```
-⌃⌥⌘A  (from any app)
-┌───────────────────────────────────────────────────────────────┐
-│ Filter agents · sorted FIFO (Tab to change)                   │
-├───────────────────────────────────────────────────────────────┤
-│ (⏸) ACME-API-Fixing-Auth                                      │
-│     blocked 12m · since 09:41 · acme-api                      │
-│ (✓) GLOBEX-ETL-Reviewing-Loader                               │
-│     done 4m · since 09:49 · globex-etl                        │
-│ ( ) LUMON-Planning-Offsite                                    │
-│     idle 2h 5m · lumon                                        │
-│ (◐) INITECH-CRM-Implementing-UI                               │
-│     working 1m · initech-crm                                  │
-│     ⏸ blocked  ✓ done, not seen  ? unknown  ○ idle  ◐ working │
-│     Sorted FIFO · Tab: LIFO, name · Enter: jump               │
-└───────────────────────────────────────────────────────────────┘
-```
-
 Both keys can be changed, see [Configure](#configure).
 
 ## Symbols
@@ -82,6 +71,8 @@ comes from Herdr's own change counter, so it is exact either way.
 
 ## Menu bar
 
+<img src="docs/menubar.svg" alt="The menu bar item: two outlined agents while nothing waits, two solid agents with a count while some wait, outlined with a question mark when Herdr cannot be read" width="440">
+
 | Icon | Meaning |
 | --- | --- |
 | Two outlined agents | Nothing waits for you |
@@ -90,6 +81,8 @@ comes from Herdr's own change counter, so it is exact either way.
 
 Click it for the drop-down: the agents in the picker's order, each with its icon and wait, then
 **Sort by** (FIFO, LIFO, by name; the checked one is in use) and **Legend**.
+
+<img src="docs/menu.png" alt="The menu bar drop-down under the solid agents icon with the count 4: the same seven fictional agents with their icons and waits, then the Sort by and Legend submenus" width="460">
 
 macOS adds the item left of the other menu bar icons, on the main display. The count can lag by
 up to `pollSeconds`.
