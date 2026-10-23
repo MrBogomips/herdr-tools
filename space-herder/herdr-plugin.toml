@@ -1,57 +1,68 @@
-id = "mrbogomips.space-colors"
-name = "Space Colors"
+id = "mrbogomips.space-herder"
+name = "Space Herder"
 version = "0.1.0"
 min_herdr_version = "0.9.5"
-description = "Colour space names in the sidebar by a stable hash of their prefix, or by regex rules, so every space of one customer shares a colour; new-space and rename dialogs preview the name, sort group and colour."
+description = "Herd the spaces sidebar: keep it sorted into ~, head (+), default and bottom (-) groups, colour every space of one customer alike, and create or rename spaces in dialogs that preview the result."
 platforms = ["macos", "linux"]
 
-# The colours show only after the [ui.sidebar.spaces] block printed by
-# `python3 space_colors.py snippet` is in Herdr's config.toml (see the README).
+# The colours show only after the [ui.sidebar.spaces] rows printed by
+# `python3 space_herder.py snippet` are in Herdr's config.toml (see the README).
+
+# Every hook recolours; "created" and "renamed" also sort when "auto_sort" in the plugin's
+# config.json says so ("off" by default). Hooks stay silent unless they fail.
 
 # Token metadata does not survive a server restart: colour every space again at startup.
 [[startup]]
-command = ["python3", "space_colors.py", "reconcile", "--hook"]
+command = ["python3", "space_herder.py", "hook", "startup"]
 
 [[events]]
 on = "workspace.created"
-command = ["python3", "space_colors.py", "reconcile", "--hook"]
+command = ["python3", "space_herder.py", "hook", "created"]
 
 [[events]]
 on = "workspace.renamed"
-command = ["python3", "space_colors.py", "reconcile", "--hook"]
+command = ["python3", "space_herder.py", "hook", "renamed"]
 
 # A space nobody named takes its label from its pane's folder, and a `cd` changes it without a
 # hookable event (pane.updated cannot be hooked), so catch up on the next focus change. A run
 # with nothing to change writes nothing.
 [[events]]
 on = "pane.focused"
-command = ["python3", "space_colors.py", "reconcile", "--hook"]
+command = ["python3", "space_herder.py", "hook", "focused"]
 
 # Worktree provenance changes (a worktree child follows its parent's colour).
 [[events]]
 on = "workspace.updated"
-command = ["python3", "space_colors.py", "reconcile", "--hook"]
+command = ["python3", "space_herder.py", "hook", "updated"]
+
+# Bind a key in config.toml: type = "plugin_action", command = "mrbogomips.space-herder.sort".
+[[actions]]
+id = "sort"
+title = "Sort the sidebar"
+description = "Sort the sidebar: ~ first, then names ending with ' +', plain names, names ending with ' -'."
+contexts = ["global", "workspace"]
+command = ["python3", "space_herder.py", "sort"]
+
+[[actions]]
+id = "recolor"
+title = "Recolour the sidebar"
+description = "Colour every space name again, for example after editing config.json."
+contexts = ["global", "workspace"]
+command = ["python3", "space_herder.py", "recolor"]
 
 [[actions]]
 id = "snippet"
 title = "Write sidebar rows for config.toml"
-description = "Write the [ui.sidebar.spaces] block for the current palette next to config.json and show its path."
+description = "Write the [ui.sidebar.spaces] rows for the current palette next to config.json and show its path."
 contexts = ["global", "workspace"]
-command = ["python3", "space_colors.py", "snippet", "--write"]
-
-[[actions]]
-id = "recolor"
-title = "Recolour spaces"
-description = "Colour every space name again, for example after editing config.json."
-contexts = ["global", "workspace"]
-command = ["python3", "space_colors.py", "reconcile"]
+command = ["python3", "space_herder.py", "snippet", "--write"]
 
 [[actions]]
 id = "clear"
-title = "Clear space colours"
+title = "Clear the colours"
 description = "Remove the coloured names until the next hook run, for example to test the default rows."
 contexts = ["global", "workspace"]
-command = ["python3", "space_colors.py", "clear"]
+command = ["python3", "space_herder.py", "clear"]
 
 # Dialogs that replace Herdr's own new-space and rename prompts: bind these actions to
 # prefix+shift+n and prefix+shift+w (see the README). Each opens the popup pane of the same id.

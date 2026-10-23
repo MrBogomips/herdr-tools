@@ -8,18 +8,18 @@ Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who 
 spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
 only the ones you want.
 
-<img src="space-colors/docs/hero.png" alt="Herdr with herdr-tools: a sidebar where every customer has its own colour, ACME spaces in blue next to each other, Initech in mauve, LUMON pinned on top and SYS kept at the bottom, with agents working and waiting below" width="100%">
+<img src="space-herder/docs/hero.png" alt="Herdr with herdr-tools: a sidebar where every customer has its own colour, ACME spaces in blue next to each other, Initech in mauve, LUMON pinned on top and SYS kept at the bottom, with agents working and waiting below" width="100%">
 
-<sub>Herdr with sort-spaces, space-colors and auto-tab-name, on fictional customers.</sub>
+<sub>Herdr with Space Herder and auto-tab-name, on fictional customers.</sub>
 
 ## What you get
 
-- **A colour per customer.** [space-colors](space-colors/) paints every space of one customer in
-  the same colour: `ACME - api`, `ACME - web` and their worktrees in blue, Initech in mauve. Pick a
-  Catppuccin, Dracula, Nord or Tokyo Night palette, and colours stay apart as customers come and go.
-- **A sidebar that sorts itself.** [sort-spaces](sort-spaces/) keeps `~` first, pins `LUMON +` on
-  top, parks `SYS -` at the bottom and puts everything else in name order, every time a space is
-  created or renamed.
+- **A sidebar that sorts itself.** [Space Herder](space-herder/) keeps `~` first, pins
+  `LUMON +` on top, parks `SYS -` at the bottom and puts everything else in name order, every time
+  a space is created or renamed.
+- **A colour per customer.** It paints every space of one customer in the same colour:
+  `ACME - api`, `ACME - web` and their worktrees in blue, Initech in mauve. Pick a Catppuccin,
+  Dracula, Nord or Tokyo Night palette, and colours stay apart as customers come and go.
 - **New and rename dialogs that show the result.** Type a name and watch the sidebar preview: the
   space slides into its group and takes its customer's colour before you press Enter. Pick another
   colour and every space of that customer follows.
@@ -28,7 +28,7 @@ only the ones you want.
 - **Your agents, one key away.** [herdr-jump](herdr-jump/) lists the agents waiting for you, from
   any macOS app.
 
-<img src="space-colors/docs/new-space.gif" alt="The space-colors new-space dialog: a folder is picked from the recent ones, the name Initech - billing is typed, the head group moves it to the top of the preview, mauve is picked for Initech and both Initech spaces turn mauve, then Enter creates the space at the top of the sidebar" width="100%">
+<img src="space-herder/docs/new-space.gif" alt="The Space Herder new-space dialog: a folder is picked from the recent ones, the name Initech - billing is typed, the head group moves it to the top of the preview, mauve is picked for Initech and both Initech spaces turn mauve, then Enter creates the space at the top of the sidebar" width="100%">
 
 <sub>A new space from start to finish: folder, name, group, colour, Enter.</sub>
 
@@ -37,8 +37,7 @@ only the ones you want.
 | Plugin | What it does | Install |
 | --- | --- | --- |
 | [auto-tab-name](auto-tab-name/) | Names each tab after the folder of its pane (folder, repo, path or branch) and keeps it in sync as you and your agents move around (into a worktree, say); tabs you rename by hand are left alone | `herdr plugin install MrBogomips/herdr-tools/auto-tab-name` |
-| [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
-| [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour; new-space and rename dialogs preview the name, sort group and colour, and let you pick the colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
+| [space-herder](space-herder/) | Herds the spaces sidebar: sorts it into `~`, head (`+`), default and bottom (`-`) groups, then by name, on a key or by itself when a space is created or renamed; colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules) from a preset palette such as Catppuccin or Dracula (up to 15 colours); new-space and rename dialogs preview the name, group, place and colour, and let you pick the colour | `herdr plugin install MrBogomips/herdr-tools/space-herder` |
 
 ### Companions
 
@@ -54,30 +53,30 @@ handle them and the marketplace does not list them; each README explains its ins
 herdr-jump's picker, with fictional agents: every agent that waits for you, in the order it
 started waiting, one key away from any app.
 
-## Better together: a naming scheme
+## A naming scheme
 
-<img src="space-colors/docs/sidebar.png" alt="The spaces sidebar close up: ~ first, Initech - billing + and LUMON + in the head group, ACME - api with its feature-checkout worktree and ACME - web in blue, Globex - etl, Initech - crm in mauve, SYS - at the bottom" width="300" align="right">
+<img src="space-herder/docs/sidebar.png" alt="The spaces sidebar close up: ~ first, Initech - billing + and LUMON + in the head group, ACME - api with its feature-checkout worktree and ACME - web in blue, Globex - etl, Initech - crm in mauve, SYS - at the bottom" width="300" align="right">
 
 Name spaces `CUSTOMER - project`, mark the ones you always want on top with ` +` and the parking
 lot with ` -`:
 
 - `~` is home, always first.
 - `Initech - billing +` and `LUMON +` form the head group, always on top.
-- `ACME - api` and `ACME - web` share one colour (space-colors keys on `ACME`) and sit side by
-  side (sort-spaces sorts by name); the `feature-checkout` worktree follows its parent.
+- `ACME - api` and `ACME - web` share one colour (Space Herder keys on `ACME`) and sit side by
+  side (names sort alphabetically); the `feature-checkout` worktree follows its parent.
 - `SYS -` is in the bottom group, out of the way.
 
-With sort-spaces' `"auto_sort": "both"` and space-colors' `"assign": "sticky"`, a new or renamed
-space lands in its place with its customer's colour, with no key to press; customers keep apart
-colours as long as there are fewer of them than colours (15 at most).
+With Space Herder's `"auto_sort": "both"` and `"assign": "sticky"`, a new or renamed space lands
+in its place with its customer's colour, with no key to press; customers keep apart colours as
+long as there are fewer of them than colours (15 at most).
 
-To learn the scheme as you go, bind space-colors' [new-space and rename dialogs](space-colors/#dialogs)
-in place of Herdr's own prompts: they preview the group a suffix picks and where the space lands,
+To learn the scheme as you go, bind the [new-space and rename dialogs](space-herder/#dialogs) in
+place of Herdr's own prompts: they preview the group a suffix picks and where the space lands,
 and let you pick the customer's colour.
 
 <br clear="right">
 
-<img src="space-colors/docs/rename.png" alt="The rename dialog on ACME - api: blue is picked in the colour row, and the sidebar preview shows ACME - api, its feature-checkout worktree and ACME - web all in blue" width="100%">
+<img src="space-herder/docs/rename.png" alt="The rename dialog on ACME - api: blue is picked in the colour row, and the sidebar preview shows ACME - api, its feature-checkout worktree and ACME - web all in blue" width="100%">
 
 <sub>Renaming `ACME - api`: picking blue recolours every ACME space in the preview at once.</sub>
 
@@ -97,7 +96,7 @@ code running as your user, so read them first; these are short Python scripts.
 
 Requirements:
 
-- Herdr 0.9.3 or newer (0.9.5 for space-colors), on macOS or Linux.
+- Herdr 0.9.3 or newer (0.9.5 for Space Herder), on macOS or Linux.
 - `python3` 3.9 or newer on the `PATH`. The system Python of macOS is enough; the plugins use the
   standard library only, so there is nothing else to install.
 
@@ -107,18 +106,18 @@ Each plugin's README explains its key bindings and its `config.json`, which live
 ### Versions
 
 `herdr plugin update` follows `main`, which only receives tested changes. Every release is also
-tagged `<plugin>-vX.Y.Z` (for example `sort-spaces-v0.2.0`); to stay on one, pin it:
+tagged `<plugin>-vX.Y.Z` (for example `auto-tab-name-v0.2.0`); to stay on one, pin it:
 
 ```bash
-herdr plugin install MrBogomips/herdr-tools/sort-spaces --ref sort-spaces-v0.2.0
+herdr plugin install MrBogomips/herdr-tools/auto-tab-name --ref auto-tab-name-v0.2.0
 ```
 
 ## Develop
 
 ```bash
 git clone https://github.com/MrBogomips/herdr-tools
-herdr plugin link "$PWD/herdr-tools/space-colors"   # run your working copy
-cd herdr-tools/space-colors && python3 -m unittest -v
+herdr plugin link "$PWD/herdr-tools/space-herder"   # run your working copy
+cd herdr-tools/space-herder && python3 -m unittest -v
 ```
 
 - One folder per plugin: `herdr-plugin.toml`, `README.md`, `config.example.json`, the code and

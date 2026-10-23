@@ -78,6 +78,24 @@ class ValidationTest(unittest.TestCase):
         self.assert_rejected("palette_size", palette="catppuccin", rules=[{"match": "^~$", "color": None}])
 
 
+class AutoSortTest(unittest.TestCase):
+    def test_autosort_is_off_by_default(self):
+        self.assertEqual(build().auto_sort, "off")
+
+    def test_accepts_each_setting(self):
+        for setting in ("off", "created", "renamed", "both"):
+            with self.subTest(setting=setting):
+                self.assertEqual(build(auto_sort=setting).auto_sort, setting)
+
+    def test_rejects_an_unknown_setting(self):
+        with self.assertRaisesRegex(ConfigError, r"config\.json: auto_sort.*always"):
+            build(auto_sort="always")
+
+    def test_rejects_a_setting_that_is_not_text(self):
+        with self.assertRaisesRegex(ConfigError, r"config\.json: auto_sort"):
+            build(auto_sort=["created", "renamed"])
+
+
 class RulesTest(unittest.TestCase):
     PALETTE = ["#111111", "#222222"]
 
@@ -164,7 +182,7 @@ class LoadConfigTest(unittest.TestCase):
     def test_the_shipped_example_is_valid(self):
         config = load_config(Path(__file__).resolve().parent / "config.example.json")
 
-        self.assertEqual(config.palette_name, "dracula")
+        self.assertEqual((config.palette_name, config.auto_sort), ("dracula", "both"))
         self.assertTrue(config.rules)
 
 

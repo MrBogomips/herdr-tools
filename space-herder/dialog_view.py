@@ -47,7 +47,7 @@ class PreviewRow:
 
 
 def preview_rows(form: Form, setup: Setup) -> List[PreviewRow]:
-    """The sidebar as sort-spaces will order it and space-colors colour it, with this space in it."""
+    """The sidebar as it will be sorted and coloured, with this space in it."""
     spaces = _spaces_with_target(form, setup)
     parents = worktree_parents(spaces)
     overrides = dict(setup.overrides)

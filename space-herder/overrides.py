@@ -29,7 +29,7 @@ def load_overrides(path: Path) -> Overrides:
         raise ConfigError("{}: {} (delete it to start over)".format(path, err)) from err
     keys = raw.get("keys") if isinstance(raw, dict) else None
     if not isinstance(keys, dict) or not all(_valid_entry(entry) for entry in keys.values()):
-        raise ConfigError("{}: not a space-colors overrides file (delete it to start over)".format(path))
+        raise ConfigError("{}: not a Space Herder overrides file (delete it to start over)".format(path))
     return {key: entry["color"] for key, entry in keys.items()}
 
 

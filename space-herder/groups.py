@@ -1,8 +1,8 @@
-"""The sort-spaces groups, so the dialogs can show where a space will sit in the sidebar.
+"""The sidebar groups and their order, shared by the sort and the dialogs' preview.
 
 A name suffix picks the group: home (the name "~"), head (ends with " +"), default (no suffix),
-bottom (ends with " -"). This mirrors `parse_label` and `plan_order` in sort-spaces/sort_spaces.py:
-a plugin folder stands alone, so the rules are copied here. Keep the two in step.
+bottom (ends with " -"). The space before the suffix is required, so `C++` stays in the default
+group.
 """
 from __future__ import annotations
 
@@ -39,10 +39,11 @@ def compose(name: str, group: str) -> str:
 
 
 def plan_order(workspaces: List[Workspace]) -> List[str]:
-    """Workspace ids in the sort-spaces order: by group, then by name ignoring case.
+    """Workspace ids in sidebar order: by group, then by name without the suffix, ignoring case.
 
-    Worktree children sort with their parent (its group, label, then position). Equal keys keep
-    their current order.
+    Worktree children sort with their parent (its group, label, then position), so a worktree
+    group stays together even when other spaces share the parent's label. Equal keys keep their
+    current order.
     """
     parents = worktree_parents(workspaces)
 

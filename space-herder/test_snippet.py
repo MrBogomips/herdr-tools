@@ -15,7 +15,7 @@ class RenderRowsTest(unittest.TestCase):
 
         self.assertEqual(
             render_rows(cfg),
-            "# space-colors sidebar rows: palette custom, 3 slots, fingerprint " + fingerprint(cfg) + ".\n"
+            "# Space Herder sidebar rows: palette custom, 3 slots, fingerprint " + fingerprint(cfg) + ".\n"
             "# In Herdr's config.toml, set `rows` of your [ui.sidebar.spaces] table to the value below\n"
             "# (keep its other keys, such as row_gap; add the table if you have none). Two tables with\n"
             "# the same name make the whole config invalid, so run `herdr config check`, then\n"

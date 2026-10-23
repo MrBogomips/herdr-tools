@@ -1,4 +1,6 @@
-"""space-colors settings: read config.json, validate it, and lay out the colour slots.
+"""Space Herder settings: read config.json, validate it, and lay out the colour slots.
+
+`auto_sort` says when the hooks sort the sidebar; every other key is about colours.
 
 A slot is one sidebar token (`$spc<N>`) styled with one colour in Herdr's config.toml. Slots are
 the palette colours in order, then each extra colour named by a rule, then one unstyled slot when
@@ -15,6 +17,9 @@ from typing import Any, Dict, List, Mapping, Optional, Pattern, Tuple
 from herdr_api import ConfigError, load_json_config
 from palettes import DEFAULT_PALETTE, Palette, normalize_hex, resolve_palette
 
+PLUGIN_ID = "mrbogomips.space-herder"
+# The hook events after which each `auto_sort` setting sorts the sidebar.
+AUTO_SORT_EVENTS = {"off": (), "created": ("created",), "renamed": ("renamed",), "both": ("created", "renamed")}
 KEY_MODES = ("whole", "prefix", "suffix")
 ASSIGN_MODES = ("hash", "sticky")
 RULE_KEYS = {"match", "color"}
@@ -22,6 +27,7 @@ RULE_KEYS = {"match", "color"}
 SLOT_LIMIT = 15
 
 DEFAULTS: Dict[str, Any] = {
+    "auto_sort": "off",
     "palette": DEFAULT_PALETTE,
     "palette_size": None,
     "assign": "hash",
@@ -44,6 +50,7 @@ class Rule:
 
 @dataclass(frozen=True)
 class Config:
+    auto_sort: str
     palette: Palette
     palette_name: str
     assign: str
@@ -70,6 +77,8 @@ def build_config(raw: Mapping[str, Any], source: str) -> Config:
 
 
 def _build(raw: Mapping[str, Any]) -> Config:
+    if not isinstance(raw["auto_sort"], str) or raw["auto_sort"] not in AUTO_SORT_EVENTS:
+        raise ValueError("auto_sort must be one of {}, not {!r}".format(", ".join(AUTO_SORT_EVENTS), raw["auto_sort"]))
     palette = _palette(raw["palette"], raw["palette_size"])
     if raw["assign"] not in ASSIGN_MODES:
         raise ValueError("assign must be one of {}, not {!r}".format(", ".join(ASSIGN_MODES), raw["assign"]))
@@ -87,6 +96,7 @@ def _build(raw: Mapping[str, Any]) -> Config:
         raise ValueError("ignore_suffixes must be a list of non-empty strings")
     rules, slots = _layout_rules(raw["rules"], palette, raw["ignore_case"])
     return Config(
+        auto_sort=raw["auto_sort"],
         palette=palette,
         palette_name=raw["palette"].strip().lower() if isinstance(raw["palette"], str) else "custom",
         assign=raw["assign"],
