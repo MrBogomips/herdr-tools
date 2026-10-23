@@ -18,7 +18,7 @@ from dialog_form import (
     shown_colour,
 )
 from groups import BOTTOM, HEAD, HOME, plan_order
-from herdr_api import Workspace
+from herdr_api import Workspace, parent_of, worktree_parents
 from keys import derive_key
 from overrides import with_override
 from plan import choose, display_value
@@ -43,11 +43,13 @@ class PreviewRow:
     text: str
     colour: Optional[str]  # None: Herdr's default text colour
     target: bool  # the space being created or renamed
+    child: bool = False  # a worktree child, drawn under its parent
 
 
 def preview_rows(form: Form, setup: Setup) -> List[PreviewRow]:
     """The sidebar as sort-spaces will order it and space-colors colour it, with this space in it."""
     spaces = _spaces_with_target(form, setup)
+    parents = worktree_parents(spaces)
     overrides = dict(setup.overrides)
     if form.colour_touched and colour_lock(form, setup) is None:
         key = derive_key(colour_label(form, setup), setup.config)
@@ -60,6 +62,7 @@ def preview_rows(form: Form, setup: Setup) -> List[PreviewRow]:
             display_value(by_id[workspace_id]["label"], setup.config.marker),
             setup.config.slots[choices[workspace_id].slot],
             workspace_id == target_id,
+            parent_of(by_id[workspace_id], parents) is not None,
         )
         for workspace_id in plan_order(spaces)
     ]
