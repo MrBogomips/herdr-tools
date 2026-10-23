@@ -4,6 +4,8 @@ import re
 import unittest
 from pathlib import Path
 
+from space_dialog import ENTRYPOINTS
+
 HERE = Path(__file__).resolve().parent
 MANIFEST = (HERE / "herdr-plugin.toml").read_text(encoding="utf-8")
 
@@ -33,6 +35,12 @@ class ManifestTest(unittest.TestCase):
         self.assertTrue(local_ids)
         for local_id in local_ids:
             self.assertNotIn(".", local_id)
+
+    def test_every_dialog_entrypoint_is_a_popup_pane(self):
+        panes = dict(re.findall(r'^\[\[panes\]\]\nid = "([^"]+)"\n(?:.*\n)*?placement = "([^"]+)"', MANIFEST, re.MULTILINE))
+        for entrypoint in ENTRYPOINTS.values():
+            with self.subTest(entrypoint=entrypoint):
+                self.assertEqual(panes.get(entrypoint), "popup")
 
     def test_the_config_example_is_valid_json(self):
         self.assertIsInstance(json.loads((HERE / "config.example.json").read_text(encoding="utf-8")), dict)

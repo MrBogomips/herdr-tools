@@ -10,6 +10,7 @@ from unittest import mock
 import herdr_api
 import space_colors as tool
 from herdr_api import HerdrError
+from overrides import save_overrides
 
 
 class FakeHerdr:
@@ -153,6 +154,16 @@ class MainTest(unittest.TestCase):
         self.assertEqual((code, toasts, herdr.reports()), (0, [], []))
         self.assertRegex(out, r"ACME - api\s+acme\s+spc0\s+#000001\s+hash")
         self.assertRegex(out, r"Globex - etl\s+globex\s+spc7\s+#000008\s+hash")
+
+    def test_reconcile_and_preview_use_the_colours_chosen_in_the_dialog(self):
+        save_overrides(Path(self.directory.name) / "overrides.json", {"acme": "#000005"})
+        herdr = FakeHerdr(["ACME - api", "Globex - etl"])
+
+        self.run_main(herdr, "reconcile", "--hook")
+        _, _, out = self.run_main(herdr, "preview")
+
+        self.assertEqual(herdr.tokens()["ACME - api"], {"spc4": "▌ACME - api"})
+        self.assertRegex(out, r"ACME - api\s+acme\s+spc4\s+#000005\s+override")
 
     def use_sticky(self):
         self.config.write_text('{"assign": "sticky", "palette": ["#000001", "#000002", "#000003", "#000004", '

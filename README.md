@@ -17,7 +17,7 @@ has its own.
 | --- | --- | --- |
 | [auto-tab-name](auto-tab-name/) | Names each tab after the folder of its pane (folder, repo, path or branch) and keeps it in sync as you and your agents move around (into a worktree, say); tabs you rename by hand are left alone | `herdr plugin install MrBogomips/herdr-tools/auto-tab-name` |
 | [sort-spaces](sort-spaces/) | Sorts the spaces sidebar into `~`, head (`+`), default and bottom (`-`) groups, then by name; on a key, or by itself when a space is created or renamed | `herdr plugin install MrBogomips/herdr-tools/sort-spaces` |
-| [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
+| [space-colors](space-colors/) | Colours each space name by its customer prefix (stable hash or sticky least-used colour, or regex rules), from a preset palette such as Catppuccin or Dracula (up to 15 colours), so every space of one customer shares a colour; new-space and rename dialogs preview the name, sort group and colour, and let you pick the colour | `herdr plugin install MrBogomips/herdr-tools/space-colors` |
 
 ### Companions
 
@@ -51,6 +51,10 @@ lot with ` -`:
 With sort-spaces' `"auto_sort": "both"` and space-colors' `"assign": "sticky"`, a new or renamed
 space lands in its place with its customer's colour, with no key to press; customers keep apart
 colours as long as there are fewer of them than colours (15 at most).
+
+To learn the scheme as you go, bind space-colors' [new-space and rename dialogs](space-colors/#dialogs)
+in place of Herdr's own prompts: they preview the group a suffix picks and where the space lands,
+and let you pick the customer's colour.
 
 ## Install
 

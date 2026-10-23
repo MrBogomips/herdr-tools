@@ -13,14 +13,16 @@ spaces share a colour (catppuccin palette, sticky mode). Together with
 
 1. **Rules first.** Each rule is a regular expression matched against the space name; the first
    one that matches picks the colour.
-2. **Otherwise the key's colour.** The key is part of the name, by default the text before the
+2. **Then a colour chosen in a dialog.** The [new-space and rename dialogs](#dialogs) can give a
+   key a palette colour of your choice.
+3. **Otherwise the key's colour.** The key is part of the name, by default the text before the
    first `" -"` (`ACME - api` → `ACME`). Two ways to turn it into a colour (`assign`):
    - `"hash"` (default): a stable hash (SHA-256) of the key picks a palette colour. The same
      customer gets the same colour on every machine, with nothing stored.
    - `"sticky"`: a new key starts from its hash colour but takes the least-used colour instead
      when that one is taken, and keeps it from then on. No two customers share a colour until
      there are more customers than colours.
-3. **Worktree children** take their parent's colour, so a repo's checkouts match it.
+4. **Worktree children** take their parent's colour, so a repo's checkouts match it.
 
 Before the key is taken, the name is normalized: whitespace runs count as one space, case is
 ignored, and the sort-spaces markers ` +` / ` -` at the end are dropped, so `ACME +` and
@@ -79,6 +81,72 @@ colour; Herdr hides the empty ones.
 **Generate the rows again after changing the palette, `palette_size` or a rule's colour**, since
 the colours live in `config.toml`. The first comment line carries a fingerprint of the colours, so
 you can tell whether the rows in your config are current.
+
+## Dialogs
+
+Herdr's own "new space" and "rename space" prompts ask only for a name. The plugin's dialogs open
+in a popup and show the result while you type: the name with its sort-spaces group suffix, and
+the sidebar as it will look, with the space in its place and in its colour.
+
+```
+ New space                                          │ Sidebar preview
+                                                    │ ▌~
+Folder   ~/git/acme/api█                            │ ▌LUMON +
+         ~/git/acme/web  recent                     │ ▌ACME - api ◀
+         ~/git/globex  zoxide                       │ ▌ACME - web
+Name     ACME - api                                 │ ▌Globex - etl
+Group    ( ) head +  (•) default  ( ) bottom -      │ ▌SYS -
+Colour   [auto]  ●  ●  ●  ●  ●  ●  ●  ●  ●          │
+                                                    │
+default: no suffix, sorted by name between head     │
+(" +") and bottom (" -")                            │
+auto: every ACME space keeps its automatic colour   │
+Tab complete  ↑↓ suggestions  Enter create  Esc cancel
+```
+
+| Field | Keys | What it does |
+| --- | --- | --- |
+| Folder (new space only) | type, `Tab` completes, `↑` `↓` pick a suggestion | Where the space starts. It opens on the folder of the focused pane; suggestions are the folders you used in this dialog, the folders of open panes and, when [zoxide](https://github.com/ajeetdsouza/zoxide) is installed, its best-ranked ones |
+| Name | type, `Backspace`, `Ctrl+W`, `Ctrl+U` | Empty for a new space: Herdr names it after the folder. Ending it with ` +` or ` -` picks the group |
+| Group | `←` `→`, `+` `-` `=` | head (` +`), default, or bottom (` -`), as [sort-spaces](../sort-spaces/) orders them. The name `~` is the home space, always first |
+| Colour | `←` `→`, `a` for auto | A palette colour for **every space of the key** (`ACME` for `ACME - api`), or auto for the hash or sticky colour |
+
+`Tab` and `Shift+Tab` move between fields (in Folder, `Tab` first completes the path, or lists
+the matching folders when there are several), `Enter` creates or renames, `Esc` cancels. A pasted
+path is typed in as is: its newline doesn't submit the form. Rename works on the space the key was pressed in.
+
+Bind the two actions to Herdr's keys and move the built-in prompts elsewhere, then run
+`herdr config check && herdr server reload-config`:
+
+```toml
+[keys]
+new_workspace = "prefix+alt+n"     # Herdr's own prompts, still reachable
+rename_workspace = "prefix+alt+w"
+
+[[keys.command]]
+key = "prefix+shift+n"
+type = "plugin_action"
+command = "mrbogomips.space-colors.new-space"
+description = "new space: folder, name, group, colour"
+
+[[keys.command]]
+key = "prefix+shift+w"
+type = "plugin_action"
+command = "mrbogomips.space-colors.rename-space"
+description = "rename space: name, group, colour"
+```
+
+The dialog does not sort the sidebar itself: with sort-spaces' `"auto_sort": "both"` the space
+moves to the place shown at once; otherwise press the sort key.
+
+### Chosen colours
+
+A colour picked in a dialog is saved for the key in `overrides.json` in the plugin state directory
+and kept until you set the key back to auto. It beats the hash and sticky colours, and in sticky
+mode new customers avoid it; a rule still beats it, so when a rule matches the name the Colour
+field shows the rule instead. Worktree children follow their parent and can't pick a colour. Only
+palette colours can be picked, since each colour needs its own row slot in `config.toml`; a saved
+colour that leaves the palette is ignored.
 
 ## Configuration
 
@@ -193,6 +261,10 @@ and every run's error is in `herdr plugin log list --plugin mrbogomips.space-col
 - `ACME-api` does not split on `" -"`; keep the space before the dash, or change `separator`.
 - `▌` is drawn one column wide by most terminals; if yours shows a gap or overlap, pick another
   `marker`.
+- The dialogs replace the key bindings only: the sidebar's mouse button for a new space and
+  Herdr's command palette still open Herdr's own prompts.
+- The dialog's preview copies the sort-spaces order; it shows where sort-spaces will put the space,
+  not where Herdr puts it before sorting.
 
 ## Uninstall
 
@@ -213,6 +285,8 @@ python3 space_colors.py snippet         # print the sidebar rows
 python3 space_colors.py snippet --write # write them to sidebar-rows.toml next to config.json
 python3 space_colors.py clear           # remove the plugin's tokens (hooks add them back)
 python3 space_colors.py palettes        # list the presets
+python3 space_dialog.py run new         # the new-space dialog in this terminal
+python3 space_dialog.py run rename      # rename the space in $SPACE_COLORS_WORKSPACE_ID
 ```
 
 `--config PATH` reads another config file.

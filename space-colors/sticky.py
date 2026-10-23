@@ -9,8 +9,6 @@ pile up.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
@@ -19,6 +17,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Tuple
 from herdr_api import ConfigError
 from keys import color_index
 from palettes import Palette
+from statefile import write_json_atomic
 
 STATE_FILE_NAME = "assignments.json"
 STATE_VERSION = 1
@@ -102,12 +101,4 @@ def _valid_entry(entry: Any) -> bool:
 
 def save_state(path: Path, stored: Mapping[str, Entry]) -> None:
     """Write the state atomically, so a crash never leaves half a file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(dir=str(path.parent), prefix=path.name + ".", suffix=".tmp")
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8") as output:
-            json.dump({"version": STATE_VERSION, "keys": stored}, output, indent=2, sort_keys=True)
-        os.replace(temporary, path)
-    except BaseException:
-        os.unlink(temporary)
-        raise
+    write_json_atomic(path, {"version": STATE_VERSION, "keys": stored})
