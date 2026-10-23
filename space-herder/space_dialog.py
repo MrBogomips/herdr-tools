@@ -15,7 +15,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from config import Config, load_config
+from coloring import reconcile
+from config import PLUGIN_ID, Config, load_config
 from dialog_form import NEW, RENAME, Outcome, Setup
 from dialog_ui import run_dialog
 from folders import RECENT_FILE_NAME, list_dirs, load_recent, merge_suggestions, remember, save_recent, zoxide_folders
@@ -31,13 +32,12 @@ from herdr_api import (
     state_dir,
 )
 from overrides import OVERRIDES_FILE_NAME, load_overrides, save_overrides, with_override
-from space_colors import PLUGIN_ID, reconcile
 from sticky import STATE_FILE_NAME, load_state
 
 MODES = (NEW, RENAME)
 ENTRYPOINTS = {NEW: "new-space", RENAME: "rename-space"}
-ENV_WORKSPACE = "SPACE_COLORS_WORKSPACE_ID"
-ENV_CWD = "SPACE_COLORS_CWD"
+ENV_WORKSPACE = "SPACE_HERDER_WORKSPACE_ID"
+ENV_CWD = "SPACE_HERDER_CWD"
 STDIN_FD = 0
 
 
@@ -126,7 +126,7 @@ def apply(call: Call, setup: Setup, outcome: Outcome) -> None:
 
 
 def run(args: argparse.Namespace) -> None:
-    call = socket_rpc(socket_path(), "space-dialog")
+    call = socket_rpc(socket_path(), "space-herder-dialog")
     if args.command == "open":
         open_dialog(call, args.mode)
         return
@@ -146,7 +146,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         run(args)
     except Exception as err:  # noqa: BLE001 - a key binding or popup has no other place to report
-        return report_failure("space-colors", "Space dialog failed", err)
+        return report_failure("space-herder", "Space dialog failed", err)
     return 0
 
 

@@ -137,7 +137,7 @@ def load_recent(path: Path) -> List[str]:
         raise ConfigError("{}: {} (delete it to start over)".format(path, err)) from err
     folders = raw.get("folders") if isinstance(raw, dict) else None
     if not isinstance(folders, list) or not all(isinstance(folder, str) for folder in folders):
-        raise ConfigError("{}: not a space-colors recent folders file (delete it to start over)".format(path))
+        raise ConfigError("{}: not a Space Herder recent folders file (delete it to start over)".format(path))
     return folders
 
 

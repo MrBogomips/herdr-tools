@@ -48,22 +48,66 @@ class ComposeTest(unittest.TestCase):
 
 
 class PlanOrderTest(unittest.TestCase):
-    """The same order as sort-spaces (`sort_spaces.plan_order`); keep the two in step."""
+    def test_sorts_labels_ignoring_case(self):
+        spaces = [ws("w1", "lumon", 1), ws("w2", "Globex", 2), ws("w3", "acme", 3), ws("w4", "LAB", 4)]
+
+        self.assertEqual(plan_order(spaces), ["w3", "w2", "w4", "w1"])
 
     def test_groups_then_names_ignoring_case(self):
         spaces = [ws("w1", "SYS -", 1), ws("w2", "beta", 2), ws("w3", "LAB +", 3), ws("w4", "Alpha", 4), ws("w5", "~", 5)]
 
         self.assertEqual(plan_order(spaces), ["w5", "w3", "w4", "w2", "w1"])
 
+    def test_pins_home_space_first(self):
+        spaces = [ws("w1", "beta", 1), ws("w2", "~", 2), ws("w3", "alpha", 3)]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w3", "w1"])
+
+    def test_home_space_comes_before_the_head_group(self):
+        spaces = [ws("w1", "AAA +", 1), ws("w2", "~", 2)]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w1"])
+
     def test_sorts_by_name_without_marker_inside_a_group(self):
         spaces = [ws("w1", "personal +", 1), ws("w2", "b -", 2), ws("w3", "LUMON +", 3), ws("w4", "A -", 4)]
 
         self.assertEqual(plan_order(spaces), ["w3", "w1", "w4", "w2"])
 
+    def test_marker_needs_a_space_before_it(self):
+        spaces = [
+            ws("w1", "aa -", 1),
+            ws("w2", "C++", 2),
+            ws("w3", "b-", 3),
+            ws("w4", "ACME - API", 4),
+            ws("w5", "+", 5),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["w5", "w4", "w3", "w2", "w1"])
+
+    def test_tolerates_whitespace_after_the_marker(self):
+        spaces = [ws("w1", "beta", 1), ws("w2", "LAB + ", 2)]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w1"])
+
     def test_keeps_current_order_for_equal_labels(self):
         spaces = [ws("w1", "zeta", 1), ws("w2", "Same", 2), ws("w3", "same", 3)]
 
         self.assertEqual(plan_order(spaces), ["w2", "w3", "w1"])
+
+    def test_already_sorted_list_is_unchanged(self):
+        spaces = [ws("w1", "~", 1), ws("w2", "alpha", 2), ws("w3", "Beta", 3)]
+
+        self.assertEqual(plan_order(spaces), ["w1", "w2", "w3"])
+
+    def test_worktree_children_follow_their_parent(self):
+        spaces = [
+            ws("w1", "zz-feature", 1, worktree("repo-m", True)),
+            ws("w2", "beta", 2),
+            ws("w3", "main-repo", 3, worktree("repo-m", False)),
+            ws("w4", "aa-fix", 4, worktree("repo-m", True)),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["w2", "w3", "w4", "w1"])
 
     def test_worktree_children_follow_their_parent_and_its_group(self):
         spaces = [
@@ -84,6 +128,15 @@ class PlanOrderTest(unittest.TestCase):
         ]
 
         self.assertEqual(plan_order(spaces), ["A", "a1", "B", "b1"])
+
+    def test_worktree_child_stays_under_parent_when_another_space_has_the_same_label(self):
+        spaces = [
+            ws("P", "Beta", 1, worktree("rp", False)),
+            ws("X", "beta", 2),
+            ws("c", "child", 3, worktree("rp", True)),
+        ]
+
+        self.assertEqual(plan_order(spaces), ["P", "c", "X"])
 
     def test_orphan_worktree_child_sorts_by_its_own_label(self):
         spaces = [ws("w1", "beta", 1), ws("w2", "alpha", 2, worktree("repo-x", True))]

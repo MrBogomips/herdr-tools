@@ -13,7 +13,7 @@ from config import Config
 from plan import token_name
 
 HEADER = (
-    "# space-colors sidebar rows: palette {palette}, {count} slots, fingerprint {fingerprint}.\n"
+    "# Space Herder sidebar rows: palette {palette}, {count} slots, fingerprint {fingerprint}.\n"
     "# In Herdr's config.toml, set `rows` of your [ui.sidebar.spaces] table to the value below\n"
     "# (keep its other keys, such as row_gap; add the table if you have none). Two tables with\n"
     "# the same name make the whole config invalid, so run `herdr config check`, then\n"

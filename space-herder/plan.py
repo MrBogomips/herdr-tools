@@ -116,7 +116,7 @@ def plan_reports(workspaces: List[Workspace], choices: Mapping[str, Choice], mar
 
 
 def clear_reports(workspaces: List[Workspace]) -> List[Report]:
-    """Patches removing every space-colors token, e.g. before uninstalling."""
+    """Patches removing every token of this plugin, e.g. before uninstalling."""
     reports: List[Report] = []
     for space in workspaces:
         reports += _split(space["workspace_id"], {name: None for name in own_tokens(space)})

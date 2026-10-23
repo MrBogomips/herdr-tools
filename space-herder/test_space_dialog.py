@@ -12,7 +12,7 @@ import space_dialog as tool
 from dialog_form import handle, initial_form, type_text
 from herdr_api import HerdrError
 from overrides import load_overrides, save_overrides
-from test_space_colors import FakeHerdr as ColourHerdr
+from test_space_herder import FakeHerdr as ColourHerdr
 
 PALETTE = ["#000001", "#000002", "#000003", "#000004", "#000005", "#000006", "#000007", "#000008"]
 
@@ -72,8 +72,8 @@ class SpaceDialogTest(unittest.TestCase):
             "HERDR_PLUGIN_STATE_DIR": str(self.state),
             "HERDR_WORKSPACE_ID": "w2",
             "HERDR_PLUGIN_CONTEXT_JSON": json.dumps({"workspace_id": "w2", "focused_pane_cwd": str(self.folder)}),
-            "SPACE_COLORS_WORKSPACE_ID": "w2",
-            "SPACE_COLORS_CWD": str(self.folder),
+            "SPACE_HERDER_WORKSPACE_ID": "w2",
+            "SPACE_HERDER_CWD": str(self.folder),
         })
         self.env.start()
 
@@ -101,7 +101,7 @@ class SpaceDialogTest(unittest.TestCase):
         self.assertEqual(method, "plugin.pane.open")
         self.assertEqual(params["entrypoint"], "rename-space")
         self.assertEqual(params["placement"], "popup")
-        self.assertEqual(params["env"], {"SPACE_COLORS_WORKSPACE_ID": "w2", "SPACE_COLORS_CWD": str(self.folder)})
+        self.assertEqual(params["env"], {"SPACE_HERDER_WORKSPACE_ID": "w2", "SPACE_HERDER_CWD": str(self.folder)})
 
     def test_open_reports_a_busy_herdr(self):
         def busy(method, params):
