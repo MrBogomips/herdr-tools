@@ -48,6 +48,9 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - A plugin reaches the Herdr marketplace (herdr.dev/plugins) by landing on `main`: the index lists every
   `herdr-plugin.toml` on the default branch and refreshes about every 30 minutes. There is no submission,
   and `herdr plugin update` hands every push to `main` to users, so `main` must always be releasable.
+- Before naming a new plugin, check the index (`https://assets.herdr.dev/plugins/index.json`, which
+  refuses requests without a User-Agent) for clashing names and ids: generic names such as "Workspace
+  Manager" are often taken by other authors.
 - Release with the `herdr-publish` skill (`.claude/skills/herdr-publish/`): a semver bump per plugin
   (breaking changes bump the minor while 0.x) and an annotated tag `<plugin>-vX.Y.Z` carrying the notes,
   pushed with `git push --atomic origin main <tag>`. Never push `--tags`, force, or move a pushed tag.
