@@ -88,16 +88,27 @@ def hook(event: str, config_file: Optional[str]) -> int:
     return report_failure(TOOL, title, err, PLUGIN_ID)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
+    """Read the command line; an option or event given to another command is an error, not ignored."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("command", nargs="?", default="recolor", choices=COMMANDS)
     parser.add_argument("event", nargs="?", choices=HOOK_EVENTS, help="hook: the Herdr event it runs after")
     parser.add_argument("--config", help="config file (default: the plugin config dir)")
     parser.add_argument("--dry-run", action="store_true", help="sort: print the current and the target order only")
     parser.add_argument("--write", action="store_true", help="snippet: write {} next to the config".format(SNIPPET_FILE_NAME))
-    args = parser.parse_args(argv)
+    # Intermixed, so options may also sit between the command and its event.
+    args = parser.parse_intermixed_args(argv)
     if (args.command == "hook") != (args.event is not None):
         parser.error("an event ({}) goes with hook, and only with hook".format(", ".join(HOOK_EVENTS)))
+    if args.dry_run and args.command != "sort":
+        parser.error("--dry-run goes with sort only")
+    if args.write and args.command != "snippet":
+        parser.error("--write goes with snippet only")
+    return args
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    args = parse_args(argv)
     if args.command == "hook":
         return hook(args.event, args.config)
 

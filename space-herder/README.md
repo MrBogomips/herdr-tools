@@ -297,7 +297,8 @@ frequent focus hook costs one `workspace.list` call when nothing changed. If spa
 closed while a sort runs, the sort starts over, up to three times, before it reports a failure.
 
 Hooks are silent when they work. The colour and the sort run apart, so a failed recolour still
-sorts. When a hook fails, a toast says why; the same failure toasts again only after 10 minutes,
+sorts; an error in `config.json` stops both, with a toast naming the file. When a hook fails, a
+toast says why; the same failure toasts again only after 10 minutes,
 and every run's output and errors are in `herdr plugin log list --plugin mrbogomips.space-herder`.
 
 ## Limits
