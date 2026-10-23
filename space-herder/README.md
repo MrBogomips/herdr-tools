@@ -4,6 +4,10 @@ Herds Herdr's spaces sidebar: keeps it sorted into groups, gives every space of 
 same colour, and replaces Herdr's new-space and rename prompts with dialogs that show the result
 as you type.
 
+**Website: [Space Herder at a glance](https://mrbogomips.github.io/herdr-tools/space-herder.html)**,
+and a [playground](https://mrbogomips.github.io/herdr-tools/#try) where you paste your own space
+names and watch them sorted and coloured. This README is the full reference.
+
 <img src="docs/sidebar.png" alt="Herdr spaces sidebar: ACME - api, its feature-checkout worktree and ACME - web in blue, Initech in mauve, Globex in teal, LUMON in red, SYS in peach" width="300" align="right">
 
 Name your spaces `CUSTOMER - project`, end the ones you always want on top with ` +` and the

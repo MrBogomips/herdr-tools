@@ -3,6 +3,9 @@
 Names each Herdr tab after the folder of its pane, and keeps the name in sync as you move around.
 Tabs you name yourself are left alone.
 
+**Website: [auto-tab-name at a glance](https://mrbogomips.github.io/herdr-tools/auto-tab-name.html)**;
+this README is the full reference.
+
 ```
 ~/tools/initech/sort     basename (default)     sort
                          repo                   initech/sort

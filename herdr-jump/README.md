@@ -4,6 +4,9 @@ A [Hammerspoon](https://www.hammerspoon.org) Spoon for macOS that gets you back 
 agents from any app: one key back to iTerm, one key to the agent that needs you, and a menu bar
 icon that counts the agents waiting for you.
 
+**Website: [herdr-jump at a glance](https://mrbogomips.github.io/herdr-tools/herdr-jump.html)**;
+this README is the full reference.
+
 Run five agents at once and they queue up for you: a permission here, a finished review there.
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
