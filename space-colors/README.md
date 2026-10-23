@@ -120,8 +120,8 @@ Bind the two actions to Herdr's keys and move the built-in prompts elsewhere, th
 
 ```toml
 [keys]
-new_workspace = "prefix+alt+n"     # Herdr's own prompts, still reachable
-rename_workspace = "prefix+alt+w"
+new_workspace = "prefix+ctrl+n"    # Herdr's own prompts, still reachable
+rename_workspace = "prefix+ctrl+w"
 
 [[keys.command]]
 key = "prefix+shift+n"
@@ -261,8 +261,8 @@ and every run's error is in `herdr plugin log list --plugin mrbogomips.space-col
 - `ACME-api` does not split on `" -"`; keep the space before the dash, or change `separator`.
 - `▌` is drawn one column wide by most terminals; if yours shows a gap or overlap, pick another
   `marker`.
-- The dialogs replace the key bindings only: the sidebar's mouse button for a new space and
-  Herdr's command palette still open Herdr's own prompts.
+- The dialogs replace Herdr's prompts only on the keys you bind; other ways to create or rename a
+  space keep Herdr's own behaviour.
 - The dialog's preview copies the sort-spaces order; it shows where sort-spaces will put the space,
   not where Herdr puts it before sorting.
 
