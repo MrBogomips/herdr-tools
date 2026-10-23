@@ -52,6 +52,9 @@ The space before the suffix is required, so names like `C++` or `ACME - api` sta
 group. Worktree children follow their parent's group. To move a space, rename it (for example to
 `LUMON +`); with autosort on it moves at once, otherwise press the sort key.
 
+The [space-colors dialogs](../space-colors/#dialogs) replace Herdr's new-space and rename prompts
+with a group choice and a preview of the sorted sidebar, so the suffix need not be remembered.
+
 ## Autosort
 
 Autosort is off until you turn it on. Create `config.json` in the plugin's config directory

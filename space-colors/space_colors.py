@@ -27,6 +27,7 @@ from herdr_api import (
     socket_rpc,
     state_dir,
 )
+from overrides import OVERRIDES_FILE_NAME, Overrides, load_overrides
 from palettes import PRESETS
 from plan import Choice, Report, choose, clear_reports, plan_reports, token_name
 from snippet import render_rows
@@ -55,15 +56,21 @@ def choose_and_remember(spaces: List[Workspace], config: Config) -> Dict[str, Ch
     The state file is shared by every Herdr server on the machine, so its read-modify-write
     holds a lock that is not per server.
     """
+    overrides = current_overrides()
     if config.assign != "sticky":
-        return choose(spaces, config, {}, date.today())[0]
+        return choose(spaces, config, {}, date.today(), overrides)[0]
     state = state_dir(PLUGIN_ID) / STATE_FILE_NAME
     with plugin_lock(PLUGIN_ID, per_server=False):
         stored = load_state(state)
-        choices, remembered = choose(spaces, config, stored, date.today())
+        choices, remembered = choose(spaces, config, stored, date.today(), overrides)
         if remembered != stored:
             save_state(state, remembered)
     return choices
+
+
+def current_overrides() -> Overrides:
+    """The colours chosen in the dialogs; the file is replaced atomically, so reading needs no lock."""
+    return load_overrides(state_dir(PLUGIN_ID) / OVERRIDES_FILE_NAME)
 
 
 def clear(call: Call) -> None:
@@ -80,7 +87,7 @@ def preview_lines(call: Call, config: Config) -> List[str]:
     """One line per space: name, key, slot, colour and why; sticky choices are not saved."""
     spaces = list_workspaces(call)
     stored = load_state(state_dir(PLUGIN_ID) / STATE_FILE_NAME) if config.assign == "sticky" else {}
-    choices, _ = choose(spaces, config, stored, date.today())
+    choices, _ = choose(spaces, config, stored, date.today(), current_overrides())
     width = max([len(space["label"]) for space in spaces] + [5])
     lines = []
     for space in spaces:

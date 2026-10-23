@@ -34,18 +34,43 @@ def token_name(slot: int) -> str:
 class Choice:
     key: str
     slot: int
-    reason: str  # "hash", "sticky" or "rule <pattern>"
+    reason: str  # "hash", "sticky", "override" or "rule <pattern>"
 
 
 def choose(
-    workspaces: List[Workspace], config: Config, stored: Mapping[str, Entry], today: date
+    workspaces: List[Workspace],
+    config: Config,
+    stored: Mapping[str, Entry],
+    today: date,
+    overrides: Optional[Mapping[str, str]] = None,
 ) -> Tuple[Dict[str, Choice], Mapping[str, Entry]]:
     """Pick every space's slot; returns ({workspace id: choice}, the remembered sticky keys).
 
-    Rules come first (first match wins). Other spaces get their key's colour by hash, or in sticky
-    mode the colour remembered for the key. Worktree children use their parent's name, so a repo's
-    checkouts share its colour.
+    Rules come first (first match wins), then a colour chosen for the key in a dialog (`overrides`,
+    palette colours only). Other spaces get their key's colour by hash, or in sticky mode the
+    colour remembered for the key; overridden colours count as taken there. Worktree children use
+    their parent's name, so a repo's checkouts share its colour.
     """
+    named = colour_sources(workspaces, config)
+    overridden = {key: color for key, color in (overrides or {}).items() if color in config.palette}
+    automatic = list(dict.fromkeys(key for key, rule in named.values() if rule is None and key not in overridden))
+    indices = {key: config.palette.index(color) for key, color in overridden.items()}
+    if config.assign == "sticky":
+        pinned = [config.slots[rule.slot] for _, rule in named.values() if rule and rule.slot < len(config.palette)]
+        open_overrides = [overridden[key] for key, rule in named.values() if rule is None and key in overridden]
+        assigned, stored = assign(automatic, config.palette, stored, today, reserved=pinned + open_overrides)
+    else:
+        assigned = {key: color_index(key, len(config.palette)) for key in automatic}
+    indices.update(assigned)
+    choices = {
+        workspace_id: _choice(key, rule, indices, "override" if key in overridden else config.assign)
+        for workspace_id, (key, rule) in named.items()
+    }
+    return choices, stored
+
+
+def colour_sources(workspaces: List[Workspace], config: Config) -> Dict[str, Tuple[str, Optional[Rule]]]:
+    """{workspace id: (colour key, first matching rule or None)}; children use their parent's name."""
     parents = worktree_parents(workspaces)
     named: Dict[str, Tuple[str, Optional[Rule]]] = {}
     for space in workspaces:
@@ -53,17 +78,13 @@ def choose(
         label = (parent or space)["label"]
         rule = next((rule for rule in config.rules if rule.pattern.search(label)), None)
         named[space["workspace_id"]] = (derive_key(label, config), rule)
-    hashed = list(dict.fromkeys(key for key, rule in named.values() if rule is None))
-    if config.assign == "sticky":
-        pinned = [config.slots[rule.slot] for _, rule in named.values() if rule and rule.slot < len(config.palette)]
-        indices, stored = assign(hashed, config.palette, stored, today, reserved=pinned)
-    else:
-        indices = {key: color_index(key, len(config.palette)) for key in hashed}
-    choices = {
-        workspace_id: Choice(key, rule.slot, "rule " + rule.match) if rule else Choice(key, indices[key], config.assign)
-        for workspace_id, (key, rule) in named.items()
-    }
-    return choices, stored
+    return named
+
+
+def _choice(key: str, rule: Optional[Rule], indices: Mapping[str, int], reason: str) -> Choice:
+    if rule:
+        return Choice(key, rule.slot, "rule " + rule.match)
+    return Choice(key, indices[key], reason)
 
 
 def display_value(label: str, marker: str) -> str:

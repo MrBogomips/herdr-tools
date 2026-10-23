@@ -1,8 +1,8 @@
 id = "mrbogomips.space-colors"
 name = "Space Colors"
 version = "0.1.0"
-min_herdr_version = "0.9.3"
-description = "Colour space names in the sidebar by a stable hash of their prefix, or by regex rules, so every space of one customer shares a colour."
+min_herdr_version = "0.9.5"
+description = "Colour space names in the sidebar by a stable hash of their prefix, or by regex rules, so every space of one customer shares a colour; new-space and rename dialogs preview the name, sort group and colour."
 platforms = ["macos", "linux"]
 
 # The colours show only after the [ui.sidebar.spaces] block printed by
@@ -52,3 +52,35 @@ title = "Clear space colours"
 description = "Remove the coloured names until the next hook run, for example to test the default rows."
 contexts = ["global", "workspace"]
 command = ["python3", "space_colors.py", "clear"]
+
+# Dialogs that replace Herdr's own new-space and rename prompts: bind these actions to
+# prefix+shift+n and prefix+shift+w (see the README). Each opens the popup pane of the same id.
+[[actions]]
+id = "new-space"
+title = "New space"
+description = "Create a space in a popup: folder, name, sort group and colour, with a preview of the sidebar."
+contexts = ["global", "workspace"]
+command = ["python3", "space_dialog.py", "open", "new"]
+
+[[actions]]
+id = "rename-space"
+title = "Rename space"
+description = "Rename the current space in a popup: name, sort group and colour, with a preview of the sidebar."
+contexts = ["workspace"]
+command = ["python3", "space_dialog.py", "open", "rename"]
+
+[[panes]]
+id = "new-space"
+title = "New space"
+placement = "popup"
+width = "70%"
+height = 22
+command = ["python3", "space_dialog.py", "run", "new"]
+
+[[panes]]
+id = "rename-space"
+title = "Rename space"
+placement = "popup"
+width = "70%"
+height = 18
+command = ["python3", "space_dialog.py", "run", "rename"]

@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 from unittest import mock
 
-import sticky
+import statefile
 from herdr_api import ConfigError
 from sticky import FORGET_AFTER_DAYS, assign, load_state, save_state
 
@@ -100,7 +100,7 @@ class StateFileTest(unittest.TestCase):
     def test_a_failed_save_leaves_the_old_state_and_no_temporary_file(self):
         save_state(self.path, {"acme": entry("#000001")})
 
-        with mock.patch.object(sticky.os, "replace", side_effect=OSError("disk full")):
+        with mock.patch.object(statefile.os, "replace", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
                 save_state(self.path, {"globex": entry("#000002")})
 

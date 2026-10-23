@@ -22,8 +22,8 @@ def ws(workspace_id, label, tokens=None, worktree=None):
     return record
 
 
-def slots(spaces, cfg, stored=None):
-    choices, _ = choose(spaces, cfg, stored or {}, TODAY)
+def slots(spaces, cfg, stored=None, overrides=None):
+    choices, _ = choose(spaces, cfg, stored or {}, TODAY, overrides or {})
     return {workspace_id: choice.slot for workspace_id, choice in choices.items()}
 
 
@@ -86,6 +86,38 @@ class StickyChoiceTest(unittest.TestCase):
         _, stored = choose([ws("g", "Globex - etl")], cfg, {}, TODAY)
 
         self.assertEqual(stored, {})
+
+
+class OverrideChoiceTest(unittest.TestCase):
+    def test_an_override_beats_the_hash_for_every_space_of_the_key(self):
+        spaces = [ws("a", "ACME - api"), ws("b", "ACME - web"), ws("g", "Globex - etl")]
+
+        choices, _ = choose(spaces, config(), {}, TODAY, {"acme": "#000005"})
+
+        self.assertEqual({key: choice.slot for key, choice in choices.items()}, {"a": 4, "b": 4, "g": 7})
+        self.assertEqual(choices["a"], Choice("acme", 4, "override"))
+
+    def test_a_rule_beats_an_override(self):
+        cfg = config(rules=[{"match": "^acme", "color": 2}])
+
+        self.assertEqual(slots([ws("a", "ACME - api")], cfg, overrides={"acme": "#000005"}), {"a": 2})
+
+    def test_an_override_outside_the_palette_is_ignored(self):
+        self.assertEqual(slots([ws("a", "ACME - api")], config(), overrides={"acme": "#abcdef"}), {"a": 0})
+
+    def test_sticky_customers_avoid_overridden_colors_and_overridden_keys_are_not_remembered(self):
+        spaces = [ws("a", "ACME - api"), ws("u", "Umbrella - x")]
+
+        choices, stored = choose(spaces, config(assign="sticky"), {}, TODAY, {"acme": "#000001"})
+
+        self.assertEqual((choices["a"].slot, choices["u"].slot), (0, 1))
+        self.assertEqual(set(stored), {"umbrella"})
+
+    def test_worktree_children_follow_their_parents_override(self):
+        parent = ws("p", "ACME - api", worktree={"repo_key": "r", "is_linked_worktree": False})
+        child = ws("c", "Initech", worktree={"repo_key": "r", "is_linked_worktree": True})
+
+        self.assertEqual(slots([parent, child], config(), overrides={"acme": "#000005"}), {"p": 4, "c": 4})
 
 
 class WorktreeChoiceTest(unittest.TestCase):
