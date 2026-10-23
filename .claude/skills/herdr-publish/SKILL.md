@@ -1,6 +1,6 @@
 ---
 name: herdr-publish
-description: Publish and release the Herdr plugins of the herdr-tools repo on the Herdr plugin marketplace (herdr.dev/plugins). Decides each plugin's semver bump, syncs manifest metadata, runs the marketplace preflight, tags it (e.g. `sort-spaces-v0.2.1`) with release notes, pushes, then checks that the marketplace index and `herdr plugin update` show the new version. Use whenever the user wants to ship, release, publish, list or bump a plugin of this repo, add a new plugin to the marketplace, cut or push a plugin release tag, check whether herdr.dev/plugins shows the latest version, or ask why a plugin is missing from the marketplace. Also covers terse asks after changing a plugin ("ship it", "rilascia sort-spaces", "pubblica il plugin"). Not for driving Herdr panes or workspaces, and not for tagging other projects.
+description: Publish and release the Herdr plugins of the herdr-tools repo on the Herdr plugin marketplace (herdr.dev/plugins). Decides each plugin's semver bump, syncs manifest metadata, runs the marketplace preflight, tags it (e.g. `space-herder-v0.1.1`) with release notes, pushes, then checks that the marketplace index and `herdr plugin update` show the new version. Use whenever the user wants to ship, release, publish, list or bump a plugin of this repo, add a new plugin to the marketplace, cut or push a plugin release tag, check whether herdr.dev/plugins shows the latest version, or ask why a plugin is missing from the marketplace. Also covers terse asks after changing a plugin ("ship it", "rilascia space-herder", "pubblica il plugin"). Not for driving Herdr panes or workspaces, and not for tagging other projects.
 ---
 
 # Publishing herdr-tools plugins
@@ -160,7 +160,7 @@ git tag -a <plugin>-vX.Y.Z -F <scratch>/notes.txt
 git push --atomic origin main <plugin>-vX.Y.Z
 ```
 
-- Several plugins can share one commit, `chore(release): sort-spaces v0.2.1, space-colors v0.1.1`, with
+- Several plugins can share one commit, `chore(release): space-herder v0.1.1, auto-tab-name v0.2.1`, with
   one tag each, all in the same atomic push.
 - A commit that touches only version lines, descriptions and README rows goes straight to `main`, as the
   project policy allows for trivial changes.

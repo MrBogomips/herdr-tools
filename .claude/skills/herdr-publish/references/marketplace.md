@@ -52,8 +52,8 @@ User-Agent). The shape, trimmed to what matters here:
       "pushedAt": "2026-10-14T13:25:43Z",
       "headCommit": "<default-branch commit the listing was read from>",
       "manifests": [
-        {"path": "sort-spaces/herdr-plugin.toml", "id": "mrbogomips.sort-spaces", "name": "Sort Spaces",
-         "version": "0.2.0", "minHerdrVersion": "0.9.3", "description": "…", "platforms": ["macos", "linux"]}
+        {"path": "space-herder/herdr-plugin.toml", "id": "mrbogomips.space-herder", "name": "Space Herder",
+         "version": "0.1.0", "minHerdrVersion": "0.9.5", "description": "…", "platforms": ["macos", "linux"]}
       ],
       "firstSeenAt": "2026-10-14T13:00:22.479Z"
     }
