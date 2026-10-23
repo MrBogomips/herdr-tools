@@ -405,6 +405,25 @@ class HookTest(CliTest):
             with self.subTest(argv=argv), self.assertRaises(SystemExit):
                 self.run_main(FakeHerdr([]), *argv)
 
+    def test_options_may_sit_between_the_command_and_its_event(self):
+        args = tool.parse_args(["hook", "--config", str(self.config), "created"])
+
+        self.assertEqual((args.command, args.event, args.config), ("hook", "created", str(self.config)))
+
+
+class ParseArgsTest(unittest.TestCase):
+    def test_recolor_is_the_default_command(self):
+        self.assertEqual(tool.parse_args([]).command, "recolor")
+
+    def test_each_option_belongs_to_its_command(self):
+        for argv in (["hook", "created", "--dry-run"], ["recolor", "--dry-run"], ["sort", "--write"], ["clear", "--write"]):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
+                tool.parse_args(argv)
+
+    def test_accepts_each_option_with_its_command(self):
+        self.assertTrue(tool.parse_args(["sort", "--dry-run"]).dry_run)
+        self.assertTrue(tool.parse_args(["snippet", "--write"]).write)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from space_dialog import ENTRYPOINTS
-from space_herder import HOOK_EVENTS
+from space_herder import HOOK_EVENTS, parse_args
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = (HERE / "herdr-plugin.toml").read_text(encoding="utf-8")
@@ -38,6 +38,13 @@ class ManifestTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(command[0], "python3")
                 self.assertTrue((HERE / command[1]).is_file())
+
+    def test_every_space_herder_command_line_parses(self):
+        commands = [json.loads(line) for line in re.findall(r"^command = (\[.*\])$", MANIFEST, re.MULTILINE)]
+        for command in commands:
+            if command[1] == "space_herder.py":
+                with self.subTest(command=command):
+                    parse_args(command[2:])
 
     def test_local_ids_have_no_dots(self):
         local_ids = values("id")[1:]
