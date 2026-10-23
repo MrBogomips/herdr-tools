@@ -1,0 +1,52 @@
+name: site
+
+# Builds site/ and publishes it on GitHub Pages (Settings › Pages › Source: GitHub Actions).
+# The pages read the manifests, the plugins' docs/ screenshots and Space Herder's palettes, so a
+# change to any of them redeploys too.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "*/docs/**"
+      - "*/herdr-plugin.toml"
+      - "space-herder/palettes.py"
+      - "herdr-jump/HerdrJump.spoon/init.lua"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the site, the playground against Space Herder included
+        run: |
+          set -eu
+          node --version
+          cd site && python3 -m unittest -v
+      - name: Build the site
+        run: python3 site/build.py "$RUNNER_TEMP/site"
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

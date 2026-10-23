@@ -25,7 +25,7 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
-## Companions (top-level folders without a manifest)
+## Companions (top-level folders without a manifest, except `site/`)
 
 - A companion works with Herdr from outside it; today only `herdr-jump/`, a Hammerspoon Spoon in Lua.
   It must never contain a `herdr-plugin.toml`: without one, the marketplace index, the plugin CI jobs and
@@ -42,6 +42,22 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
   the main checkout (point it at a worktree to test a branch, then back); `hs -c 'hs.reload()'` reloads it
   and exits non-zero while the connection drops, which is normal (the `hs` CLI needs `require("hs.ipc")`).
   `install.sh` refuses to replace that symlink unless `--force` is passed.
+
+## Site (`site/`)
+
+- The GitHub Pages site (`https://mrbogomips.github.io/herdr-tools/`), built by `site/build.py`
+  (stdlib, 3.9) and published by `.github/workflows/site.yml` on pushes to `main`. Not a companion:
+  no manifest and no `tests/` folder, so the plugin and companion CI loops skip it.
+- Pages are fragments in `site/pages/` with a leading `<!-- {json} -->` metadata comment, set in
+  `site/layout.html`. Versions and palettes come from the manifests, the Spoon and `palettes.py`
+  through `{{version:<plugin>}}`-style placeholders, screenshots from each folder's `docs/`: never
+  copy them into `site/`.
+- `site/assets/js/herd.js` ports Space Herder's sort and colour rules for the playground and the hero
+  demo; `site/test_herd.py` checks it against the Python under node. Change both together.
+- A new plugin needs `site/pages/<plugin>.html`, a link from the home page and a row in
+  `install.html`: `site/test_build.py` fails otherwise.
+- Tests: `cd site && /usr/bin/python3 -m unittest -v` (the parity test needs node). Preview with
+  `python3 site/build.py && python3 -m http.server -d site/_site`.
 
 ## Releasing
 

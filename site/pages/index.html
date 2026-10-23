@@ -1,0 +1,195 @@
+<!-- {
+  "title": "herdr-tools: plugins for people with too many Herdr spaces",
+  "description": "Plugins for the Herdr terminal multiplexer: a spaces sidebar that sorts itself and colours every customer, tabs that name themselves, and every waiting agent one key away.",
+  "scripts": ["herd.js", "palettes.js", "demo.js", "playground.js"]
+} -->
+<div class="wrap">
+  <section class="hero" aria-labelledby="hero-title">
+    <div>
+      <div class="kicker">// plugins for people with too many spaces</div>
+      <h1 id="hero-title">Thirty spaces.<br><em>One herd.</em></h1>
+      <p class="lede">A sidebar that sorts itself, a colour for every customer, tabs that name themselves
+        and every waiting agent one key away. Each plugin installs on its own: take only the ones you want.</p>
+      <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code><button type="button">copy</button></div>
+      <div class="stats" aria-label="At a glance">
+        <span><b>herdr</b> ≥ {{min_herdr:space-herder}}</span><span><b>3</b> tools</span><span><b>python</b> stdlib only</span><span><b>MIT</b></span>
+      </div>
+      <div class="row-actions">
+        <a class="btn primary" href="install.html">Install in a minute →</a>
+        <a class="btn" href="#try">Try it in the browser</a>
+      </div>
+      <p class="newcomer">New to Herdr? It is a terminal multiplexer for coding agents: <a href="https://herdr.dev">herdr.dev&nbsp;↗</a></p>
+    </div>
+
+    <figure id="demo" class="demo" aria-label="Animated demo: a space is renamed Initech - billing +, takes Initech's colour, moves to the head group, then herdr-jump counts a blocked agent">
+      <div class="term demo-live" aria-hidden="true">
+        <div class="term-bar"><i></i><i></i><i></i><span class="title">herdr</span>
+          <span class="menubar"><span>Wi‑Fi</span>
+            <span class="jump" data-jump><svg viewBox="0 0 18 18" fill="#fff"><circle cx="12" cy="5.2" r="2.8"/><path d="M 7.4 13.6 A 4.6 4.6 0 0 1 16.6 13.6 Z"/><g fill="#2a2a2e"><circle cx="6.5" cy="6.4" r="4.2"/><path d="M 0 16.5 A 6.5 6.5 0 0 1 13 16.5 Z"/><rect x="3.2" y="6.4" width="6.6" height="10.1"/></g><circle cx="6.5" cy="6.4" r="3.3"/><path d="M 0.9 16.5 A 5.6 5.6 0 0 1 12.1 16.5 Z"/></svg><b data-count>1</b></span>
+            <span>Thu 15:42</span></span>
+        </div>
+        <div class="term-body">
+          <div class="term-side"><div class="t"><span>spaces</span><span>⌥⌘2</span></div><div class="rows" data-rows></div></div>
+          <div class="term-pane">
+            <div class="prompt"><span class="p">~/git/initech-billing</span> <span class="a">❯</span> _</div>
+            <div class="dialog" data-dialog hidden>
+              <div class="dt">rename space</div>
+              <dl>
+                <dt>name</dt><dd data-name></dd>
+                <dt>group</dt><dd class="grp" data-group><span data-g="head">head +</span><span data-g="default">default</span><span data-g="bottom">bottom -</span></dd>
+                <dt>colour</dt><dd data-colours></dd>
+                <dt>lands</dt><dd data-lands></dd>
+              </dl>
+            </div>
+            <p class="term-note" data-note></p>
+          </div>
+        </div>
+        <div class="term-foot"><span>space-herder · <span data-palette>nord</span> · sticky</span><span>herdr-jump · ⌃⌥⌘A</span></div>
+      </div>
+      <button class="demo-pause demo-live" type="button" data-pause aria-pressed="false">❚❚ pause animation</button>
+      <img class="demo-fallback shot" src="img/space-herder/hero.png" width="1380" height="970"
+        alt="Herdr with Space Herder: every customer in its own colour, ACME spaces in blue next to each other, Initech in mauve, LUMON pinned on top and SYS at the bottom">
+    </figure>
+  </section>
+
+  <nav class="cards" aria-label="What you get">
+    <a class="card" href="space-herder.html#sort"><span class="n">01</span><h3>A sidebar that sorts itself</h3>
+      <p><code>~</code> first, <code>+</code> on top, <code>-</code> at the bottom, names in order. On a key, or by itself.</p><span class="go">space-herder →</span></a>
+    <a class="card" href="space-herder.html#colour"><span class="n">02</span><h3>A colour per customer</h3>
+      <p>Every ACME space in blue, worktrees included. {{palette_count}} palettes, from Catppuccin to Nord.</p><span class="go">space-herder →</span></a>
+    <a class="card" href="space-herder.html#dialogs"><span class="n">03</span><h3>Dialogs that show the result</h3>
+      <p>See the group, the place and the colour as you type, before you press Enter.</p><span class="go">space-herder →</span></a>
+    <a class="card" href="auto-tab-name.html"><span class="n">04</span><h3>Tabs that name themselves</h3>
+      <p>Folder, repo or branch, and they follow your agents into worktrees.</p><span class="go">auto-tab-name →</span></a>
+    <a class="card" href="herdr-jump.html"><span class="n">05</span><h3>Agents, one key away</h3>
+      <p>Blocked first, oldest wait first, from any macOS app, with a count in the menu bar.</p><span class="go">herdr-jump →</span></a>
+  </nav>
+</div>
+
+<section class="section js-only" id="try" aria-labelledby="try-title">
+  <div class="wrap">
+    <div class="kicker">// try it</div>
+    <h2 id="try-title">Paste your spaces. Watch them herd.</h2>
+    <p class="lede">Space Herder's sort and colour rules, ported to JavaScript, running in your browser, and
+      checked against the plugin on every push. Type your real space names, pick a palette, and copy the config
+      that gives you this sidebar.</p>
+    <div class="play" id="playground">
+      <div>
+        <label for="pg-names">Your spaces, one per line</label>
+        <textarea id="pg-names" spellcheck="false" autocapitalize="off" autocomplete="off">SYS -
+ACME - web
+Globex - etl
+LUMON +
+ACME - api
+  feature-checkout
+~
+Initech - crm
+Initech - billing +
+Globex - docs</textarea>
+        <p class="hint">Indent a line to make it a worktree of the space above. End a name with <code> +</code>
+          to keep it on top, or <code> -</code> to park it at the bottom.</p>
+        <div class="controls">
+          <div><label for="pg-palette">palette</label><select id="pg-palette"></select></div>
+          <fieldset><legend>assign</legend>
+            <div class="seg">
+              <label><input type="radio" name="pg-assign" value="sticky" checked> sticky</label>
+              <label><input type="radio" name="pg-assign" value="hash"> hash</label>
+            </div>
+          </fieldset>
+        </div>
+        <p class="hint"><b>sticky</b> keeps customers apart: a new one takes the least-used colour.
+          <b>hash</b> gives a customer the same colour on every machine, with nothing stored.</p>
+      </div>
+      <div class="out">
+        <div class="term">
+          <div class="term-bar"><i></i><i></i><i></i><span class="title">sidebar, after Space Herder</span></div>
+          <div class="term-side"><div class="t"><span>spaces</span><span data-count></span></div><div class="rows" data-rows></div></div>
+          <div class="palette-row" data-swatches aria-label="Palette colours; outlined ones are in use"></div>
+        </div>
+        <pre class="code" aria-label="config.json"><code data-config></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="scheme-title">
+  <div class="wrap split">
+    <div>
+      <div class="kicker">// a naming scheme</div>
+      <h2 id="scheme-title">Three suffixes. Zero dragging.</h2>
+      <p class="lede">Name spaces <code>CUSTOMER - project</code>, mark the ones you always want on top
+        with <code> +</code> and the parking lot with <code> -</code>. Space Herder does the rest.</p>
+      <ul class="scheme">
+        <li><code>~</code><span>Home, always first.</span></li>
+        <li><code>LUMON +</code><span>The head group, always on top.</span></li>
+        <li><code>ACME - api</code><span>One colour per customer, side by side, worktrees right under their parent.</span></li>
+        <li><code>SYS -</code><span>The bottom group, out of the way.</span></li>
+      </ul>
+    </div>
+    <figure>
+      <img class="shot" src="img/space-herder/sidebar.png" width="356" height="456" loading="lazy" style="margin: 0 auto"
+        alt="The spaces sidebar close up: ~ first, Initech - billing + and LUMON + in the head group, ACME - api with its feature-checkout worktree and ACME - web in blue, Globex - etl, Initech - crm in mauve, SYS - at the bottom">
+      <figcaption style="text-align: center">The real sidebar: Catppuccin palette, sticky colours.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="dialog-title">
+  <div class="wrap">
+    <div class="kicker">// new space, start to finish</div>
+    <h2 id="dialog-title">See where it lands before you press Enter.</h2>
+    <p class="lede">The new-space and rename dialogs preview the sidebar as you type: the group a suffix picks,
+      the place the space takes, and its customer's colour. Pick another colour and every space of that
+      customer follows.</p>
+    <figure style="margin-top: 32px">
+      <img class="shot" src="img/space-herder/new-space.gif" width="1180" height="770" loading="lazy"
+        alt="The Space Herder new-space dialog: a folder is picked from the recent ones, the name Initech - billing is typed, the head group moves it to the top of the preview, mauve is picked for Initech and both Initech spaces turn mauve, then Enter creates the space at the top of the sidebar">
+      <figcaption>Folder, name, group, colour, Enter.</figcaption>
+    </figure>
+    <div class="row-actions"><a class="btn" href="space-herder.html#dialogs">More on the dialogs →</a></div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="jump-title">
+  <div class="wrap split flip">
+    <div>
+      <div class="kicker">// companion · macOS</div>
+      <h2 id="jump-title">Every waiting agent, one key away.</h2>
+      <p class="lede">Run five agents and they queue up for you: a permission here, a finished review there.
+        herdr-jump lines them up first come, first served, says how long each has waited, and takes you to
+        its pane with Enter, whatever app you are in.</p>
+      <div class="keys"><span><kbd>⌃⌥⌘A</kbd> the agents picker</span><span><kbd>⌃⌥⌘I</kbd> back to iTerm and back</span></div>
+      <div class="row-actions" style="margin-top: 0"><a class="btn" href="herdr-jump.html">Meet herdr-jump →</a></div>
+    </div>
+    <figure>
+      <img class="shot" src="img/herdr-jump/picker.png" width="1676" height="1084" loading="lazy"
+        alt="The herdr-jump picker: blocked agents with orange pause icons on top, then finished ones with green check marks, each with how long it has waited, then the idle and working agents">
+      <figcaption>Blocked first, then done, oldest wait first.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="trust-title">
+  <div class="wrap">
+    <div class="kicker">// small on purpose</div>
+    <h2 id="trust-title">Short scripts you can read before you run them.</h2>
+    <div class="points">
+      <div><h3>Nothing else to install</h3><p>Python standard library only. The system Python of macOS is enough.</p></div>
+      <div><h3>Read it first</h3><p>Herdr shows the manifest and the commands before installing. The code is plain Python: no build step, no dependencies.</p></div>
+      <div><h3>Tested on every push</h3><p>CI runs every plugin's tests on macOS with the system Python and on Ubuntu.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section cta" aria-labelledby="cta-title">
+  <div class="wrap">
+    <h2 id="cta-title">Give your herd some order.</h2>
+    <p class="lede">Pick the plugins you want; each one installs, updates and uninstalls on its own.</p>
+    <div class="cmds">
+      <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code><button type="button">copy</button></div>
+      <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/auto-tab-name</code><button type="button">copy</button></div>
+      <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code><button type="button">copy</button></div>
+    </div>
+    <div class="row-actions" style="justify-content: center"><a class="btn primary" href="install.html">Install guide →</a></div>
+  </div>
+</section>
