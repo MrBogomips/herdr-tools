@@ -1,13 +1,24 @@
 # space-colors
 
-Colours the names in Herdr's spaces sidebar, so every space of one customer gets the same colour.
+Colours the names in Herdr's spaces sidebar, so every space of one customer gets the same colour,
+and replaces Herdr's new-space and rename prompts with dialogs that show the result as you type.
 
-<img src="docs/sidebar.svg" alt="Herdr spaces sidebar: ACME - api and ACME - web share one colour, every other customer has its own" width="248">
+<img src="docs/sidebar.png" alt="Herdr spaces sidebar: ACME - api, its feature-checkout worktree and ACME - web in blue, Initech in mauve, Globex in teal, LUMON in red, SYS in peach" width="300" align="right">
 
-Name your spaces `CUSTOMER - project` and the colour follows the customer: above, both `ACME`
-spaces share a colour (catppuccin palette, sticky mode). Together with
-[sort-spaces](../sort-spaces/) the spaces of one customer also sit next to each other, with
-`LUMON +` pinned on top and `SYS -` / `Archive -` at the bottom.
+Name your spaces `CUSTOMER - project` and the colour follows the customer: on the right, every
+`ACME` space is blue, worktree included, and both Initech spaces are mauve (Catppuccin palette,
+sticky mode). Together with [sort-spaces](../sort-spaces/) the spaces of one customer also sit
+next to each other, with `LUMON +` pinned on top and `SYS -` at the bottom.
+
+- **Stable colours:** a customer gets the same colour on every machine, or in sticky mode the
+  least-used one, so customers stay apart.
+- **15 colours** from nine preset palettes, or your own.
+- **[Dialogs](#dialogs)** to create and rename spaces with a live preview of the sorted, coloured
+  sidebar, and to pick a customer's colour yourself.
+
+<br clear="right">
+
+<img src="docs/new-space.gif" alt="The new-space dialog: a folder is picked from the recent ones, the name Initech - billing is typed, the head group moves it to the top of the preview, mauve is picked and both Initech spaces turn mauve, then Enter creates the space at the top of the sidebar" width="100%">
 
 ## How the colour is chosen
 
@@ -88,21 +99,7 @@ Herdr's own "new space" and "rename space" prompts ask only for a name. The plug
 in a popup and show the result while you type: the name with its sort-spaces group suffix, and
 the sidebar as it will look, with the space in its place and in its colour.
 
-```
- New space                                          │ Sidebar preview
-                                                    │ ▌~
-Folder   ~/git/acme/api█                            │ ▌LUMON +
-         ~/git/acme/web  recent                     │ ▌ACME - api ◀
-         ~/git/globex  zoxide                       │ ▌ACME - web
-Name     ACME - api                                 │ ▌Globex - etl
-Group    ( ) head +  (•) default  ( ) bottom -      │ ▌SYS -
-Colour   [auto]  ●  ●  ●  ●  ●  ●  ●  ●  ●          │
-                                                    │
-default: no suffix, sorted by name between head     │
-(" +") and bottom (" -")                            │
-auto: every ACME space keeps its automatic colour   │
-Tab complete  ↑↓ suggestions  Enter create  Esc cancel
-```
+<img src="docs/new-space.png" alt="The new-space dialog over a Herdr layout: folder ~/git/initech-crm, name Initech - billing becoming Initech - billing + in the head group, mauve picked in the colour row, and a sidebar preview with Initech - billing + at the top and both Initech spaces in mauve" width="100%">
 
 | Field | Keys | What it does |
 | --- | --- | --- |
@@ -140,6 +137,8 @@ The dialog does not sort the sidebar itself: with sort-spaces' `"auto_sort": "bo
 moves to the place shown at once; otherwise press the sort key.
 
 ### Chosen colours
+
+<img src="docs/rename.png" alt="The rename dialog on ACME - api: blue is picked in the colour row, and the sidebar preview shows ACME - api, its feature-checkout worktree and ACME - web all in blue" width="100%">
 
 A colour picked in a dialog is saved for the key in `overrides.json` in the plugin state directory
 and kept until you set the key back to auto. It beats the hash and sticky colours, and in sticky
