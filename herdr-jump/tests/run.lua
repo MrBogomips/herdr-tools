@@ -6,7 +6,7 @@
 local here = (arg and arg[0] or ""):match("^(.*)/[^/]*$") or "."
 local helpers = dofile(here .. "/helpers.lua")
 
-local FILES = { "test_attention", "test_herdr", "test_icon", "test_iterm", "test_since" }
+local FILES = { "test_attention", "test_herdr", "test_icon", "test_iterm", "test_picker", "test_since" }
 
 local passed, failed = 0, 0
 for _, file in ipairs(FILES) do

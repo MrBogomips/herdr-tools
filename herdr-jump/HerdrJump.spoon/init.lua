@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.3.0"
+obj.version = "0.3.1"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -22,6 +22,7 @@ local attention = load("attention")
 local herdr = load("herdr")
 local icon = load("icon")
 local iterm = load("iterm")
+local picker = load("picker")
 local since = load("since")
 
 local SEEN_KEY = "HerdrJump.seen"
@@ -34,6 +35,9 @@ local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
 local TEXT_FONT_SIZE, SUBTEXT_FONT_SIZE = 18, 12
 local TEXT_COLOR = { list = "System", name = "labelColor" }
 local SUBTEXT_COLOR = { list = "System", name = "secondaryLabelColor" }
+local SEPARATOR_COLOR = { list = "System", name = "separatorColor" }
+-- How long the legend footer follows the picker's window as it opens: reads, and seconds apart.
+local FOOTER_FOLLOW = { reads = 8, seconds = 0.05 }
 -- The status icons, in points: the picker fits its row images to the row, the menu shows them as is.
 local BADGE_SIZE = { chooser = 32, menu = 18 }
 
@@ -165,6 +169,7 @@ function obj:stop()
       self[name] = nil
     end
   end
+  self:_hideFooter()
   for _, name in ipairs({ "sortKey", "menubar", "chooser" }) do
     if self[name] then
       self[name]:delete()
@@ -175,7 +180,7 @@ function obj:stop()
   return self
 end
 
--- The agents picker; the legend row is not valid, so choosing it leaves the picker open.
+-- The agents picker; its legend is a footer drawn while it is open (see _showFooter).
 function obj:_newChooser()
   self.chooser = hs.chooser.new(function(choice)
     if choice and choice.paneId then
@@ -196,6 +201,7 @@ function obj:_newChooser()
     if self.sortKey then
       self.sortKey:disable()
     end
+    self:_hideFooter()
   end)
 end
 
@@ -214,9 +220,9 @@ function obj:_initialOrder()
   return attention.order(self.defaultOrder)
 end
 
--- The status icons, per status, at the picker's and the menu's size; blank for the legend row.
+-- The status icons, per status, at the picker's and the menu's size.
 function obj:_badges()
-  local badges = { blank = icon.blank(BADGE_SIZE.chooser) }
+  local badges = {}
   for use, size in pairs(BADGE_SIZE) do
     badges[use] = {}
     for status, color in pairs(attention.COLOR) do
@@ -311,12 +317,15 @@ function obj:_rows()
   return attention.rows(self.agents, self.seen, self.order, since.describe(self.since, os.time()))
 end
 
-local function styled(text, size, color)
-  return hs.styledtext.new(text, { font = { name = hs.styledtext.defaultFonts.system.name, size = size }, color = color })
+local function styled(text, size, color, alignment)
+  return hs.styledtext.new(text, {
+    font = { name = hs.styledtext.defaultFonts.system.name, size = size },
+    color = color,
+    paragraphStyle = alignment and { alignment = alignment } or nil,
+  })
 end
 
--- The picker entries: the status icon, the title, the status and its age in the status color, then
--- the legend.
+-- The picker entries: the status icon, the title, the status and its age in the status color.
 function obj:_choices()
   local choices = {}
   for i, row in ipairs(self:_rows()) do
@@ -328,26 +337,80 @@ function obj:_choices()
       paneId = row.paneId,
     }
   end
-  if #choices > 0 then
-    choices[#choices + 1] = self:_legendChoice()
-  end
   return choices
 end
 
--- The legend row: each glyph in its status color, the order and the keys below.
-function obj:_legendChoice()
+-- The legend as styled text: each glyph in its status color; and the hint (order, Tab), to be
+-- right-aligned.
+function obj:_legendTexts()
   local legend = attention.legend(self.order)
   local text = styled("", SUBTEXT_FONT_SIZE, TEXT_COLOR)
   for i, part in ipairs(legend.parts) do
     text = text .. styled((i > 1 and "    " or "") .. part.glyph, SUBTEXT_FONT_SIZE, attention.COLOR[part.status])
       .. styled(" " .. part.meaning, SUBTEXT_FONT_SIZE, TEXT_COLOR)
   end
-  return {
-    text = text,
-    subText = styled(legend.subText, SUBTEXT_FONT_SIZE, SUBTEXT_COLOR),
-    image = self.badges.blank,
-    valid = false,
+  return text, styled(legend.hint, SUBTEXT_FONT_SIZE, SUBTEXT_COLOR, "right")
+end
+
+-- The legend, as one line over the free space at the bottom of the open picker: a choice row would
+-- be selectable. The canvas lets clicks through and goes away with the picker. The picker's window
+-- can reach the window list a moment after it opens, and zooms in, so the footer follows its frame
+-- for a moment.
+function obj:_showFooter()
+  self:_hideFooter()
+  self:_drawFooter()
+  local reads = 0
+  self.footerTimer = hs.timer.doEvery(FOOTER_FOLLOW.seconds, function()
+    reads = reads + 1
+    self:_drawFooter()
+    if reads >= FOOTER_FOLLOW.reads then
+      self.footerTimer:stop()
+      self.footerTimer = nil
+      if self.footer == nil then
+        self.logger.w("picker window not found: no legend")
+      end
+    end
+  end)
+end
+
+-- Draws the footer at the bottom of the picker window, unless it is there already or the window is
+-- not on screen.
+function obj:_drawFooter()
+  local window = picker.chooserWindow(hs.window.list(true), hs.processInfo.processID)
+  if window == nil or picker.sameFrame(window, self.footerWindow) then
+    return
+  end
+  local footer = self.footer or hs.canvas.new({ x = window.x, y = window.y, w = 1, h = 1 })
+  local legend, hint = self:_legendTexts()
+  local layout = picker.footer(window, footer:minimumTextSize(legend), footer:minimumTextSize(hint))
+  local elements = {
+    {
+      type = "segments", action = "stroke", strokeWidth = 1, strokeColor = SEPARATOR_COLOR,
+      coordinates = { { x = 0, y = 0.5 }, { x = layout.frame.w, y = 0.5 } },
+    },
+    { type = "text", text = legend, frame = layout.text },
   }
+  if layout.hint then
+    elements[#elements + 1] = { type = "text", text = hint, frame = layout.text }
+  end
+  footer:frame(layout.frame)
+  footer:level(window.layer + 1)
+  footer:behaviorAsLabels({ "canJoinAllSpaces", "fullScreenAuxiliary" })
+  footer:replaceElements(elements)
+  footer:show()
+  self.footer, self.footerWindow = footer, window
+end
+
+function obj:_hideFooter()
+  if self.footerTimer then
+    self.footerTimer:stop()
+    self.footerTimer = nil
+  end
+  if self.footer then
+    self.footer:delete()
+    self.footer = nil
+  end
+  self.footerWindow = nil
 end
 
 -- The hs.menubar entry of an attention.menu item: its status icon, a jump or a sort when clicked.
@@ -397,6 +460,7 @@ function obj:setOrder(order)
     self.chooser:placeholderText(attention.placeholder(order))
     if self.chooser:isVisible() then
       self.chooser:refreshChoicesCallback(true)
+      self:_showFooter()
     end
   end
   return self
@@ -443,8 +507,11 @@ function obj:showAgents()
     self:refresh()
     return
   end
+  local screen = hs.screen.mainScreen()
+  self.chooser:rows(picker.rows(#self.agents, picker.maxRows(screen and screen:frame().h or 0)))
   self.chooser:refreshChoicesCallback()
   self.chooser:show()
+  self:_showFooter()
   self:refresh(function()
     if not (self.chooser and self.chooser:isVisible()) then
       return

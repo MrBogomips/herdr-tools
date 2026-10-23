@@ -207,7 +207,7 @@ function M.rows(agents, seen, order, times)
   return rows
 end
 
--- What each glyph means, most urgent first, as parts (to color each glyph) and as one line.
+-- What each glyph means, most urgent first, as parts (to color each glyph).
 local function legendParts()
   local parts = {}
   for i, status in ipairs(STATUSES) do
@@ -215,14 +215,6 @@ local function legendParts()
   end
   return parts
 end
-
-local LEGEND = (function()
-  local texts = {}
-  for i, part in ipairs(legendParts()) do
-    texts[i] = part.glyph .. " " .. part.meaning
-  end
-  return table.concat(texts, "   ")
-end)()
 
 -- The orders Tab moves to from this one, in cycle order.
 local function others(order)
@@ -234,14 +226,12 @@ local function others(order)
   return table.concat(names, ", ")
 end
 
--- The last chooser row: what the glyphs mean, the order, the keys. Selecting it does nothing.
+-- The picker's footer line: what the glyphs mean, then the order and where Tab goes.
 function M.legend(order)
   order = M.order(order)
   return {
-    text = LEGEND,
-    subText = ("Sorted %s · Tab: %s · Enter: jump"):format(ORDER_NAME[order], others(order)),
-    valid = false,
     parts = legendParts(),
+    hint = ("Sorted %s · Tab: %s"):format(ORDER_NAME[order], others(order)),
   }
 end
 

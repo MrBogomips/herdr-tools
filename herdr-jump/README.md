@@ -8,7 +8,7 @@ Run five agents at once and they queue up for you: a permission here, a finished
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
 
-<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, waiting 12 and 3 minutes, then two finished agents with green check marks, waiting 25 and 4 minutes, then an idle agent and two working ones; the last row is the legend of the icons" width="800">
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, waiting 12 and 3 minutes, then two finished agents with green check marks, waiting 25 and 4 minutes, then an idle agent and two working ones; a line at the bottom explains the icons and the sort in use" width="800">
 
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
 first; then the others. Tab sorts newest first or by name.
@@ -47,8 +47,9 @@ Both keys can be changed, see [Configure](#configure).
 ## Symbols
 
 Each row starts with a colored icon; the status and its time under the title take the same color.
-A filled icon waits for you, an outlined one does not. The last row of the picker is the legend
-(it cannot be chosen), and the menu bar drop-down has a Legend submenu with the icons.
+A filled icon waits for you, an outlined one does not. The line at the bottom of the picker is the
+legend, with the sort in use and the ones Tab moves to; it is not a row, so it cannot be selected.
+The menu bar drop-down has a Legend submenu with the icons.
 
 | Icon | Color | Status |
 | --- | --- | --- |
@@ -177,6 +178,9 @@ spoon.HerdrJump:start()
 - The icon is drawn with `hs.canvas` as a template image, so macOS tints it for light and dark
   menu bars; the count is the item's title. The status icons are drawn the same way, in color.
 - Tab is bound only while the picker is open, and released when it closes.
+- `hs.chooser` has no footer: the legend is a click-through `hs.canvas` drawn over the bottom of
+  the picker's window, which is sized to the agents plus room for it, and found through
+  `hs.window.list()`.
 - It does not use `hs.socket` on Herdr's socket: in Hammerspoon 1.1.1, connecting `hs.socket` to
   a Unix socket aborts Hammerspoon (GCDAsyncSocket throws while building the peer's URL).
 
@@ -186,6 +190,8 @@ spoon.HerdrJump:start()
 - With several Herdr clients, a jump brings forward the frontmost iTerm window running one.
 - iTerm documents its AppleScript support as deprecated; if a future iTerm drops it, a jump falls
   back to activating iTerm.
+- The picker is sized when it opens. With more agents than the screen holds, or new ones arriving
+  while it is open, the list scrolls and its last row can slide under the legend.
 
 ## Troubleshooting
 
@@ -202,7 +208,7 @@ spoon.HerdrJump:start()
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (sorting, seen record, wait times, icons, herdr replies, iTerm), Lua 5.4 or newer
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, seen record, wait times, icons, herdr replies, iTerm, picker layout), Lua 5.4 or newer
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 
