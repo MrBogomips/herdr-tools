@@ -51,7 +51,7 @@ class VersionTest(unittest.TestCase):
 class ConventionalTest(unittest.TestCase):
     def test_reads_type_scope_and_breaking_marks(self) -> None:
         cases = [
-            ("fix(sort-spaces): keep ~ first", "", ("fix", "sort-spaces", False)),
+            ("fix(space-herder): keep ~ first", "", ("fix", "space-herder", False)),
             ("feat!: drop the clear action", "", ("feat", None, True)),
             ("refactor(x): rename keys", "BREAKING CHANGE: assign is now mode", ("refactor", "x", True)),
             ("Update README", "", (None, None, False)),
@@ -61,10 +61,10 @@ class ConventionalTest(unittest.TestCase):
                 self.assertEqual(rb.conventional(subject, body), expected)
 
     def test_spots_release_commits(self) -> None:
-        self.assertTrue(rb.is_release_commit("chore(sort-spaces): release v0.2.1"))
-        self.assertTrue(rb.is_release_commit("chore(release): sort-spaces v0.2.1, space-colors v0.1.1"))
-        self.assertFalse(rb.is_release_commit("chore(sort-spaces): tidy imports"))
-        self.assertFalse(rb.is_release_commit("chore(sort-spaces): release the lock before sorting"))
+        self.assertTrue(rb.is_release_commit("chore(space-herder): release v0.1.1"))
+        self.assertTrue(rb.is_release_commit("chore(release): space-herder v0.1.1, auto-tab-name v0.2.1"))
+        self.assertFalse(rb.is_release_commit("chore(space-herder): tidy imports"))
+        self.assertFalse(rb.is_release_commit("chore(space-herder): release the lock before sorting"))
 
 
 class ClassifyPathTest(unittest.TestCase):
