@@ -8,6 +8,9 @@ Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who 
 spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
 only the ones you want.
 
+**Website: [mrbogomips.github.io/herdr-tools](https://mrbogomips.github.io/herdr-tools/)**, where
+you can paste your own space names and watch Space Herder sort and colour them.
+
 <img src="space-herder/docs/hero.png" alt="Herdr with herdr-tools: a sidebar where every customer has its own colour, ACME spaces in blue next to each other, Initech in mauve, LUMON pinned on top and SYS kept at the bottom, with agents working and waiting below" width="100%">
 
 <sub>Herdr with Space Herder and auto-tab-name, on fictional customers.</sub>
@@ -127,6 +130,8 @@ cd herdr-tools/space-herder && python3 -m unittest -v
   copies differ.
 - Code stays compatible with Python 3.9 (`/usr/bin/python3` on macOS) and uses the standard
   library only. CI runs every plugin's tests on macOS with the system Python and on Ubuntu.
+- The website is built from [`site/`](site/) with `python3 site/build.py`; its README explains
+  the layout and the tests.
 - `herdr api schema --json` prints the socket API of your Herdr build; the
   [plugin docs](https://herdr.dev/docs/plugins/) describe manifests, hooks and actions.
 

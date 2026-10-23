@@ -1,0 +1,79 @@
+<!-- {
+  "title": "Install herdr-tools: Space Herder, auto-tab-name and herdr-jump",
+  "description": "Install, update, pin or remove the herdr-tools plugins for Herdr in one command each, and herdr-jump for macOS in one line. Python standard library only, nothing else to install."
+} -->
+<div class="wrap">
+  <header class="phero">
+    <div class="kicker">// install</div>
+    <h1>One command per plugin.</h1>
+    <p class="lede">Every plugin lives in its own folder with its manifest, code and tests, and installs on its own.
+      Take only the ones you want.</p>
+  </header>
+</div>
+
+<div class="doc-band">
+  <div class="wrap doc">
+    <nav class="toc" aria-label="On this page">
+      <a href="#requirements">Requirements</a>
+      <a href="#plugins">Plugins</a>
+      <a href="#herdr-jump">herdr-jump</a>
+      <a href="#versions">Versions</a>
+      <a href="#develop">Develop</a>
+    </nav>
+    <div>
+      <section id="requirements" aria-labelledby="requirements-title">
+        <h2 id="requirements-title">Requirements</h2>
+        <ul>
+          <li><a href="https://herdr.dev">Herdr</a> {{min_herdr:auto-tab-name}} or newer ({{min_herdr:space-herder}} for Space Herder), on macOS or Linux.</li>
+          <li><code>python3</code> 3.9 or newer on the <code>PATH</code>. The system Python of macOS is enough: the plugins use the
+            standard library only.</li>
+          <li>For herdr-jump: macOS, Herdr running in iTerm2, and Homebrew if Hammerspoon is not installed yet.</li>
+        </ul>
+      </section>
+
+      <section id="plugins" aria-labelledby="plugins-title">
+        <h2 id="plugins-title">Plugins</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Plugin</th><th>Version</th><th>Install</th></tr></thead>
+          <tbody>
+            <tr><td><a href="space-herder.html">Space Herder</a></td><td>{{version:space-herder}}</td><td><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code></td></tr>
+            <tr><td><a href="auto-tab-name.html">auto-tab-name</a></td><td>{{version:auto-tab-name}}</td><td><code>herdr plugin install MrBogomips/herdr-tools/auto-tab-name</code></td></tr>
+          </tbody>
+        </table></div>
+        <pre class="code"><code>herdr plugin install MrBogomips/herdr-tools/&lt;plugin&gt;   <span class="c"># one plugin</span>
+herdr plugin update                                    <span class="c"># update installed plugins</span>
+herdr plugin uninstall mrbogomips.&lt;plugin&gt;             <span class="c"># remove one</span></code></pre>
+        <p>Herdr shows the manifest and the commands it will run before installing. Plugins are ordinary code running as
+          your user, so read them first. Each plugin's page explains its key bindings and its <code>config.json</code>, which
+          lives in <code>herdr plugin config-dir &lt;plugin id&gt;</code>.</p>
+        <p>The plugins are also listed in the <a href="https://herdr.dev/plugins">Herdr plugin marketplace</a>.</p>
+      </section>
+
+      <section id="herdr-jump" aria-labelledby="jump-title">
+        <h2 id="jump-title">herdr-jump</h2>
+        <p>A Hammerspoon Spoon, not a Herdr plugin, so <code>herdr plugin install</code> does not handle it. One line installs
+          it, and the same line updates it (v{{version:herdr-jump}} today):</p>
+        <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code></pre>
+        <p>See <a href="herdr-jump.html#install">what the installer does</a> and how to read it before running it.</p>
+      </section>
+
+      <section id="versions" aria-labelledby="versions-title">
+        <h2 id="versions-title">Versions</h2>
+        <p><code>herdr plugin update</code> follows <code>main</code>, which only receives tested changes. Every release is also
+          tagged <code>&lt;plugin&gt;-vX.Y.Z</code>; to stay on one, pin it:</p>
+        <pre class="code"><code>herdr plugin install MrBogomips/herdr-tools/auto-tab-name --ref auto-tab-name-v{{version:auto-tab-name}}</code></pre>
+        <p>Release notes are on the <a href="https://github.com/MrBogomips/herdr-tools/tags">tags page</a>.</p>
+      </section>
+
+      <section id="develop" aria-labelledby="develop-title">
+        <h2 id="develop-title">Develop</h2>
+        <pre class="code"><code>git clone https://github.com/MrBogomips/herdr-tools
+herdr plugin link "$PWD/herdr-tools/space-herder"   <span class="c"># run your working copy</span>
+cd herdr-tools/space-herder &amp;&amp; python3 -m unittest -v</code></pre>
+        <p>Code stays compatible with Python 3.9 and the standard library. CI runs every plugin's tests on macOS with the
+          system Python and on Ubuntu. Issues and pull requests are welcome on
+          <a href="https://github.com/MrBogomips/herdr-tools">GitHub</a>.</p>
+      </section>
+    </div>
+  </div>
+</div>

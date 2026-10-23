@@ -1,0 +1,165 @@
+<!-- {
+  "title": "auto-tab-name: Herdr tabs that name themselves",
+  "description": "auto-tab-name names each Herdr tab after the folder, repo or branch of its pane, follows your coding agents into worktrees, and leaves alone the tabs you name yourself."
+} -->
+<div class="wrap">
+  <header class="phero">
+    <div class="kicker">// plugin · v{{version:auto-tab-name}} · herdr ≥ {{min_herdr:auto-tab-name}} · macOS &amp; Linux</div>
+    <h1>auto-tab-name</h1>
+    <p class="lede">Tabs that name themselves. Every Herdr tab takes the name of the folder its pane is in, keeps it
+      in sync as you and your agents move around, and leaves alone the tabs you name yourself.</p>
+    <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/auto-tab-name</code><button type="button">copy</button></div>
+    <figure>
+      <div class="term" aria-hidden="true">
+        <div class="term-bar"><i></i><i></i><i></i><span class="title">herdr · Initech - crm</span></div>
+        <div class="tabbar"><em>before</em><span>1</span><span>2</span><span>3</span></div>
+        <div class="tabbar"><em>after</em><span class="on">sort</span><span>initech@main</span><span>initech@feature/login</span></div>
+        <div class="formats">
+          <span class="k">~/tools/initech/sort</span><span class="k">basename</span><span class="v ex">sort</span>
+          <span class="k"></span><span class="k">repo</span><span class="v ex">initech/sort</span>
+          <span class="k"></span><span class="k">repo_branch</span><span class="v ex">initech@main</span>
+        </div>
+      </div>
+      <figcaption>Before: tabs named 1, 2, 3. After: each one says where its pane works, worktree branch included.</figcaption>
+    </figure>
+  </header>
+</div>
+
+<div class="doc-band">
+  <div class="wrap doc">
+    <nav class="toc" aria-label="On this page">
+      <a href="#formats">Formats</a>
+      <a href="#agents">Agents in worktrees</a>
+      <a href="#yours">Your names stay</a>
+      <a href="#keys">Key bindings</a>
+      <a href="#shell">Shell integration</a>
+      <a href="#config">Configuration</a>
+      <a href="#limits">Good to know</a>
+    </nav>
+    <div>
+      <section id="formats" aria-labelledby="formats-title">
+        <div class="kicker">// 01</div>
+        <h2 id="formats-title">Pick what a name shows</h2>
+        <p>Herdr shows a tab nobody named as its position number. auto-tab-name renames those tabs after their pane's
+          folder, and only writes when a name changes. For <code>~/tools/initech/sort</code>, inside the repository
+          <code>initech</code> on branch <code>main</code>:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th><code>format</code></th><th>Name</th><th>Outside a repository</th></tr></thead>
+          <tbody>
+            <tr><td><code>basename</code> (default)</td><td><code>sort</code></td><td>same</td></tr>
+            <tr><td><code>repo</code></td><td><code>initech/sort</code></td><td>like <code>basename</code></td></tr>
+            <tr><td><code>last_n</code></td><td><code>initech/sort</code>, the last <code>depth</code> folders</td><td>same</td></tr>
+            <tr><td><code>home_path</code></td><td><code>~/tools/initech/sort</code></td><td>same</td></tr>
+            <tr><td><code>repo_branch</code></td><td><code>initech@main</code>, or the short hash when detached</td><td>like <code>basename</code></td></tr>
+          </tbody>
+        </table></div>
+        <p>A linked worktree shows the name of its main repository. The repository is found by reading <code>.git</code>:
+          no <code>git</code> process runs.</p>
+      </section>
+
+      <section id="agents" aria-labelledby="agents-title">
+        <div class="kicker">// 02</div>
+        <h2 id="agents-title">It follows your agents into worktrees</h2>
+        <p>By default the name comes from the folder of the program in the foreground, not the shell's. When an agent
+          started in <code>~/tools/initech</code> goes to work in the worktree <code>.worktrees/login</code>, its tab says so:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th><code>format</code></th><th><code>"cwd"</code> (the shell)</th><th><code>"foreground_cwd"</code> (default)</th></tr></thead>
+          <tbody>
+            <tr><td><code>basename</code></td><td><code>initech</code></td><td><code>login</code></td></tr>
+            <tr><td><code>repo_branch</code></td><td><code>initech@main</code></td><td><code>initech@feature/login</code></td></tr>
+          </tbody>
+        </table></div>
+        <p>Herdr has no event for a folder change, so the name follows at the agent's next change of state: when it
+          gets ready, and at the latest when the turn that moved it ends.</p>
+      </section>
+
+      <section id="yours" aria-labelledby="yours-title">
+        <div class="kicker">// 03</div>
+        <h2 id="yours-title">Your names stay yours</h2>
+        <ul>
+          <li>A new tab shows its position number, so it follows its folder from the start.</li>
+          <li>Rename a tab by hand and it stops following: your name stays.</li>
+          <li><code>follow</code> makes it follow again, and so does renaming it back to its position number.</li>
+          <li>A Herdr restart changes nothing: tabs already named like their folder count as followed.</li>
+        </ul>
+      </section>
+
+      <section id="keys" aria-labelledby="keys-title">
+        <div class="kicker">// 04</div>
+        <h2 id="keys-title">Key bindings</h2>
+        <p>Bind the actions you want in <code>~/.config/herdr/config.toml</code>, then run <code>herdr server reload-config</code>:</p>
+        <pre class="code"><code>[[keys.command]]
+key = "prefix+alt+c"
+type = "plugin_action"
+command = "mrbogomips.auto-tab-name.configure"
+
+[[keys.command]]
+key = "prefix+alt+t"
+type = "plugin_action"
+command = "mrbogomips.auto-tab-name.toggle"
+
+[[keys.command]]
+key = "prefix+alt+f"
+type = "plugin_action"
+command = "mrbogomips.auto-tab-name.follow"</code></pre>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Action</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>configure</code></td><td>Opens the configuration popup</td></tr>
+            <tr><td><code>toggle</code></td><td>Turns <code>auto_sync</code> on or off</td></tr>
+            <tr><td><code>sync</code></td><td>Names every followed tab now</td></tr>
+            <tr><td><code>follow</code> / <code>unfollow</code></td><td>Makes the current tab follow its folder, or keeps its name as it is</td></tr>
+            <tr><td><code>refresh</code></td><td>The quiet run, for the shell integration</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="shell" aria-labelledby="shell-title">
+        <div class="kicker">// 05</div>
+        <h2 id="shell-title">Instant names with shell integration</h2>
+        <p>Without it, a name catches up at the next focus or tab change. To rename as soon as you <code>cd</code>, add the
+          lines for your shell; bash and fish versions are in the
+          <a href="https://github.com/MrBogomips/herdr-tools/tree/main/auto-tab-name#shell-integration-optional">README</a>.</p>
+        <pre class="code"><code><span class="c"># ~/.zshrc</span>
+if [[ $HERDR_ENV == 1 &amp;&amp; -n $HERDR_BIN_PATH ]]; then
+  autoload -Uz add-zsh-hook
+  _auto_tab_name_chpwd() { "$HERDR_BIN_PATH" plugin action invoke mrbogomips.auto-tab-name.refresh &gt;/dev/null 2&gt;&amp;1 &amp;! }
+  add-zsh-hook chpwd _auto_tab_name_chpwd
+fi</code></pre>
+        <p>It runs only inside Herdr, in the background, so the prompt never waits.</p>
+      </section>
+
+      <section id="config" aria-labelledby="config-title">
+        <div class="kicker">// 06</div>
+        <h2 id="config-title">Configuration</h2>
+        <p>The <code>configure</code> popup edits <code>config.json</code> for you; the file is read on every run.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>auto_sync</code></td><td><code>true</code></td><td>Rename tabs from the hooks</td></tr>
+            <tr><td><code>format</code></td><td><code>"basename"</code></td><td>What the name shows, see <a href="#formats">formats</a></td></tr>
+            <tr><td><code>depth</code></td><td><code>2</code></td><td>Folders shown by <code>last_n</code></td></tr>
+            <tr><td><code>max_length</code></td><td><code>24</code></td><td>Longest name, cut with <code>…</code>; <code>0</code> for no limit</td></tr>
+            <tr><td><code>source</code></td><td><code>"foreground_cwd"</code></td><td>Folder of the foreground program, or <code>"cwd"</code> for the shell's</td></tr>
+            <tr><td><code>home_tilde</code></td><td><code>true</code></td><td>Write the home folder as <code>~</code></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="limits" aria-labelledby="limits-title">
+        <div class="kicker">// 07</div>
+        <h2 id="limits-title">Good to know</h2>
+        <ul>
+          <li>No Herdr event fires on <code>cd</code>: without the shell integration a name catches up at the next focus or tab change.</li>
+          <li>A tab with several panes uses the pane you focused last in it.</li>
+          <li>With <code>repo</code> or <code>repo_branch</code>, a git repository in your home folder (dotfiles, say) names
+            every folder under home that is in no other repository.</li>
+        </ul>
+        <div class="row-actions">
+          <a class="btn primary" href="install.html">Install →</a>
+          <a class="btn" href="https://github.com/MrBogomips/herdr-tools/tree/main/auto-tab-name">Full README on GitHub ↗</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

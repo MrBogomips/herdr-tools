@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <meta name="description" content="${description}">${base}${canonical}
+  <meta name="color-scheme" content="dark light">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="herdr-tools">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:url" content="${url}">
+  <meta property="og:image" content="${og_image}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script>document.documentElement.classList.add("js"); try { var mode = localStorage.getItem("herdr-tools.mode"); if (mode) document.documentElement.dataset.mode = mode; } catch (e) {}</script>
+${scripts}
+  <script src="assets/js/site.js" defer></script>
+</head>
+<body class="page-${page}">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap nav-in">
+      <a class="word" href="index.html">herdr-tools<small>community plugins for herdr</small></a>
+      <nav class="nav-links" aria-label="Main">
+        ${nav}
+        <a href="https://github.com/MrBogomips/herdr-tools">GitHub&nbsp;↗</a>
+      </nav>
+      <button class="mode" type="button" aria-label="Switch between dark (ink) and light (paper)"><span class="m-ink">ink</span> / <span class="m-paper">paper</span></button>
+    </div>
+  </header>
+  <main id="main">
+${content}
+  </main>
+  <footer class="foot">
+    <div class="wrap foot-in">
+      <div class="foot-cols">
+        <div>
+          <h2>Plugins</h2>
+          <a href="space-herder.html">Space Herder</a>
+          <a href="auto-tab-name.html">auto-tab-name</a>
+        </div>
+        <div>
+          <h2>Companion</h2>
+          <a href="herdr-jump.html">herdr-jump</a>
+          <a href="install.html#herdr-jump">One-line install</a>
+        </div>
+        <div>
+          <h2>Project</h2>
+          <a href="https://github.com/MrBogomips/herdr-tools">Source on GitHub</a>
+          <a href="https://github.com/MrBogomips/herdr-tools/issues">Issues</a>
+          <a href="https://github.com/MrBogomips/herdr-tools/blob/main/LICENSE">MIT license</a>
+        </div>
+        <div>
+          <h2>Herdr</h2>
+          <a href="https://herdr.dev">herdr.dev</a>
+          <a href="https://herdr.dev/plugins">Plugin marketplace</a>
+          <a href="https://herdr.dev/docs/plugins/">Plugin docs</a>
+        </div>
+      </div>
+      <p class="foot-note">Community plugins for <a href="https://herdr.dev">Herdr</a>, not affiliated with the Herdr project.
+        Customer names on this site (ACME, Globex, Initech, Lumon) are fictional.
+        <span class="sig">Made by <a href="https://github.com/MrBogomips">Giovanni Costagliola</a> · a <a class="bogoware" href="https://www.bogoware.it">Bogoware</a> project</span></p>
+    </div>
+  </footer>
+</body>
+</html>

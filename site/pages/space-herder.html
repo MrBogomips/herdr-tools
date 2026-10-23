@@ -1,0 +1,202 @@
+<!-- {
+  "title": "Space Herder: a Herdr spaces sidebar that sorts and colours itself",
+  "description": "Space Herder keeps Herdr's spaces sidebar sorted into groups, gives every space of one customer the same colour, and replaces the new-space and rename prompts with dialogs that preview the result.",
+  "scripts": ["palettes.js"]
+} -->
+<div class="wrap">
+  <header class="phero">
+    <div class="kicker">// plugin · v{{version:space-herder}} · herdr ≥ {{min_herdr:space-herder}} · macOS &amp; Linux</div>
+    <h1>Space Herder</h1>
+    <p class="lede">Herds Herdr's spaces sidebar: keeps it sorted into groups, gives every space of one customer the
+      same colour, and replaces Herdr's new-space and rename prompts with dialogs that show the result as you type.</p>
+    <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code><button type="button">copy</button></div>
+    <div class="row-actions">
+      <a class="btn primary" href="#setup">Set it up →</a>
+      <a class="btn" href="index.html#try">Try the colours in your browser</a>
+    </div>
+    <figure>
+      <img class="shot" src="img/space-herder/hero.png" width="1380" height="970"
+        alt="Herdr with Space Herder: a sidebar where every customer has its own colour, ACME spaces in blue next to each other, Initech in mauve, LUMON pinned on top and SYS kept at the bottom, with agents working and waiting below">
+      <figcaption>Herdr with Space Herder and auto-tab-name, on fictional customers.</figcaption>
+    </figure>
+  </header>
+</div>
+
+<div class="doc-band">
+  <div class="wrap doc">
+    <nav class="toc" aria-label="On this page">
+      <a href="#sort">Sorting</a>
+      <a href="#colour">Colours</a>
+      <a href="#palettes-title">Palettes</a>
+      <a href="#dialogs">Dialogs</a>
+      <a href="#setup">Set up</a>
+      <a href="#config">Configuration</a>
+      <a href="#limits">Good to know</a>
+    </nav>
+    <div>
+      <section id="sort" aria-labelledby="sort-title">
+        <div class="kicker">// 01</div>
+        <h2 id="sort-title">A sidebar that sorts itself</h2>
+        <p>A suffix in the space name picks its group. Groups come in this order, and inside each one spaces sort
+          by name with the suffix removed, ignoring case. Worktree children follow their parent and sit right under it.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Group</th><th>Name convention</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td>home</td><td>the name <code>~</code></td><td><code>~</code>, always first</td></tr>
+            <tr><td>head</td><td>ends with a space and <code>+</code></td><td><code>LUMON +</code></td></tr>
+            <tr><td>default</td><td>no suffix</td><td><code>ACME - api</code></td></tr>
+            <tr><td>bottom</td><td>ends with a space and <code>-</code></td><td><code>SYS -</code></td></tr>
+          </tbody>
+        </table></div>
+        <p>The space before the suffix is required, so <code>C++</code> stays in the default group. Sort on a key, or
+          turn on autosort and let the sidebar sort itself after every new or renamed space:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th><code>auto_sort</code></th><th>Sorts after</th></tr></thead>
+          <tbody>
+            <tr><td><code>"off"</code> (default)</td><td>nothing: only the sort key sorts</td></tr>
+            <tr><td><code>"created"</code></td><td>a space is created, a new worktree space included</td></tr>
+            <tr><td><code>"renamed"</code></td><td>a space is renamed</td></tr>
+            <tr><td><code>"both"</code></td><td>either</td></tr>
+          </tbody>
+        </table></div>
+        <p>The focused space stays focused, sorting a sorted sidebar changes nothing, and space numbers and
+          next/previous-space navigation follow the new order.</p>
+      </section>
+
+      <section id="colour" aria-labelledby="colour-title">
+        <div class="kicker">// 02</div>
+        <h2 id="colour-title">A colour per customer</h2>
+        <p>The key is the part of the name before the first <code> -</code>: <code>ACME - api</code>, <code>ACME - web</code>
+          and <code>ACME +</code> all share <code>ACME</code>, so they share a colour. The colour is chosen in this order:</p>
+        <ol>
+          <li><b>Rules first.</b> A regular expression matched against the name; the first match picks the colour.</li>
+          <li><b>Then a colour picked in a dialog</b> for that key.</li>
+          <li><b>Otherwise the key's colour</b>, by <code>assign</code>:
+            <ul>
+              <li><code>"hash"</code> (default): a stable SHA-256 hash of the key. The same customer gets the same colour
+                on every machine, with nothing stored.</li>
+              <li><code>"sticky"</code>: a new key starts from its hash colour but takes the least-used colour when that
+                one is taken, and keeps it. No two customers share a colour until there are more customers than colours.</li>
+            </ul>
+          </li>
+          <li><b>Worktree children</b> take their parent's colour, so a repo's checkouts match it.</li>
+        </ol>
+        <div class="callout"><p>With hashing alone and 15 colours, the odds that some two of six customers share a colour
+          are about 2 in 3. Use <code>"assign": "sticky"</code>, or pin a customer to a colour with a rule.</p></div>
+        <h3 id="palettes-title">{{palette_count}} preset palettes</h3>
+        <p>Accent colours of popular themes, the most distinct first, up to the 15 a sidebar row can hold. Or bring
+          your own list of hex colours.</p>
+        <div class="palettes" id="palettes"></div>
+      </section>
+
+      <section id="dialogs" aria-labelledby="dialogs-title">
+        <div class="kicker">// 03</div>
+        <h2 id="dialogs-title">Dialogs that show the result</h2>
+        <p>Herdr's own prompts ask only for a name. Space Herder's dialogs open in a popup and show the sidebar as it
+          will look: the name with its group suffix, the space in its place and in its colour.</p>
+        <figure>
+          <img class="shot" src="img/space-herder/new-space.png" width="1380" height="970" loading="lazy"
+            alt="The new-space dialog over a Herdr layout: folder ~/git/initech-crm, name Initech - billing becoming Initech - billing + in the head group, mauve picked in the colour row, and a sidebar preview with Initech - billing + at the top and both Initech spaces in mauve">
+          <figcaption>New space: folder, name, group and colour, with the sidebar preview on the right.</figcaption>
+        </figure>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Field</th><th>Keys</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Folder (new space)</td><td>type, <kbd>Tab</kbd> completes, <kbd>↑</kbd> <kbd>↓</kbd></td><td>Where the space starts: recent folders, open panes' folders and, with zoxide, its best-ranked ones</td></tr>
+            <tr><td>Name</td><td>type, <kbd>Ctrl+W</kbd>, <kbd>Ctrl+U</kbd></td><td>Ending it with <code> +</code> or <code> -</code> picks the group</td></tr>
+            <tr><td>Group</td><td><kbd>←</kbd> <kbd>→</kbd>, <kbd>+</kbd> <kbd>-</kbd> <kbd>=</kbd></td><td>head, default or bottom</td></tr>
+            <tr><td>Colour</td><td><kbd>←</kbd> <kbd>→</kbd>, <kbd>a</kbd> for auto</td><td>A palette colour for every space of the key, or auto</td></tr>
+          </tbody>
+        </table></div>
+        <figure>
+          <img class="shot" src="img/space-herder/rename.png" width="1380" height="970" loading="lazy"
+            alt="The rename dialog on ACME - api: blue is picked in the colour row, and the sidebar preview shows ACME - api, its feature-checkout worktree and ACME - web all in blue">
+          <figcaption>Renaming ACME - api: picking blue recolours every ACME space at once.</figcaption>
+        </figure>
+      </section>
+
+      <section id="setup" aria-labelledby="setup-title">
+        <div class="kicker">// 04</div>
+        <h2 id="setup-title">Set it up in five steps</h2>
+        <ol>
+          <li>Install the plugin:
+            <pre class="code"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code></pre></li>
+          <li>Optionally create <code>config.json</code> in <code>herdr plugin config-dir mrbogomips.space-herder</code>.
+            This one sorts after every new or renamed space and keeps customers' colours apart:
+            <pre class="code"><code>{
+  "auto_sort": "both",
+  "assign": "sticky"
+}</code></pre></li>
+          <li>Generate the sidebar rows; the path shows in a toast:
+            <pre class="code"><code>herdr plugin action invoke mrbogomips.space-herder.snippet</code></pre></li>
+          <li>In <code>~/.config/herdr/config.toml</code>, set <code>rows</code> of your <code>[ui.sidebar.spaces]</code>
+            table to the value from that file, and bind the sort and the dialogs:
+            <pre class="code"><code>[keys]
+new_workspace = "prefix+ctrl+n"    <span class="c"># Herdr's own prompts, still reachable</span>
+rename_workspace = "prefix+ctrl+w"
+
+[[keys.command]]
+key = "prefix+shift+s"
+type = "plugin_action"
+command = "mrbogomips.space-herder.sort"
+
+[[keys.command]]
+key = "prefix+shift+n"
+type = "plugin_action"
+command = "mrbogomips.space-herder.new-space"
+
+[[keys.command]]
+key = "prefix+shift+w"
+type = "plugin_action"
+command = "mrbogomips.space-herder.rename-space"</code></pre></li>
+          <li>Check, then reload:
+            <pre class="code"><code>herdr config check &amp;&amp; herdr server reload-config</code></pre></li>
+        </ol>
+        <div class="callout"><p><b>Never paste a second <code>[ui.sidebar.spaces]</code> table:</b> a duplicate table makes
+          the whole config invalid and Herdr falls back to its defaults, key bindings included.</p></div>
+      </section>
+
+      <section id="config" aria-labelledby="config-title">
+        <div class="kicker">// 05</div>
+        <h2 id="config-title">Configuration</h2>
+        <p>Every key is optional. The file is read on every run, so <code>auto_sort</code> changes apply at once.</p>
+        <div class="callout"><p><b>Changed <code>palette</code>, <code>palette_size</code> or a rule's colour?</b> The colours live in
+          <code>config.toml</code>: run the <code>snippet</code> action again, put the new rows in <code>config.toml</code>, run
+          <code>herdr server reload-config</code>, then the <code>recolor</code> action. The first comment line of the rows
+          carries a fingerprint of the colours, so you can tell whether yours are current.</p></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Key</th><th>Default</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>auto_sort</code></td><td><code>"off"</code></td><td><code>"off"</code>, <code>"created"</code>, <code>"renamed"</code> or <code>"both"</code></td></tr>
+            <tr><td><code>palette</code></td><td><code>"catppuccin"</code></td><td>A preset name, or your own list of hex colours</td></tr>
+            <tr><td><code>palette_size</code></td><td>all</td><td>Use only the first N colours, to leave slots for rule colours</td></tr>
+            <tr><td><code>assign</code></td><td><code>"hash"</code></td><td><code>"hash"</code> or <code>"sticky"</code></td></tr>
+            <tr><td><code>key</code></td><td><code>"prefix"</code></td><td><code>"prefix"</code>, <code>"suffix"</code> or <code>"whole"</code></td></tr>
+            <tr><td><code>separator</code></td><td><code>" -"</code></td><td>Splits prefix from suffix</td></tr>
+            <tr><td><code>marker</code></td><td><code>"▌"</code></td><td>Drawn before the name in the same colour</td></tr>
+            <tr><td><code>rules</code></td><td><code>[]</code></td><td><code>{"match": "&lt;regex&gt;", "color": ...}</code>, checked before the key's colour</td></tr>
+          </tbody>
+        </table></div>
+        <p>The <a href="https://github.com/MrBogomips/herdr-tools/tree/main/space-herder#configuration">README</a> documents every
+          key, the colour slots and the sticky assignments file.</p>
+      </section>
+
+      <section id="limits" aria-labelledby="limits-title">
+        <div class="kicker">// 06</div>
+        <h2 id="limits-title">Good to know</h2>
+        <ul>
+          <li>Herdr styles a token's foreground only, so there is no background colour: the marker before the name
+            stands in for a swatch.</li>
+          <li>At most 15 colours, the tokens one sidebar row holds next to the agent-state dot.</li>
+          <li>The colours show in the expanded sidebar; the collapsed rail and the mobile layout keep Herdr's own rendering.</li>
+          <li><code>ACME-api</code> does not split on <code> -</code>: keep the space before the dash, or change <code>separator</code>.</li>
+          <li>A space dragged by hand goes back to its group at the next sort.</li>
+        </ul>
+        <div class="row-actions">
+          <a class="btn primary" href="install.html">Install →</a>
+          <a class="btn" href="https://github.com/MrBogomips/herdr-tools/tree/main/space-herder">Full README on GitHub ↗</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

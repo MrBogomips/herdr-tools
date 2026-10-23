@@ -57,6 +57,12 @@ jobs:
             (cd "$scripts" && ${{ matrix.python }} -m unittest -v)
             echo "::endgroup::"
           done
+      # The site's build and its playground, which must sort and colour like Space Herder (the
+      # parity test runs herd.js under the runner's node).
+      - name: Run the site's tests
+        run: |
+          set -eu
+          (cd site && ${{ matrix.python }} -m unittest -v)
       # Companions' shell scripts (herdr-jump/install.sh) must run on macOS's /bin/sh; with the
       # system commands stubbed, the tests also run on Ubuntu's dash.
       - name: Run each companion's shell tests
