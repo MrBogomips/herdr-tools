@@ -23,6 +23,8 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
 - Every plugin is listed in the root `README.md` table; its own README documents install, key
   binding, config and limits.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
+- `space-colors/groups.py` copies the sort-spaces group order (`parse_label`, `plan_order` in
+  `sort-spaces/sort_spaces.py`) for the dialogs' preview: change both together, test cases included.
 - Test labels and docs use neutral names (ACME, Globex, Initech, Lumon): never real customer names.
 
 ## Companions (top-level folders without a manifest)
