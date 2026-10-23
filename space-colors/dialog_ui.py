@@ -174,9 +174,9 @@ def render(form: Form, setup: Setup, width: int, height: int) -> List[str]:
 
 
 def _form_rows(form: Form, setup: Setup, width: int) -> List[Row]:
+    # The popup border already names the dialog; a rename also shows the name it starts from.
     target = setup.target()
-    title = " New space" if setup.mode == NEW else " Rename space " + (target["label"] if target else "")
-    rows: List[Row] = [[(title, BOLD)], []]
+    rows: List[Row] = [[("current name  " + target["label"], DIM)] if target and setup.mode != NEW else [], []]
     if setup.mode == NEW:
         rows.append(_field("Folder", form, "folder", [(form.folder, "")]))
         if form.field == "folder":
@@ -232,9 +232,10 @@ def _colour_value(form: Form, setup: Setup) -> Row:
         return [(lock, DIM)]
     chosen = shown_colour(form, setup)
     row: Row = [("[auto]" if chosen is None else " auto ", BOLD if chosen is None else DIM), (" ", "")]
+    # Two columns per swatch, so all 15 colours a sidebar row can hold fit next to the form.
     for colour in setup.config.palette:
-        swatch = "[●]" if colour == chosen else " ● "
-        row.append((swatch, foreground(colour)))
+        picked = colour == chosen
+        row += [("◉" if picked else "●", foreground(colour) + (";" + BOLD if picked else "")), (" ", "")]
     return row
 
 
@@ -246,9 +247,10 @@ def _preview_rows(form: Form, setup: Setup, width: int, height: int) -> List[Row
     lines: List[Row] = [[("Sidebar preview", BOLD)]]
     for row in rows[start : start + room]:
         marker = " ◀" if row.target else ""
-        text = row.text[: max(0, width - len(marker))]
+        indent = "└ " if row.child else ""
+        text = row.text[: max(0, width - len(marker) - len(indent))]
         style = ";".join(part for part in (foreground(row.colour), BOLD if row.target else "") if part)
-        lines.append([(text, style), (marker, BOLD)])
+        lines.append([(indent, DIM), (text, style), (marker, BOLD)])
     return lines
 
 

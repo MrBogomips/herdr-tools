@@ -57,7 +57,7 @@ class RenderTest(unittest.TestCase):
 
         self.assertLessEqual(len(lines), 20)
         self.assertTrue(all(visible_width(line) <= 100 for line in lines))
-        for expected in ("New space", "Folder", "~/git/acme-api", "Name", "ACME - api", "Group", "Colour",
+        for expected in ("Folder", "~/git/acme-api", "Name", "ACME - api", "Group", "Colour",
                          "Sidebar preview", "▌LUMON +", "◀", "Enter create"):
             self.assertIn(expected, text)
 
@@ -75,6 +75,40 @@ class RenderTest(unittest.TestCase):
         joined = "".join(render(initial_form(context), context, 100, 20))
 
         self.assertIn("\x1b[38;2;0;0;1m", joined)
+
+    def test_every_swatch_of_a_full_palette_fits_and_the_pick_stands_out(self):
+        from test_dialog_form import config
+
+        palette = ["#0000{:02x}".format(number) for number in range(1, 16)]
+        context = setup(cfg=config(palette=palette))
+        form = press(initial_form(context), context, "shift-tab", "right", "right")
+
+        colour_line = next(plain(line) for line in render(form, context, 90, 20) if "Colour" in line)
+
+        self.assertEqual(colour_line.count("●") + colour_line.count("◉"), 15)
+        self.assertEqual(colour_line.count("◉"), 1)
+
+    def test_the_popup_border_already_names_the_dialog(self):
+        context = setup()
+        text = "\n".join(plain(line) for line in render(initial_form(context), context, 100, 20))
+
+        self.assertNotIn("New space", text)
+        renaming = setup("rename", "w3")
+        self.assertIn("current name  ACME - web", "\n".join(
+            plain(line) for line in render(initial_form(renaming), renaming, 100, 20)))
+
+    def test_worktree_children_are_indented_under_their_parent(self):
+        from test_dialog_form import ws
+
+        spaces = [
+            ws("p", "ACME - api", 1, {"repo_key": "r", "is_linked_worktree": False}),
+            ws("c", "feature-checkout", 2, {"repo_key": "r", "is_linked_worktree": True}),
+        ]
+        context = setup(spaces=spaces)
+
+        text = "\n".join(plain(line) for line in render(initial_form(context), context, 100, 20))
+
+        self.assertIn("└ ▌feature-checkout", text)
 
     def test_an_error_replaces_the_hints(self):
         context = setup()
