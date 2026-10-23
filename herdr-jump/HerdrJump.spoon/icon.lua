@@ -162,10 +162,4 @@ function M.status(status, color, size)
   return render(M.statusElements(status, color, size), size)
 end
 
--- A transparent image: a row without an icon keeps its alignment, and the picker draws no default
--- image in its place. Needs Hammerspoon.
-function M.blank(size)
-  return render({}, size)
-end
-
 return M
