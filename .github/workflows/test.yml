@@ -23,7 +23,7 @@ jobs:
           done
 
   unittest:
-    name: unittest (${{ matrix.os }})
+    name: unittest (${{ matrix.os }}, ${{ matrix.setup || 'system python' }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -32,10 +32,21 @@ jobs:
           # The plugins must run on the system Python of macOS (3.9).
           - os: macos-14
             python: /usr/bin/python3
+          # Herdr runs the first python3 on its PATH, often a newer one from Homebrew or python.org.
+          - os: macos-latest
+            setup: "3.13"
+            python: python3
+          - os: macos-latest
+            setup: "3.14"
+            python: python3
           - os: ubuntu-latest
             python: python3
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: matrix.setup
+        with:
+          python-version: ${{ matrix.setup }}
       - name: Run each plugin's tests from its own folder
         run: |
           set -eu
