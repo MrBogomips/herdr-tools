@@ -21,6 +21,7 @@ from herdr_api import (
     parent_of,
     plugin_lock,
     report_failure,
+    socket_path,
     socket_rpc,
     state_dir,
     worktree_parents,
@@ -179,6 +180,39 @@ class ConfigPathTest(unittest.TestCase):
             self.assertEqual(
                 config_path("me.tool", None), Path("/home/u/.config/herdr/plugins/config/me.tool/config.json")
             )
+
+    def test_falls_back_to_the_xdg_config_home_like_herdr(self):
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": "/xdg/config"}, clear=True):
+            self.assertEqual(
+                config_path("me.tool", None), Path("/xdg/config/herdr/plugins/config/me.tool/config.json")
+            )
+
+
+class SocketPathTest(unittest.TestCase):
+    def setUp(self):
+        home = mock.patch.object(herdr_api.Path, "home", return_value=Path("/home/u"))
+        home.start()
+        self.addCleanup(home.stop)
+
+    def test_uses_the_socket_from_herdr(self):
+        with mock.patch.dict(os.environ, {"HERDR_SOCKET_PATH": "/run/h.sock", "HERDR_SESSION": "globex"}):
+            self.assertEqual(socket_path(), Path("/run/h.sock"))
+
+    def test_falls_back_to_the_default_socket_under_home(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(socket_path(), Path("/home/u/.config/herdr/herdr.sock"))
+
+    def test_follows_the_xdg_config_home_like_herdr(self):
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": "/xdg/config"}, clear=True):
+            self.assertEqual(socket_path(), Path("/xdg/config/herdr/herdr.sock"))
+
+    def test_a_named_session_has_its_own_socket(self):
+        with mock.patch.dict(os.environ, {"HERDR_SESSION": "globex"}, clear=True):
+            self.assertEqual(socket_path(), Path("/home/u/.config/herdr/sessions/globex/herdr.sock"))
+
+    def test_the_session_named_default_is_the_default_socket(self):
+        with mock.patch.dict(os.environ, {"HERDR_SESSION": "default"}, clear=True):
+            self.assertEqual(socket_path(), Path("/home/u/.config/herdr/herdr.sock"))
 
 
 class StateDirTest(unittest.TestCase):
