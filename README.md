@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/MrBogomips/herdr-tools/actions/workflows/test.yml/badge.svg)](https://github.com/MrBogomips/herdr-tools/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Herdr](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.3-6c71c4.svg)](https://herdr.dev)
+[![Herdr](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.5-6c71c4.svg)](https://herdr.dev)
 
 Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who keep a lot of
 spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
@@ -99,9 +99,15 @@ code running as your user, so read them first; these are short Python scripts.
 
 Requirements:
 
-- Herdr 0.9.3 or newer (0.9.5 for Space Herder), on macOS or Linux.
-- `python3` 3.9 or newer on the `PATH`. The system Python of macOS is enough; the plugins use the
-  standard library only, so there is nothing else to install.
+- Herdr 0.9.5 or newer, on macOS or Linux.
+- `python3` 3.9 or newer. The plugins use the standard library only, so there is nothing else to
+  install, and they need no particular shell.
+  - Herdr runs the first `python3` on the `PATH` its server started with. On macOS,
+    `/usr/bin/python3` works once the Command Line Tools are installed (`xcode-select --install`);
+    Python from Homebrew or python.org works too.
+  - The server keeps that `PATH` until it restarts: after installing Python, run
+    `herdr server stop` (it ends the programs running in its panes) and start `herdr` again.
+- Space Herder's colours need a terminal with truecolor support.
 
 Each plugin's README explains its key bindings and its `config.json`, which lives in
 `herdr plugin config-dir <plugin id>`.
@@ -120,7 +126,7 @@ herdr plugin install MrBogomips/herdr-tools/auto-tab-name --ref auto-tab-name-v0
 ```bash
 git clone https://github.com/MrBogomips/herdr-tools
 herdr plugin link "$PWD/herdr-tools/space-herder"   # run your working copy
-cd herdr-tools/space-herder && python3 -m unittest -v
+cd herdr-tools/space-herder && /usr/bin/python3 -m unittest -v
 ```
 
 - One folder per plugin: `herdr-plugin.toml`, `README.md`, `config.example.json`, the code and
@@ -129,7 +135,10 @@ cd herdr-tools/space-herder && python3 -m unittest -v
   each one installs alone. Edit it in one plugin and copy it to the others; CI fails while the
   copies differ.
 - Code stays compatible with Python 3.9 (`/usr/bin/python3` on macOS) and uses the standard
-  library only. CI runs every plugin's tests on macOS with the system Python and on Ubuntu.
+  library only. CI runs every plugin's tests on macOS with the system Python and with Python 3.13
+  and 3.14, and on Ubuntu.
+- Manifest commands run `python3 -E -X utf8 <script>`: whatever `python3` Herdr finds, the user's
+  `PYTHON*` variables cannot hide the plugin's modules and the I/O stays UTF-8.
 - The website is built from [`site/`](site/) with `python3 site/build.py`; its README explains
   the layout and the tests.
 - `herdr api schema --json` prints the socket API of your Herdr build; the

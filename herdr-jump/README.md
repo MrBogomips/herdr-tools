@@ -102,7 +102,7 @@ counter goes backwards (Herdr restarted and reused the pane id) is forgotten.
 
 ## Install
 
-Requirements: macOS, Herdr 0.9.3 or newer running in iTerm2, and Homebrew if
+Requirements: macOS, Herdr 0.9.5 or newer running in iTerm2, and Homebrew if
 [Hammerspoon](https://github.com/Hammerspoon/hammerspoon) (MIT) is not installed yet.
 
 Paste into a terminal:

@@ -11,15 +11,21 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
   `test_herdr_api.py` are vendored, byte-identical in every plugin; change one copy, then copy it to the
   others (CI compares them).
 - Python standard library only, compatible with `/usr/bin/python3` (3.9): no `tomllib`, so plugin
-  config is JSON in `$HERDR_PLUGIN_CONFIG_DIR/config.json`. Manifest commands start with `python3`.
+  config is JSON in `$HERDR_PLUGIN_CONFIG_DIR/config.json`. Manifest commands start with
+  `python3 -E -X utf8`: Herdr runs the first `python3` on its server's PATH (often 3.13+, not 3.9), and
+  the flags keep the user's `PYTHON*` variables and locale out (`test_manifest.py` checks them).
 - Talk to Herdr through `$HERDR_BIN_PATH` / `$HERDR_SOCKET_PATH`; the raw socket protocol is
   newline-delimited JSON (`herdr api schema --json` prints the schema for the installed binary).
 - Hooks (`[[startup]]`, `[[events]]`) are silent on success and toast only on failure; actions toast
   their result. Not every event can be hooked: `herdr plugin link` warns about unknown names
-  (`pane.updated` and `layout.updated` cannot be hooked on 0.9.3). `pane.agent_status_changed` can,
+  (`pane.updated`, `layout.updated` and `workspace.metadata_updated` cannot be hooked on 0.9.5).
+  Check a new name on a throwaway server: `herdr server` with a fake `HOME` and a short relative
+  `HERDR_SOCKET_PATH` (a socket path is limited to 104 bytes), then `herdr plugin link` and read `warnings`.
+  `pane.agent_status_changed` can,
   and it is the only hook that follows an agent changing folder (into a worktree, say).
 - `min_herdr_version` is the oldest version actually verified (`herdr status server` shows the
-  running server, which can lag behind the installed binary).
+  running server, which can lag behind the installed binary). The whole suite targets the latest
+  stable Herdr (0.9.5 today); herdr-jump keeps its minimum in `obj.minHerdrVersion`.
 - Every plugin is listed in the root `README.md` table; its own README documents install, key
   binding, config and limits.
 - Run tests from the plugin folder: `/usr/bin/python3 -m unittest -v`.
