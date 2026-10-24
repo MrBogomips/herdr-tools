@@ -20,6 +20,11 @@ SPOON=""
 # Whether Hammerspoon's MJConfigFile setting moved init.lua away from ~/.hammerspoon.
 MOVED=0
 TERMINALS="iTerm Terminal Ghostty WezTerm kitty Alacritty Warp"
+# Lua for `hs -c`: the running Spoon's own report; a HerdrJump older than 0.4.0 has none.
+SPOON_REPORT='local jump = spoon.HerdrJump
+if jump == nil then return "HerdrJump is not loaded" end
+if jump.diagnostics then return jump:diagnostics() end
+return "HerdrJump " .. tostring(jump.version) .. " has no diagnostics: run install.sh to update it"'
 NL='
 '
 
@@ -69,9 +74,10 @@ resolve_paths() {
   SPOON="$SPOONS/HerdrJump.spoon"
 }
 
-# Whether init.lua loads HerdrJump: an hs.loadSpoon("HerdrJump") before any -- on its line.
+# Whether init.lua loads HerdrJump: any mention of it before a -- comment on its line, since it can
+# come through hs.loadSpoon, SpoonInstall's andUse or a loop over Spoon names.
 loads_herdrjump() {
-  grep -Eq "^([^-]|-[^-])*hs\.loadSpoon[[:space:](]*[\"']HerdrJump[\"']" "$INIT"
+  grep -Eq '^([^-]|-[^-])*HerdrJump' "$INIT"
 }
 
 # Hammerspoon, through Homebrew when it is missing. `open -Ra` only resolves the app: no window.
@@ -308,8 +314,7 @@ check_terminals() {
 check_spoon() {
   if pgrep -xq Hammerspoon && command -v hs > /dev/null 2>&1 && hs -c 'return 1' < /dev/null > /dev/null 2>&1; then
     say "what the running HerdrJump finds:"
-    hs -c 'return spoon.HerdrJump and spoon.HerdrJump:diagnostics() or "HerdrJump is not loaded"' < /dev/null 2>&1 \
-      | sed 's/^/      /'
+    hs -c "$SPOON_REPORT" < /dev/null 2>&1 | sed 's/^/      /'
   else
     check_line warn "no hs command line to ask HerdrJump: see Diagnostics in its menu bar menu"
   fi

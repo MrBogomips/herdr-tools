@@ -253,17 +253,21 @@ end
 
 -- Brings the terminal forward: { level = "exact" } on the client's tab, "app" for the whole app,
 -- "failed" when not even that worked; with the reason, and blocked when the permission is missing.
--- A script only runs for an app that showed a client, so it never launches a terminal.
+-- The script runs only in a running app: AppleScript would launch it and wait for it (an iTerm2
+-- that quit and left its server behind), where show() launches it without blocking.
 function M.raise(target)
   local script = M.raiseScript(target.bundleID, target.ttys)
   local reason, blocked
+  if script and hs.application.get(target.bundleID) == nil then
+    script, reason = nil, target.name .. " was not running"
+  end
   if script then
     reason, blocked = M.scriptOutcome(target.name, hs.osascript.applescript(script))
     if reason == nil then
       return { level = "exact" }
     end
   else
-    reason = M.unscriptedReason(target)
+    reason = reason or M.unscriptedReason(target)
   end
   if not M.show(target.bundleID) then
     return { level = "failed", reason = reason .. "; " .. target.name .. " could not be activated either", blocked = blocked }

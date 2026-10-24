@@ -36,6 +36,10 @@ local ORDER_KEY = "HerdrJump.order"
 local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
 local PS = "/bin/ps -axo pid=,ppid=,tty=,command="
 local AUTOMATION_SETTINGS = "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+local HERDR_NOT_FOUND = "herdr not found: set spoon.HerdrJump.herdrBin (see Diagnostics in the menu)"
+-- How old the terminal found last may get before a poll or the toggle looks again: Herdr can start,
+-- move to another terminal or quit after start(). Looking costs one ps run, about 0.1 s.
+local TERMINAL_RECHECK_SECONDS = 30
 
 -- Styled text brings its own font and color, so the picker rows set both. Named system colors
 -- follow the light or dark appearance.
@@ -116,6 +120,7 @@ function obj:init()
   -- jump's outcome, and the terminal Hammerspoon may not control: for the jumps and Diagnostics.
   self.herdrInfo = { missing = {} }
   self.terminal = nil
+  self.terminalCheckedAt = 0
   self.clientCount = 0
   self.lastRaise = nil
   self.automation = nil
@@ -179,21 +184,32 @@ function obj:start()
     end
   end
   self:_detectTerminal()
-  -- A wrong path would make hs.task log a launch failure on every poll: say it once, don't poll.
+  self:_connect(false)
+  return self
+end
+
+-- Finds herdr and polls it. Without herdr it does not poll (each poll would fail to launch it) and
+-- says so, unless quiet; the picker key calls it again, so a herdr installed later needs no reload.
+function obj:_connect(quiet)
   self.herdrInfo = self:_findHerdr()
   if self.herdrInfo.path == nil then
     self.err = "herdr not found"
-    self.logger.e(diagnostics.lines(self:_diagnosticsState())[2] .. " (the output of `command -v herdr`)")
-    hs.alert.show("HerdrJump: herdr not found: set spoon.HerdrJump.herdrBin (see Diagnostics in the menu)")
+    if not quiet then
+      self.logger.e(diagnostics.lines(self:_diagnosticsState())[2] .. " (the output of `command -v herdr`)")
+      hs.alert.show("HerdrJump: " .. HERDR_NOT_FOUND)
+    end
     self:_updateMenubar(0, self.err)
-    return self
+    return false
   end
   if #self.herdrInfo.missing > 0 then
     self.logger.w(("herdrBin %s is missing: using %s"):format(self.herdrInfo.missing[1], self.herdrInfo.path))
   end
-  self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
+  self.err = nil
+  if self.timer == nil then
+    self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
+  end
   self:refresh()
-  return self
+  return true
 end
 
 --- HerdrJump:stop()
@@ -312,8 +328,17 @@ function obj:_detectTerminal()
     terminal.installed)
   fallback.name = terminal.nameOf(fallback.bundleID)
   self.terminal = terminal.choose(targets, fallback, notes)
+  self.terminalCheckedAt = os.time()
   self.clientCount = #clients
   return self.terminal
+end
+
+-- The terminal found last, when it is recent enough; nil otherwise.
+function obj:_freshTerminal()
+  if self.terminal and os.time() - (self.terminalCheckedAt or 0) < TERMINAL_RECHECK_SECONDS then
+    return self.terminal
+  end
+  return nil
 end
 
 -- The cached terminal's bundle id, without looking again (the app watcher calls it often).
@@ -321,10 +346,10 @@ function obj:_terminalID()
   return self.terminal and self.terminal.bundleID
 end
 
--- The terminal for the "back to the terminal" key: the cached one when a client showed it and it
--- still runs; otherwise look again, as a client may have started since.
+-- The terminal for the "back to the terminal" key: the recent one when a client showed it and it
+-- still runs; otherwise look again, as a client may have started or moved since.
 function obj:_terminalForToggle()
-  local cached = self.terminal
+  local cached = self:_freshTerminal()
   if cached and #cached.ttys > 0 and hs.application.get(cached.bundleID) then
     return cached
   end
@@ -379,6 +404,9 @@ function obj:refresh(onDone)
       end
       self:_reportUnknownStatuses(agents)
       self.agents, self.err = agents, nil
+      if self:_freshTerminal() == nil then
+        self:_detectTerminal()
+      end
       local seen = attention.updateSeen(self.seen, agents, self:_terminalInFront())
       if not attention.sameSeen(seen, self.seen) then
         self.seen = seen
@@ -648,6 +676,10 @@ end
 function obj:showAgents()
   if self.chooser == nil then
     hs.alert.show("HerdrJump is stopped: call spoon.HerdrJump:start()")
+    return
+  end
+  if self.herdrInfo.path == nil and not self:_connect(true) then
+    hs.alert.show("HerdrJump: " .. HERDR_NOT_FOUND)
     return
   end
   if self.err then
