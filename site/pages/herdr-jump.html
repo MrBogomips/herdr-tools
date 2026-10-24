@@ -1,13 +1,14 @@
 <!-- {
   "title": "herdr-jump: every waiting Herdr agent, one key away on macOS",
-  "description": "herdr-jump is a Hammerspoon Spoon for macOS: one key to a Spotlight-style list of your Herdr agents, blocked first and oldest wait first, and a menu bar icon that counts the agents waiting for you."
+  "description": "herdr-jump is a Hammerspoon Spoon for macOS: one key to a Spotlight-style list of your Herdr agents, blocked first and oldest wait first, and a menu bar icon that counts the agents waiting for you. Standalone: it needs only a running Herdr server, no plugin."
 } -->
 <div class="wrap">
   <header class="phero">
-    <div class="kicker">// companion for macOS · v{{version:herdr-jump}} · Hammerspoon · herdr ≥ {{min_herdr:herdr-jump}} · any terminal</div>
+    <div class="kicker">// companion for macOS · v{{version:herdr-jump}} · Hammerspoon · herdr ≥ {{min_herdr:herdr-jump}} · any terminal · no plugin needed</div>
     <h1>herdr-jump</h1>
     <p class="lede">Your agents, one key away from any app. One key back to your terminal, one key to the agent that needs
-      you, and a menu bar icon that counts the agents waiting for you.</p>
+      you, and a menu bar icon that counts the agents waiting for you. It needs only a running Herdr: no plugin, nothing to
+      set up inside Herdr.</p>
     <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code><button type="button">copy</button></div>
     <div class="row-actions">
       <a class="btn primary" href="#install">What the installer does →</a>
@@ -141,8 +142,12 @@ less install.sh
 sh install.sh --ref &lt;branch-or-tag&gt;</code></pre>
         <div class="callout"><p>macOS asks for <b>Accessibility</b> for Hammerspoon (global hotkeys) and, on the first jump,
           <b>Automation: Hammerspoon → iTerm2</b> (or <b>→ Terminal</b>) to select the Herdr tab.</p></div>
-        <p>herdr-jump is not a Herdr plugin: it runs in Hammerspoon, outside Herdr, and talks to the Herdr server through
-          the <code>herdr</code> command line, so the plugin marketplace does not list it.</p>
+        <p><b>Standalone.</b> herdr-jump needs only a running Herdr server: no Herdr plugin, from herdr-tools or anywhere
+          else, and nothing to change in your config, spaces or tabs. It reads the server with the <code>herdr</code> command
+          that ships with Herdr (<code>herdr agent list</code>, then <code>herdr agent focus</code> on a jump), so it works with
+          any Herdr setup, plugins or none.</p>
+        <p>It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr, so the plugin marketplace does not list
+          it.</p>
       </section>
 
       <section id="configure" aria-labelledby="configure-title">

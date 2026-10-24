@@ -16,9 +16,16 @@ takes you to its pane with Enter, whatever app you are in.
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
 first; then the others. Tab sorts newest first or by name.
 
-It is not a Herdr plugin: it runs in Hammerspoon, outside Herdr, and talks to the Herdr server
-through the `herdr` command line. It has no `herdr-plugin.toml`, so the plugin marketplace does
-not list it.
+## Standalone
+
+HerdrJump needs only a running Herdr server. No Herdr plugin, from this repository or anywhere
+else, and nothing to set up inside Herdr: your config, spaces and tabs stay as they are. It reads
+the server with two commands of the `herdr` binary that ships with Herdr, `herdr agent list` every
+`pollSeconds` and `herdr agent focus` on a jump (see [How it works](#how-it-works)), so it works
+with any Herdr setup, plugins or none. One line installs it, and the next key press switches agents.
+
+It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has no
+`herdr-plugin.toml`, so the plugin marketplace does not list it.
 
 ## Use cases
 

@@ -9,7 +9,7 @@
       <div class="kicker">// plugins for people with too many spaces</div>
       <h1 id="hero-title">Thirty spaces.<br><em>One herd.</em></h1>
       <p class="lede">A sidebar that sorts itself, a colour for every customer, tabs that name themselves
-        and every waiting agent one key away. Each plugin installs on its own: take only the ones you want.</p>
+        and every waiting agent one key away. Each tool installs and works on its own: take only the ones you want.</p>
       <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code><button type="button">copy</button></div>
       <div class="stats" aria-label="At a glance">
         <span><b>herdr</b> ≥ {{min_herdr}}</span><span><b>3</b> tools</span><span><b>python</b> stdlib only</span><span><b>MIT</b></span>
@@ -157,7 +157,8 @@ Globex - docs</textarea>
       <h2 id="jump-title">Every waiting agent, one key away.</h2>
       <p class="lede">Run five agents and they queue up for you: a permission here, a finished review there.
         herdr-jump lines them up first come, first served, says how long each has waited, and takes you to
-        its pane with Enter, whatever app you are in.</p>
+        its pane with Enter, whatever app you are in. It needs only a running Herdr: no plugin, nothing to set up
+        inside Herdr.</p>
       <div class="keys"><span><kbd>⌃⌥⌘A</kbd> the agents picker</span><span><kbd>⌃⌥⌘I</kbd> back to your terminal and back</span></div>
       <div class="row-actions" style="margin-top: 0"><a class="btn" href="herdr-jump.html">Meet herdr-jump →</a></div>
     </div>
@@ -174,7 +175,7 @@ Globex - docs</textarea>
     <div class="kicker">// small on purpose</div>
     <h2 id="trust-title">Short scripts you can read before you run them.</h2>
     <div class="points">
-      <div><h3>Nothing else to install</h3><p>Python standard library only, from 3.9 (the system Python of macOS, with the Command Line Tools) to the latest.</p></div>
+      <div><h3>Each one stands alone</h3><p>No tool needs another. The plugins use the Python standard library only, from 3.9 (the system Python of macOS, with the Command Line Tools) to the latest; herdr-jump needs only the Herdr server.</p></div>
       <div><h3>Read it first</h3><p>Herdr shows the manifest and the commands before installing. The code is plain Python: no build step, no dependencies.</p></div>
       <div><h3>Tested on every push</h3><p>CI runs every plugin's tests on macOS with the system Python and with Python 3.13 and 3.14, and on Ubuntu.</p></div>
     </div>
@@ -184,7 +185,7 @@ Globex - docs</textarea>
 <section class="section cta" aria-labelledby="cta-title">
   <div class="wrap">
     <h2 id="cta-title">Give your herd some order.</h2>
-    <p class="lede">Pick the plugins you want; each one installs, updates and uninstalls on its own.</p>
+    <p class="lede">Pick the tools you want; each one installs, updates and uninstalls on its own, and none needs another.</p>
     <div class="cmds">
       <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/space-herder</code><button type="button">copy</button></div>
       <div class="cmd"><code>herdr plugin install MrBogomips/herdr-tools/auto-tab-name</code><button type="button">copy</button></div>

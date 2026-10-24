@@ -5,8 +5,8 @@
 [![Herdr](https://img.shields.io/badge/herdr-%E2%89%A5%200.9.5-6c71c4.svg)](https://herdr.dev)
 
 Plugins for the [Herdr](https://herdr.dev) terminal multiplexer, for people who keep a lot of
-spaces open: one per customer, project and side quest. Each plugin installs on its own, so take
-only the ones you want.
+spaces open: one per customer, project and side quest. Each tool installs and works on its own:
+none needs another, so take only the ones you want.
 
 **Website: [mrbogomips.github.io/herdr-tools](https://mrbogomips.github.io/herdr-tools/)**, where
 you can paste your own space names and watch Space Herder sort and colour them.
@@ -29,7 +29,8 @@ you can paste your own space names and watch Space Herder sort and colour them.
 - **Tabs that name themselves.** [auto-tab-name](auto-tab-name/) names each tab after its folder,
   repo or branch, and follows your agents into worktrees.
 - **Your agents, one key away.** [herdr-jump](herdr-jump/) lists the agents waiting for you, from
-  any macOS app.
+  any macOS app. It needs only a running Herdr: no plugin, these included, and nothing to set up
+  inside Herdr.
 
 <img src="space-herder/docs/new-space.gif" alt="The Space Herder new-space dialog: a folder is picked from the recent ones, the name Initech - billing is typed, the head group moves it to the top of the preview, mauve is picked for Initech and both Initech spaces turn mauve, then Enter creates the space at the top of the sidebar" width="100%">
 
@@ -49,7 +50,7 @@ handle them and the marketplace does not list them; each README explains its ins
 
 | Companion | What it does | Runs in |
 | --- | --- | --- |
-| [herdr-jump](herdr-jump/) | From any macOS app: one key back to your terminal, one key to a Spotlight-style list of your agents (blocked first, then done, oldest wait first, with how long each has waited), and a menu bar icon that counts the agents waiting for you. Installed with one line of `curl` piped to `sh` | [Hammerspoon](https://www.hammerspoon.org) |
+| [herdr-jump](herdr-jump/) | From any macOS app: one key back to your terminal, one key to a Spotlight-style list of your agents (blocked first, then done, oldest wait first, with how long each has waited), and a menu bar icon that counts the agents waiting for you. Standalone: it needs only the Herdr server, no plugin. Installed with one line of `curl` piped to `sh` | [Hammerspoon](https://www.hammerspoon.org) |
 
 <img src="herdr-jump/docs/picker.png" alt="The herdr-jump picker: blocked agents with orange pause icons on top, then finished ones with green check marks, each with how long it has waited, then the idle and working agents" width="720">
 
@@ -106,6 +107,7 @@ Each plugin's README explains its key bindings and its `config.json`, which live
 | --- | --- | --- |
 | System | macOS or Linux | macOS |
 | Herdr | 0.9.5 or newer | 0.9.5 or newer, on the same Mac |
+| Other herdr-tools | none: each plugin works alone | none: it reads the Herdr server only, with or without plugins |
 | Runs on | `python3` 3.9 or newer, standard library only | [Hammerspoon](https://www.hammerspoon.org) (verified with 1.1.1) |
 | Shell | none needed; auto-tab-name's optional shell integration covers zsh, bash and fish | none needed; `install.sh` runs in `sh` |
 | Terminal | any; Space Herder's colours need truecolor, auto-tab-name's `alt` keys need Option as Alt | any: iTerm2 and Terminal get the exact tab, other terminals come forward as an app |
