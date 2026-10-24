@@ -12,7 +12,7 @@ import release_git as rg
 import release_preflight as rp
 from repo_fixture import FAILING_TEST, TABLES, TempRepo, render_manifest
 
-EVENTS = frozenset({"workspace.created", "workspace.renamed", "pane.updated"})
+EVENTS = frozenset({"workspace.created", "workspace.renamed", "pane.updated", "workspace.metadata_updated"})
 
 
 class PreflightTest(unittest.TestCase):
@@ -76,6 +76,9 @@ class PreflightTest(unittest.TestCase):
         unhookable = TABLES.replace("workspace.created", "pane.updated")
         self.repo.write("sorter/herdr-plugin.toml", render_manifest({"id": "acme.sorter"}, tables=unhookable))
         self.assertIn("pane.updated", self.messages(self.run_preflight(["sorter"]), "error"))
+        unhookable = TABLES.replace("workspace.created", "workspace.metadata_updated")
+        self.repo.write("sorter/herdr-plugin.toml", render_manifest({"id": "acme.sorter"}, tables=unhookable))
+        self.assertIn("workspace.metadata_updated", self.messages(self.run_preflight(["sorter"]), "error"))
         unknown = TABLES.replace("workspace.created", "workspace.exploded")
         self.repo.write("sorter/herdr-plugin.toml", render_manifest({"id": "acme.sorter"}, tables=unknown))
         self.assertIn("workspace.exploded", self.messages(self.run_preflight(["sorter"]), "warn"))
