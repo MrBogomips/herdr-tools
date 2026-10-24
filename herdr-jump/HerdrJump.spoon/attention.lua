@@ -141,10 +141,10 @@ function M.count(agents, seen)
   return n
 end
 
--- A new seen record: the focused done agent is seen when iTerm is in front. Panes that are gone are
--- dropped, and so are panes whose completion counter is missing or went backwards: Herdr restarted,
--- its sequence numbers start over and pane ids are reused.
-function M.updateSeen(seen, agents, itermFrontmost)
+-- A new seen record: the focused done agent is seen when Herdr's terminal is in front. Panes that are
+-- gone are dropped, and so are panes whose completion counter is missing or went backwards: Herdr
+-- restarted, its sequence numbers start over and pane ids are reused.
+function M.updateSeen(seen, agents, terminalFrontmost)
   local updated = {}
   for _, agent in ipairs(agents) do
     local pane, completion = agent.pane_id, agent.completion_seq
@@ -153,7 +153,7 @@ function M.updateSeen(seen, agents, itermFrontmost)
       if viewed ~= nil and completion < viewed then
         viewed = nil
       end
-      if itermFrontmost and agent.focused and agent.agent_status == "done" then
+      if terminalFrontmost and agent.focused and agent.agent_status == "done" then
         viewed = math.max(viewed or completion, completion)
       end
       updated[pane] = viewed
