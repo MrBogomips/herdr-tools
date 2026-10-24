@@ -126,10 +126,10 @@ tmux or over ssh, whose terminal cannot be seen: its keys then bring forward a d
 ### Versions
 
 `herdr plugin update` follows `main`, which only receives tested changes. Every release is also
-tagged `<plugin>-vX.Y.Z` (for example `auto-tab-name-v0.2.0`); to stay on one, pin it:
+tagged `<plugin>-vX.Y.Z` (for example `auto-tab-name-v0.3.0`); to stay on one, pin it:
 
 ```bash
-herdr plugin install MrBogomips/herdr-tools/auto-tab-name --ref auto-tab-name-v0.2.0
+herdr plugin install MrBogomips/herdr-tools/auto-tab-name --ref auto-tab-name-v0.3.0
 ```
 
 ## Develop
