@@ -262,8 +262,9 @@ if the palette or a rule's colour changed.
 
 ### Sticky assignments
 
-Sticky mode remembers each key's colour in `assignments.json` in the plugin state directory
-(`~/.local/state/herdr/plugins/mrbogomips.space-herder/`). Palette colours that rules pin to open
+Sticky mode remembers each key's colour in `assignments.json` in the plugin state directory that
+Herdr gives the plugin (`~/.local/state/herdr/plugins/mrbogomips.space-herder/` unless
+`$XDG_STATE_HOME` moves it). Palette colours that rules pin to open
 spaces count as taken, so a new customer avoids them too. A key not seen for 90 days is forgotten,
 so the folder names of unnamed spaces do not pile up. A remembered colour that is no longer in the
 palette is assigned again. Delete the file to deal the colours afresh.
@@ -310,6 +311,8 @@ and every run's output and errors are in `herdr plugin log list --plugin mrbogom
 - **No background colour.** Herdr styles a token's foreground, bold and dim only: "token styles
   never change separators or row backgrounds". The marker before the name stands in for a swatch.
 - At most 15 colours, the tokens one sidebar row can hold next to the agent-state dot.
+- The colours are 24-bit, like the dialogs' swatches: they need a terminal with truecolor support
+  (iTerm2, Ghostty, WezTerm and kitty have it).
 - The colours show in the expanded sidebar. The collapsed rail and the mobile layout keep
   Herdr's own rendering.
 - The plugin now shows the space names. If it is disabled while its rows are in `config.toml`,
@@ -348,10 +351,12 @@ python3 space_dialog.py run rename       # rename the space in $SPACE_HERDER_WOR
 ```
 
 `--config PATH` reads another config file. The scripts talk to `$HERDR_SOCKET_PATH` (set inside
-Herdr panes, key commands and plugins), falling back to `~/.config/herdr/herdr.sock`.
+Herdr panes, key commands and plugins), falling back to the socket Herdr itself would use:
+`~/.config/herdr/herdr.sock`, under `$XDG_CONFIG_HOME` when that is set, or the one of the
+`$HERDR_SESSION` named session.
 
 ## Tests
 
 ```bash
-cd space-herder && python3 -m unittest -v
+cd space-herder && /usr/bin/python3 -m unittest -v
 ```

@@ -188,6 +188,8 @@ command = "mrbogomips.space-herder.rename-space"</code></pre></li>
           <li>Herdr styles a token's foreground only, so there is no background colour: the marker before the name
             stands in for a swatch.</li>
           <li>At most 15 colours, the tokens one sidebar row holds next to the agent-state dot.</li>
+          <li>The colours are 24-bit, like the dialogs' swatches: they need a terminal with truecolor support (iTerm2, Ghostty,
+            WezTerm and kitty have it).</li>
           <li>The colours show in the expanded sidebar; the collapsed rail and the mobile layout keep Herdr's own rendering.</li>
           <li><code>ACME-api</code> does not split on <code> -</code>: keep the space before the dash, or change <code>separator</code>.</li>
           <li>A space dragged by hand goes back to its group at the next sort.</li>

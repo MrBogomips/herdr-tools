@@ -24,9 +24,18 @@
       <section id="requirements" aria-labelledby="requirements-title">
         <h2 id="requirements-title">Requirements</h2>
         <ul>
-          <li><a href="https://herdr.dev">Herdr</a> {{min_herdr:auto-tab-name}} or newer ({{min_herdr:space-herder}} for Space Herder), on macOS or Linux.</li>
-          <li><code>python3</code> 3.9 or newer on the <code>PATH</code>. The system Python of macOS is enough: the plugins use the
-            standard library only.</li>
+          <li><a href="https://herdr.dev">Herdr</a> {{min_herdr}} or newer, on macOS or Linux.</li>
+          <li><code>python3</code> 3.9 or newer. The plugins use the standard library only, so there is nothing else to install,
+            and they need no particular shell.
+            <ul>
+              <li>Herdr runs the first <code>python3</code> on the <code>PATH</code> its server started with. On macOS,
+                <code>/usr/bin/python3</code> works once the Command Line Tools are installed (<code>xcode-select --install</code>);
+                Python from Homebrew or python.org works too.</li>
+              <li>The server keeps that <code>PATH</code> until it restarts: after installing Python, run
+                <code>herdr server stop</code> (it ends the programs running in its panes) and start <code>herdr</code> again.</li>
+            </ul>
+          </li>
+          <li>Space Herder's colours need a terminal with truecolor support.</li>
           <li>For herdr-jump: macOS, Herdr running in iTerm2, and Homebrew if Hammerspoon is not installed yet.</li>
         </ul>
       </section>
@@ -69,9 +78,9 @@ herdr plugin uninstall mrbogomips.&lt;plugin&gt;             <span class="c"># r
         <h2 id="develop-title">Develop</h2>
         <pre class="code"><code>git clone https://github.com/MrBogomips/herdr-tools
 herdr plugin link "$PWD/herdr-tools/space-herder"   <span class="c"># run your working copy</span>
-cd herdr-tools/space-herder &amp;&amp; python3 -m unittest -v</code></pre>
+cd herdr-tools/space-herder &amp;&amp; /usr/bin/python3 -m unittest -v</code></pre>
         <p>Code stays compatible with Python 3.9 and the standard library. CI runs every plugin's tests on macOS with the
-          system Python and on Ubuntu. Issues and pull requests are welcome on
+          system Python and with Python 3.13 and 3.14, and on Ubuntu. Issues and pull requests are welcome on
           <a href="https://github.com/MrBogomips/herdr-tools">GitHub</a>.</p>
       </section>
     </div>

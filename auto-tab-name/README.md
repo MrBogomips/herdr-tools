@@ -49,6 +49,12 @@ command = "mrbogomips.auto-tab-name.follow"
 description = "make this tab follow its folder"
 ```
 
+On macOS an `alt` key reaches Herdr only when the terminal sends Option as Alt: in iTerm2 set
+Profiles › Keys › Left Option key to "Esc+", in Ghostty set `macos-option-as-alt = left`, and keep
+the right Option for the characters your layout types with it (`~`, `@`, `#` on an Italian
+keyboard). Terminal's "Use Option as Meta key" takes both Option keys, so there, or if you would
+rather not change the terminal, bind `prefix+<letter>` keys instead.
+
 The plugin has six actions. Every one of them toasts when it fails; on success `toggle`, `sync`,
 `follow` and `unfollow` report their result as a Herdr toast, while `configure` just opens the popup
 and `refresh` stays quiet:
