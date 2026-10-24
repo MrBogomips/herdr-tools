@@ -1,7 +1,7 @@
 --- === HerdrJump ===
 ---
---- One key back to iTerm, one key to the Herdr agent that needs you, and a menu bar counter of
---- the agents waiting for you (blocked on a question, or done and not yet seen), oldest wait first.
+--- One key back to your terminal, one key to the Herdr agent that needs you, and a menu bar counter
+--- of the agents waiting for you (blocked on a question, or done and not yet seen), oldest wait first.
 ---
 --- Download: https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump
 
@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.3.1"
+obj.version = "0.4.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -21,16 +21,21 @@ local function load(name)
 end
 
 local attention = load("attention")
+local diagnostics = load("diagnostics")
 local herdr = load("herdr")
 local icon = load("icon")
-local iterm = load("iterm")
+local locate = load("locate")
 local picker = load("picker")
+local procs = load("procs")
 local since = load("since")
+local terminal = load("terminal")
 
 local SEEN_KEY = "HerdrJump.seen"
 local SINCE_KEY = "HerdrJump.since"
 local ORDER_KEY = "HerdrJump.order"
 local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
+local PS = "/bin/ps -axo pid=,ppid=,tty=,command="
+local AUTOMATION_SETTINGS = "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
 
 -- Styled text brings its own font and color, so the picker rows set both. Named system colors
 -- follow the light or dark appearance.
@@ -45,18 +50,27 @@ local BADGE_SIZE = { chooser = 32, menu = 18 }
 
 --- HerdrJump.herdrBin
 --- Variable
---- The herdr binary (absolute: Hammerspoon's PATH does not include Homebrew).
-obj.herdrBin = "/opt/homebrew/bin/herdr"
+--- The herdr binary, an absolute path. When it is nil or missing, HerdrJump looks in the usual
+--- install folders (Homebrew, Herdr's installer, cargo, Nix, MacPorts, mise): Hammerspoon's PATH
+--- has none of them.
+obj.herdrBin = nil
 
 --- HerdrJump.socketPath
 --- Variable
 --- The Herdr server socket, passed to herdr as HERDR_SOCKET_PATH.
-obj.socketPath = os.getenv("HOME") .. "/.config/herdr/herdr.sock"
+obj.socketPath = (os.getenv("HOME") or "") .. "/.config/herdr/herdr.sock"
+
+--- HerdrJump.terminalBundleID
+--- Variable
+--- The terminal to bring forward when no Herdr client shows which one runs it (Herdr inside tmux, or
+--- not running). The terminal of a running client is found by itself. By default iTerm2 when it is
+--- installed, else Terminal.
+obj.terminalBundleID = nil
 
 --- HerdrJump.itermBundleID
 --- Variable
---- The bundle id of iTerm2.
-obj.itermBundleID = "com.googlecode.iterm2"
+--- Deprecated: the former name of terminalBundleID, still honoured.
+obj.itermBundleID = nil
 
 --- HerdrJump.pollSeconds
 --- Variable
@@ -76,9 +90,9 @@ obj.defaultOrder = "fifo"
 
 --- HerdrJump.defaultHotkeys
 --- Variable
---- ⌃⌥⌘I back to iTerm (again: back to the previous app), ⌃⌥⌘A the agents picker.
+--- ⌃⌥⌘I back to the terminal (again: back to the previous app), ⌃⌥⌘A the agents picker.
 obj.defaultHotkeys = {
-  iterm = { { "ctrl", "alt", "cmd" }, "i" },
+  terminal = { { "ctrl", "alt", "cmd" }, "i" },
   agents = { { "ctrl", "alt", "cmd" }, "a" },
 }
 
@@ -98,14 +112,24 @@ function obj:init()
   self.applied = 0
   -- Agent statuses this Spoon does not know, already logged once.
   self.reportedStatuses = {}
+  -- The herdr found at start, the terminal found last, the Herdr clients seen then, the last
+  -- jump's outcome, and the terminal Hammerspoon may not control: for the jumps and Diagnostics.
+  self.herdrInfo = { missing = {} }
+  self.terminal = nil
+  self.clientCount = 0
+  self.lastRaise = nil
+  self.automation = nil
 end
 
 --- HerdrJump:bindHotkeys(mapping)
 --- Method
---- Binds `iterm` and `agents`, e.g. `spoon.HerdrJump:bindHotkeys(spoon.HerdrJump.defaultHotkeys)`.
+--- Binds `terminal` and `agents`, e.g. `spoon.HerdrJump:bindHotkeys(spoon.HerdrJump.defaultHotkeys)`.
+--- `iterm`, the former name of `terminal`, still works.
 function obj:bindHotkeys(mapping)
+  local toggle = function() self:toggleTerminal() end
   hs.spoons.bindHotkeysToSpec({
-    iterm = function() self:toggleIterm() end,
+    terminal = toggle,
+    iterm = toggle,
     agents = function() self:showAgents() end,
   }, mapping)
   return self
@@ -123,13 +147,20 @@ function obj:start()
   self.since = since.valid(hs.settings.get(SINCE_KEY))
   self.lastPollOk = false
   self.order = self:_initialOrder()
+  if self.itermBundleID then
+    self.logger.w("itermBundleID is now terminalBundleID: the old name still works")
+  end
   self.watcher = hs.application.watcher.new(function(_, event, app)
-    if event ~= hs.application.watcher.activated or app == nil then
+    if app == nil then
       return
     end
     local id = app:bundleID()
+    if event == hs.application.watcher.terminated and id == self:_terminalID() then
+      -- Found again at the next jump or toggle.
+      self.terminal = nil
+    end
     -- The picker activates Hammerspoon: going "back" there would be useless.
-    if id ~= self.itermBundleID and id ~= HAMMERSPOON then
+    if event == hs.application.watcher.activated and id ~= self:_terminalID() and id ~= HAMMERSPOON then
       self.previousApp = app
     end
   end):start()
@@ -147,14 +178,18 @@ function obj:start()
       hs.alert.show("HerdrJump: no menu bar counter (see the Hammerspoon console)")
     end
   end
+  self:_detectTerminal()
   -- A wrong path would make hs.task log a launch failure on every poll: say it once, don't poll.
-  local binary = hs.fs.attributes(self.herdrBin)
-  if binary == nil or binary.mode ~= "file" then
-    self.err = "herdr not found at " .. self.herdrBin
-    self.logger.e(self.err .. ": set spoon.HerdrJump.herdrBin to the output of `which herdr`")
-    hs.alert.show("HerdrJump: " .. self.err)
+  self.herdrInfo = self:_findHerdr()
+  if self.herdrInfo.path == nil then
+    self.err = "herdr not found"
+    self.logger.e(diagnostics.lines(self:_diagnosticsState())[2] .. " (the output of `command -v herdr`)")
+    hs.alert.show("HerdrJump: herdr not found: set spoon.HerdrJump.herdrBin (see Diagnostics in the menu)")
     self:_updateMenubar(0, self.err)
     return self
+  end
+  if #self.herdrInfo.missing > 0 then
+    self.logger.w(("herdrBin %s is missing: using %s"):format(self.herdrInfo.missing[1], self.herdrInfo.path))
   end
   self.timer = hs.timer.doEvery(self.pollSeconds, function() self:refresh() end)
   self:refresh()
@@ -235,7 +270,70 @@ function obj:_badges()
 end
 
 function obj:_conn()
-  return { bin = self.herdrBin, socket = self.socketPath }
+  return { bin = self.herdrInfo.path, socket = self.socketPath }
+end
+
+local function isFile(path)
+  return hs.fs.attributes(path, "mode") == "file"
+end
+
+local function shellQuoted(text)
+  return "'" .. text:gsub("'", "'\\''") .. "'"
+end
+
+-- The herdr to run (herdrBin, else the usual install folders) and its version, as Diagnostics
+-- shows them: { path, source, missing, version, older }.
+function obj:_findHerdr()
+  local home, user = os.getenv("HOME"), os.getenv("USER")
+  local path, source, missing = locate.herdr(self.herdrBin, locate.herdrCandidates(home, user), isFile)
+  local info = { path = path, source = source, missing = missing }
+  if path then
+    info.version = locate.version(hs.execute(shellQuoted(path) .. " --version"))
+    info.older = info.version and locate.older(info.version, obj.minHerdrVersion) or nil
+  end
+  return info
+end
+
+-- Finds the terminal that runs the Herdr client, from the client's parent processes, and caches
+-- it; without a client, the terminalBundleID fallback with the reason.
+function obj:_detectTerminal()
+  local ps, listed = hs.execute(PS)
+  local targets, notes, clients = {}, { "cannot list processes with ps" }, {}
+  if listed then
+    local parsed = procs.parse(ps)
+    clients = procs.clients(parsed, locate.sessionOf(self.socketPath))
+    local chains = {}
+    for i, client in ipairs(clients) do
+      chains[i] = { tty = client.tty, ancestors = procs.ancestry(parsed, client.pid) }
+    end
+    targets, notes = terminal.resolve(chains, terminal.regularApps())
+  end
+  local fallback = terminal.fallback({ terminalBundleID = self.terminalBundleID, itermBundleID = self.itermBundleID },
+    terminal.installed)
+  fallback.name = terminal.nameOf(fallback.bundleID)
+  self.terminal = terminal.choose(targets, fallback, notes)
+  self.clientCount = #clients
+  return self.terminal
+end
+
+-- The cached terminal's bundle id, without looking again (the app watcher calls it often).
+function obj:_terminalID()
+  return self.terminal and self.terminal.bundleID
+end
+
+-- The terminal for the "back to the terminal" key: the cached one when a client showed it and it
+-- still runs; otherwise look again, as a client may have started since.
+function obj:_terminalForToggle()
+  local cached = self.terminal
+  if cached and #cached.ttys > 0 and hs.application.get(cached.bundleID) then
+    return cached
+  end
+  return self:_detectTerminal()
+end
+
+function obj:_terminalInFront()
+  local front = hs.application.frontmostApplication()
+  return front ~= nil and self.terminal ~= nil and front:bundleID() == self.terminal.bundleID
 end
 
 -- The menu bar item for a count of waiting agents, or for an error: the icon follows the state,
@@ -251,11 +349,6 @@ function obj:_updateMenubar(count, err)
   end
   self.menubar:setTitle(attention.title(count, err))
   self.menubar:setTooltip(err or "Herdr agents")
-end
-
-local function itermInFront(bundleID)
-  local front = hs.application.frontmostApplication()
-  return front ~= nil and front:bundleID() == bundleID
 end
 
 --- HerdrJump:refresh([onDone])
@@ -286,7 +379,7 @@ function obj:refresh(onDone)
       end
       self:_reportUnknownStatuses(agents)
       self.agents, self.err = agents, nil
-      local seen = attention.updateSeen(self.seen, agents, itermInFront(self.itermBundleID))
+      local seen = attention.updateSeen(self.seen, agents, self:_terminalInFront())
       if not attention.sameSeen(seen, self.seen) then
         self.seen = seen
         hs.settings.set(SEEN_KEY, seen)
@@ -444,7 +537,57 @@ function obj:_menu()
   for i, item in ipairs(attention.menu(self:_rows(), self.err, self.order)) do
     menu[i] = self:_menuEntry(item)
   end
+  menu[#menu + 1] = { title = "-" }
+  menu[#menu + 1] = { title = "Diagnostics", menu = self:_diagnosticsEntries() }
   return menu
+end
+
+-- What Diagnostics shows, from what start, the last jump and the last poll found: opening the menu
+-- runs nothing.
+function obj:_diagnosticsState()
+  local target = self.terminal or { name = "none", ttys = {}, source = "default" }
+  return {
+    version = obj.version,
+    minHerdr = obj.minHerdrVersion,
+    hammerspoon = hs.processInfo.version,
+    herdr = self.herdrInfo,
+    socket = { path = self.socketPath, exists = hs.fs.attributes(self.socketPath, "mode") == "socket" },
+    terminal = {
+      name = target.name, source = target.source, legacy = target.legacy, note = target.note,
+      selects = terminal.adapter(target.bundleID) ~= "generic" and #target.ttys > 0,
+    },
+    clients = self.clientCount,
+    agentsError = self.herdrInfo.path and self.err or nil,
+    lastRaise = self.lastRaise,
+    automation = self.automation,
+  }
+end
+
+function obj:_diagnosticsEntries()
+  local actions = {
+    copy = function()
+      hs.pasteboard.setContents(self:diagnostics())
+      hs.alert.show("HerdrJump: diagnostics copied")
+    end,
+    console = function() hs.openConsole() end,
+    automation = function() hs.urlevent.openURL(AUTOMATION_SETTINGS) end,
+  }
+  local entries = {}
+  for i, item in ipairs(diagnostics.menu(self:_diagnosticsState())) do
+    entries[i] = { title = item.title, disabled = item.disabled, fn = item.action and actions[item.action] }
+  end
+  return entries
+end
+
+--- HerdrJump:diagnostics()
+--- Method
+--- What HerdrJump finds now: herdr, the socket, the terminal and how a jump brings it forward, as
+--- text (the menu's Diagnostics, and `install.sh --check` through the hs command line).
+function obj:diagnostics()
+  self:_detectTerminal()
+  local state = self:_diagnosticsState()
+  state.herdr = self:_findHerdr()
+  return diagnostics.text(state)
 end
 
 --- HerdrJump:setOrder(order)
@@ -472,22 +615,30 @@ function obj:_cycleOrder()
   self:setOrder(attention.nextOrder(self.order))
 end
 
---- HerdrJump:toggleIterm()
+--- HerdrJump:toggleTerminal()
 --- Method
---- Brings iTerm forward; from iTerm, goes back to the app used before it.
-function obj:toggleIterm()
+--- Brings forward the terminal that runs Herdr; from it, goes back to the app used before it.
+function obj:toggleTerminal()
+  local target = self:_terminalForToggle()
   local front = hs.application.frontmostApplication()
   local previous = self.previousApp
   local hasPrevious = previous ~= nil and previous:isRunning()
-  local action = iterm.toggleAction(front and front:bundleID(), self.itermBundleID, hasPrevious)
-  if action == "show-iterm" then
-    if not iterm.show(self.itermBundleID) then
-      self.logger.e("cannot activate " .. self.itermBundleID)
-      hs.alert.show("HerdrJump: cannot open iTerm (" .. self.itermBundleID .. ")")
+  local action = terminal.toggleAction(front and front:bundleID(), target.bundleID, hasPrevious)
+  if action == "show" then
+    if not terminal.show(target.bundleID) then
+      self.logger.e("cannot activate " .. target.bundleID)
+      hs.alert.show(("HerdrJump: cannot open %s (%s)"):format(target.name, target.bundleID))
     end
   elseif action == "back" and not previous:activate() then
     self.logger.w("cannot go back to " .. tostring(previous:name()))
   end
+end
+
+--- HerdrJump:toggleIterm()
+--- Method
+--- The former name of toggleTerminal().
+function obj:toggleIterm()
+  self:toggleTerminal()
 end
 
 --- HerdrJump:showAgents()
@@ -530,7 +681,8 @@ end
 
 --- HerdrJump:jump(paneId)
 --- Method
---- Focuses the agent in Herdr, then brings forward the iTerm session that runs Herdr.
+--- Focuses the agent in Herdr, then brings forward the terminal that runs Herdr: its exact window
+--- and tab in iTerm2 and Terminal, the app in other terminals.
 function obj:jump(paneId)
   herdr.focus(self:_conn(), paneId, function(err)
     if err then
@@ -538,14 +690,20 @@ function obj:jump(paneId)
       hs.alert.show("HerdrJump: " .. err)
       return
     end
-    local problem, blocked = iterm.raiseHerdr(self.itermBundleID)
-    if problem then
-      self.logger.w("raise: " .. problem)
-      if blocked then
-        hs.alert.show("HerdrJump: allow Hammerspoon to control iTerm2 in System Settings › Privacy & Security › Automation")
-      else
-        hs.alert.show("HerdrJump: " .. problem)
-      end
+    local target = self:_detectTerminal()
+    local outcome = terminal.raise(target)
+    self.lastRaise = outcome
+    if outcome.blocked then
+      self.automation = target.name
+    elseif outcome.level == "exact" and self.automation == target.name then
+      self.automation = nil
+    end
+    local alert, log = terminal.report(outcome, target.name)
+    if log then
+      self.logger.w("raise: " .. log)
+    end
+    if alert then
+      hs.alert.show("HerdrJump: " .. alert)
     end
     self:refresh()
   end)
