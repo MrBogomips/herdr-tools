@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Union
 
 SOCKET_TIMEOUT_SECONDS = 5
-DEFAULT_SOCKET_PATH = Path.home() / ".config" / "herdr" / "herdr.sock"
+SOCKET_FILE_NAME = "herdr.sock"
 CONFIG_FILE_NAME = "config.json"
 LOCK_POLL_SECONDS = 0.05
 FAILURE_TOAST_QUIET_SECONDS = 600
@@ -46,8 +46,21 @@ class LockTimeout(HerdrError):
     """Another run of the same plugin kept the lock for too long."""
 
 
+def _herdr_config_dir() -> Path:
+    """Herdr's own config folder: under $XDG_CONFIG_HOME when set, as Herdr does, else ~/.config."""
+    return Path(os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")) / "herdr"
+
+
 def socket_path() -> Path:
-    return Path(os.environ.get("HERDR_SOCKET_PATH") or DEFAULT_SOCKET_PATH)
+    """The server socket: the one Herdr hands to plugins, else found by Herdr's own rules."""
+    explicit = os.environ.get("HERDR_SOCKET_PATH")
+    if explicit:
+        return Path(explicit)
+    session = os.environ.get("HERDR_SESSION")
+    # Herdr names its unnamed session "default", and keeps that one's socket out of sessions/.
+    if session and session != "default":
+        return _herdr_config_dir() / "sessions" / session / SOCKET_FILE_NAME
+    return _herdr_config_dir() / SOCKET_FILE_NAME
 
 
 def socket_rpc(path: Union[str, Path], client: str) -> Call:
@@ -126,7 +139,7 @@ def config_path(plugin_id: str, explicit: Optional[str]) -> Path:
     directory = os.environ.get("HERDR_PLUGIN_CONFIG_DIR")
     if directory:
         return Path(directory) / CONFIG_FILE_NAME
-    return Path.home() / ".config" / "herdr" / "plugins" / "config" / plugin_id / CONFIG_FILE_NAME
+    return _herdr_config_dir() / "plugins" / "config" / plugin_id / CONFIG_FILE_NAME
 
 
 def load_json_config(path: Path, defaults: Mapping[str, Any]) -> Dict[str, Any]:
