@@ -17,8 +17,8 @@ from release_git import Git
 from release_manifest import Finding
 
 VENDORED = ("herdr_api.py", "test_herdr_api.py")
-# Accepted by the schema but never delivered to [[events]] hooks (herdr plugin link warns on 0.9.3).
-NOT_HOOKABLE = frozenset({"pane.updated", "layout.updated"})
+# Accepted by the schema but never delivered to [[events]] hooks (herdr plugin link warns on 0.9.5).
+NOT_HOOKABLE = frozenset({"pane.updated", "layout.updated", "workspace.metadata_updated"})
 TEST_TIMEOUT_SECONDS = 300
 _RAN = re.compile(r"^Ran (\d+) tests?", re.MULTILINE)
 
