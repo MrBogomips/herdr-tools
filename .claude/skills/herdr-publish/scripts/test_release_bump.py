@@ -47,6 +47,20 @@ class VersionTest(unittest.TestCase):
             with self.subTest(version=version, level=level):
                 self.assertEqual(rb.bump(version, level), expected)
 
+    def test_tells_a_version_that_can_carry_a_breaking_change(self) -> None:
+        cases = [
+            ("0.1.0", "0.1.1", False),
+            ("0.1.0", "0.2.0", True),
+            ("0.9.3", "1.0.0", True),
+            ("1.2.3", "1.3.0", False),
+            ("1.2.3", "2.0.0", True),
+            ("1.0", "1.1.0", True),  # unreadable: assume it can, the notes then keep the Breaking section
+            ("1.2.3", "next", True),
+        ]
+        for previous, version, expected in cases:
+            with self.subTest(previous=previous, version=version):
+                self.assertEqual(rb.allows_breaking(previous, version), expected)
+
 
 class ConventionalTest(unittest.TestCase):
     def test_reads_type_scope_and_breaking_marks(self) -> None:
@@ -162,6 +176,12 @@ class SuggestTest(unittest.TestCase):
         result = suggest([], new=new)
         self.assertEqual(result.level, "breaking")
         self.assertTrue(result.breaking)
+
+    def test_breaking_reasons_hold_only_contract_breaks(self) -> None:
+        # A `!` is already in the commit's own line of the notes; repeating it as a reason says nothing new.
+        result = suggest([commit("feat(plugins)!: require Herdr 0.9.5", ("sorter.py", True))])
+        self.assertEqual(result.level, "breaking")
+        self.assertEqual(result.breaking, ())
 
     def test_the_highest_signal_wins(self) -> None:
         commits = [commit("fix: a", ("sorter.py", True)), commit("feat: b", ("sorter.py", True))]
