@@ -97,20 +97,31 @@ herdr plugin uninstall mrbogomips.<plugin>             # remove one
 Herdr shows the manifest and the commands it will run before installing. Plugins are ordinary
 code running as your user, so read them first; these are short Python scripts.
 
-Requirements:
-
-- Herdr 0.9.5 or newer, on macOS or Linux.
-- `python3` 3.9 or newer. The plugins use the standard library only, so there is nothing else to
-  install, and they need no particular shell.
-  - Herdr runs the first `python3` on the `PATH` its server started with. On macOS,
-    `/usr/bin/python3` works once the Command Line Tools are installed (`xcode-select --install`);
-    Python from Homebrew or python.org works too.
-  - The server keeps that `PATH` until it restarts: after installing Python, run
-    `herdr server stop` (it ends the programs running in its panes) and start `herdr` again.
-- Space Herder's colours need a terminal with truecolor support.
-
 Each plugin's README explains its key bindings and its `config.json`, which lives in
 `herdr plugin config-dir <plugin id>`.
+
+### Requirements and compatibility
+
+| | Plugins (auto-tab-name, Space Herder) | herdr-jump |
+| --- | --- | --- |
+| System | macOS or Linux | macOS |
+| Herdr | 0.9.5 or newer | 0.9.5 or newer, on the same Mac |
+| Runs on | `python3` 3.9 or newer, standard library only | [Hammerspoon](https://www.hammerspoon.org) (verified with 1.1.1) |
+| Shell | none needed; auto-tab-name's optional shell integration covers zsh, bash and fish | none needed; `install.sh` runs in `sh` |
+| Terminal | any; Space Herder's colours need truecolor, auto-tab-name's `alt` keys need Option as Alt | any: iTerm2 and Terminal get the exact tab, other terminals come forward as an app |
+| Also | nothing else to install | Homebrew only to install Hammerspoon; the Accessibility and Automation permissions |
+
+About `python3`:
+
+- Herdr runs the first `python3` on the `PATH` its server started with, from 3.9 to the latest
+  (CI tests 3.9, 3.13 and 3.14). On macOS, `/usr/bin/python3` works once the Command Line Tools are
+  installed (`xcode-select --install`); Python from Homebrew or python.org works too.
+- The server keeps that `PATH` until it restarts: after installing Python, run `herdr server stop`
+  (it ends the programs running in its panes) and start `herdr` again.
+
+Not covered: Windows (the plugins use POSIX modules), and for herdr-jump a Herdr client inside
+tmux or over ssh, whose terminal cannot be seen: its keys then bring forward a default terminal.
+`herdr-jump/install.sh --check` tells what a Mac has and lacks for herdr-jump.
 
 ### Versions
 
@@ -140,7 +151,10 @@ cd herdr-tools/space-herder && /usr/bin/python3 -m unittest -v
 - Manifest commands run `python3 -E -X utf8 <script>`: whatever `python3` Herdr finds, the user's
   `PYTHON*` variables cannot hide the plugin's modules and the I/O stays UTF-8.
 - The website is built from [`site/`](site/) with `python3 site/build.py`; its README explains
-  the layout and the tests.
+  the layout and the tests (the playground's parity test needs `node`).
+- herdr-jump's tests need Lua 5.4 (`lua herdr-jump/tests/run.lua`, the version Hammerspoon embeds)
+  and run its installer under `sh` and `dash` (`sh herdr-jump/tests/test_install.sh`); keep
+  `shellcheck -s sh` clean.
 - `herdr api schema --json` prints the socket API of your Herdr build; the
   [plugin docs](https://herdr.dev/docs/plugins/) describe manifests, hooks and actions.
 

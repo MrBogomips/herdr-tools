@@ -22,23 +22,33 @@
     </nav>
     <div>
       <section id="requirements" aria-labelledby="requirements-title">
-        <h2 id="requirements-title">Requirements</h2>
+        <h2 id="requirements-title">Requirements and compatibility</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>Plugins (auto-tab-name, Space Herder)</th><th>herdr-jump</th></tr></thead>
+          <tbody>
+            <tr><td>System</td><td>macOS or Linux</td><td>macOS</td></tr>
+            <tr><td><a href="https://herdr.dev">Herdr</a></td><td>{{min_herdr}} or newer</td>
+              <td>{{min_herdr:herdr-jump}} or newer, on the same Mac</td></tr>
+            <tr><td>Runs on</td><td><code>python3</code> 3.9 or newer, standard library only</td>
+              <td><a href="https://www.hammerspoon.org">Hammerspoon</a></td></tr>
+            <tr><td>Shell</td><td>none needed; auto-tab-name's optional shell integration covers zsh, bash and fish</td>
+              <td>none needed; the installer runs in <code>sh</code></td></tr>
+            <tr><td>Terminal</td><td>any; Space Herder's colours need truecolor, auto-tab-name's <code>alt</code> keys need Option as
+              Alt</td><td>any: iTerm2 and Terminal get the exact tab, other terminals come forward as an app</td></tr>
+            <tr><td>Also</td><td>nothing else to install</td><td>Homebrew only to install Hammerspoon; the Accessibility and
+              Automation permissions</td></tr>
+          </tbody>
+        </table></div>
+        <p>About <code>python3</code>:</p>
         <ul>
-          <li><a href="https://herdr.dev">Herdr</a> {{min_herdr}} or newer, on macOS or Linux.</li>
-          <li><code>python3</code> 3.9 or newer. The plugins use the standard library only, so there is nothing else to install,
-            and they need no particular shell.
-            <ul>
-              <li>Herdr runs the first <code>python3</code> on the <code>PATH</code> its server started with. On macOS,
-                <code>/usr/bin/python3</code> works once the Command Line Tools are installed (<code>xcode-select --install</code>);
-                Python from Homebrew or python.org works too.</li>
-              <li>The server keeps that <code>PATH</code> until it restarts: after installing Python, run
-                <code>herdr server stop</code> (it ends the programs running in its panes) and start <code>herdr</code> again.</li>
-            </ul>
-          </li>
-          <li>Space Herder's colours need a terminal with truecolor support.</li>
-          <li>For herdr-jump: macOS, Herdr {{min_herdr:herdr-jump}} or newer in a terminal (iTerm2 and Terminal get the exact
-            tab, any other the app), and Homebrew if Hammerspoon is not installed yet.</li>
+          <li>Herdr runs the first <code>python3</code> on the <code>PATH</code> its server started with, from 3.9 to the latest. On
+            macOS, <code>/usr/bin/python3</code> works once the Command Line Tools are installed
+            (<code>xcode-select --install</code>); Python from Homebrew or python.org works too.</li>
+          <li>The server keeps that <code>PATH</code> until it restarts: after installing Python, run
+            <code>herdr server stop</code> (it ends the programs running in its panes) and start <code>herdr</code> again.</li>
         </ul>
+        <p>Not covered: Windows, and for herdr-jump a Herdr client inside tmux or over ssh, whose terminal cannot be seen.
+          <a href="herdr-jump.html#install"><code>install.sh --check</code></a> tells what a Mac has and lacks for herdr-jump.</p>
       </section>
 
       <section id="plugins" aria-labelledby="plugins-title">
