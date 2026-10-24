@@ -13,6 +13,8 @@ obj.version = "0.3.1"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
+-- The oldest Herdr this Spoon is verified with.
+obj.minHerdrVersion = "0.9.5"
 
 local function load(name)
   return dofile(hs.spoons.resourcePath(name .. ".lua"))

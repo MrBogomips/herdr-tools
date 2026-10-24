@@ -35,8 +35,10 @@ The site keeps no second copy of what the plugins already hold:
 - Screenshots are copied at build time from `space-herder/docs/` and `herdr-jump/docs/` into `img/`.
 - `assets/js/palettes.js` is generated from `space-herder/palettes.py`.
 - `{{version:<plugin>}}`, `{{min_herdr:<plugin>}}` and `{{palette_count}}` in a page are filled from
-  the manifests, the Spoon's `obj.version` (`{{version:herdr-jump}}`) and the palettes. An unknown
-  placeholder fails the build.
+  the manifests, the Spoon's `obj.version` and `obj.minHerdrVersion` (`{{version:herdr-jump}}`,
+  `{{min_herdr:herdr-jump}}`) and the palettes; `{{min_herdr}}` is the highest minimum of them all,
+  the Herdr the whole suite needs. An unknown placeholder fails the build, and a page that spells
+  out a version by hand fails the tests.
 
 ## Tests
 
