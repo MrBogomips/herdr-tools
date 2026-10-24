@@ -3,7 +3,8 @@
 Pages in `pages/` are HTML fragments that start with a JSON metadata comment; each one is set in
 `layout.html`. Screenshots come from the plugins' own `docs/` folders and the playground's
 palettes from `space-herder/palettes.py`, so the site never keeps a second copy of either.
-Placeholders such as `{{version:space-herder}}` are filled from the manifests.
+Placeholders such as `{{version:space-herder}}` are filled from the manifests and herdr-jump's from
+its Spoon.
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ NAV = (
 )
 METADATA = re.compile(r"\A\s*<!--\s*(\{.*?\})\s*-->\s*", re.S)
 PLACEHOLDER = re.compile(r"\{\{\s*([a-z_]+)(?::([a-z0-9-]+))?\s*\}\}")
-SPOON_VERSION = re.compile(r'^obj\.version\s*=\s*"([^"]+)"', re.M)
+SPOON = REPO / "herdr-jump" / "HerdrJump.spoon" / "init.lua"
 REQUIRED_METADATA = ("title", "description")
 
 
@@ -57,11 +58,11 @@ def manifest_field(plugin: str, field: str) -> str:
     return found.group(1)
 
 
-def spoon_version() -> str:
-    path = REPO / "herdr-jump" / "HerdrJump.spoon" / "init.lua"
-    found = SPOON_VERSION.search(path.read_text(encoding="utf-8"))
+def spoon_field(field: str) -> str:
+    """A string field of the HerdrJump Spoon, such as `obj.version = "0.3.1"` in its init.lua."""
+    found = re.search(r'^obj\.{}\s*=\s*"([^"]+)"'.format(re.escape(field)), SPOON.read_text(encoding="utf-8"), re.M)
     if not found:
-        raise BuildError("{}: no obj.version".format(path))
+        raise BuildError("{}: no obj.{}".format(SPOON, field))
     return found.group(1)
 
 
@@ -80,13 +81,28 @@ def plugin_names() -> List[str]:
     return sorted(manifest.parent.name for manifest in REPO.glob("*/herdr-plugin.toml"))
 
 
+def min_herdr(tool: str) -> str:
+    """The oldest Herdr a plugin or herdr-jump is verified with."""
+    if tool == "herdr-jump":
+        return spoon_field("minHerdrVersion")
+    return manifest_field(tool, "min_herdr_version")
+
+
+def suite_min_herdr() -> str:
+    """The Herdr the whole suite needs: the highest minimum of the plugins and herdr-jump."""
+    versions = [min_herdr(tool) for tool in plugin_names() + ["herdr-jump"]]
+    return max(versions, key=lambda version: tuple(int(part) for part in version.split(".")))
+
+
 def placeholder_value(name: str, argument: Optional[str]) -> str:
     if name == "version" and argument == "herdr-jump":
-        return spoon_version()
+        return spoon_field("version")
     if name == "version" and argument in plugin_names():
         return manifest_field(argument, "version")
-    if name == "min_herdr" and argument in plugin_names():
-        return manifest_field(argument, "min_herdr_version")
+    if name == "min_herdr" and argument is None:
+        return suite_min_herdr()
+    if name == "min_herdr" and (argument == "herdr-jump" or argument in plugin_names()):
+        return min_herdr(argument)
     if name == "palette_count" and argument is None:
         return str(len(load_presets()))
     raise BuildError("unknown placeholder {{{{{}{}}}}}".format(name, ":" + argument if argument else ""))

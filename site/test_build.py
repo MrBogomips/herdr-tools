@@ -9,6 +9,7 @@ import unittest
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
+from unittest import mock
 
 import build
 
@@ -116,7 +117,17 @@ class BuiltSite(unittest.TestCase):
 
     def test_herdr_jump_page_shows_the_spoon_version(self) -> None:
         page = (self.out / "herdr-jump.html").read_text(encoding="utf-8")
-        self.assertIn(build.spoon_version(), page)
+        self.assertIn(build.spoon_field("version"), page)
+
+    def test_herdr_jump_page_shows_the_herdr_it_needs(self) -> None:
+        page = (self.out / "herdr-jump.html").read_text(encoding="utf-8")
+        self.assertIn("herdr ≥ " + build.spoon_field("minHerdrVersion"), page)
+
+    def test_pages_spell_out_no_version(self) -> None:
+        # Versions come from the manifests and the Spoon through placeholders, never by hand.
+        for path in sorted((build.SITE / "pages").glob("*.html")):
+            with self.subTest(page=path.name):
+                self.assertIsNone(re.search(r"\b\d+\.\d+\.\d+\b", path.read_text(encoding="utf-8")))
 
     def test_plugin_screenshots_are_copied(self) -> None:
         for plugin, folder in build.IMAGE_FOLDERS.items():
@@ -134,6 +145,19 @@ class BuildRules(unittest.TestCase):
     def test_unknown_placeholder_is_an_error(self) -> None:
         with self.assertRaisesRegex(build.BuildError, "unknown placeholder"):
             build.fill("Space Herder {{version:nope}}")
+
+    def test_herdr_jump_takes_its_herdr_minimum_from_the_spoon(self) -> None:
+        self.assertEqual(build.fill("{{min_herdr:herdr-jump}}"), build.spoon_field("minHerdrVersion"))
+
+    def test_the_suite_needs_the_highest_herdr_minimum(self) -> None:
+        minimums = {"auto-tab-name": "0.9.5", "space-herder": "0.10.0", "herdr-jump": "0.9.12"}
+        with mock.patch.object(build, "min_herdr", side_effect=minimums.get), \
+                mock.patch.object(build, "plugin_names", return_value=["auto-tab-name", "space-herder"]):
+            self.assertEqual(build.fill("{{min_herdr}}"), "0.10.0")
+
+    def test_a_missing_spoon_field_is_an_error(self) -> None:
+        with self.assertRaisesRegex(build.BuildError, "no obj.nope"):
+            build.spoon_field("nope")
 
     def test_refuses_to_replace_a_folder_it_did_not_build(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
