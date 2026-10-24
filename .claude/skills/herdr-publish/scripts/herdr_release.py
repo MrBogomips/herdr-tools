@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
+import release_bump as rb
 import release_index as ri
 import release_notes
 import release_preflight as rp
@@ -71,8 +72,12 @@ def _notes(args: argparse.Namespace, git: Git, now: datetime) -> int:
     version = args.version or status.next_version or status.manifest_version or "?"
     if status.last_tag is None:
         print(release_notes.render_first(args.plugin, version, status.description), end="")
-    else:
-        print(release_notes.render(args.plugin, version, status.commits, status.breaking), end="")
+        return 0
+    previous = status.last_tag[len(args.plugin) + 2:]  # <plugin>-vX.Y.Z
+    if status.breaking and not rb.allows_breaking(previous, version):
+        print("herdr_release: {} {} -> {} cannot carry the breaking changes the notes list: {}".format(
+            args.plugin, previous, version, "; ".join(status.breaking)), file=sys.stderr)
+    print(release_notes.render(args.plugin, version, status.commits, status.breaking, previous), end="")
     return 0
 
 

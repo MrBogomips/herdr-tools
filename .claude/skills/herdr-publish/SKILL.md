@@ -95,6 +95,12 @@ Semver from the user's side:
 Explain your choice in one line per plugin. If a commit's type contradicts its files, say so: a `docs`
 commit that changes code still ships.
 
+A `!` on a commit that touches several plugins may break only some of them: raising every
+`min_herdr_version` to 0.9.5 breaks nothing for a plugin that already required it. `status` still counts
+the mark; overrule it when the diff shows nothing breaks for that plugin. `notes --version X.Y.Z` follows
+your choice: when X.Y.Z cannot carry a breaking change, marked commits are listed under their type.
+Contract breaks found in the manifest stay under Breaking, and `notes` warns that the version is too low.
+
 ### 3. Sync the metadata
 
 - The index records the manifest `description`, and the README table row says the same thing to people.

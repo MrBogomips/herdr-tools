@@ -75,6 +75,19 @@ def bump(version: str, level: str) -> str:
     raise ValueError("unknown bump level {!r}".format(level))
 
 
+def allows_breaking(previous: str, version: str) -> bool:
+    """Whether going from `previous` to `version` may break users: a new major, or a new minor while 0.x.
+
+    An unreadable version counts as allowing it, so the notes keep a Breaking section rather than hide one.
+    """
+    old, new = parse_version(previous), parse_version(version)
+    if old is None or new is None:
+        return True
+    if old[0] == 0:
+        return new[:2] > old[:2]
+    return new[0] > old[0]
+
+
 def conventional(subject: str, body: str) -> Tuple[Optional[str], Optional[str], bool]:
     match = _CONVENTIONAL.match(subject)
     breaking = "BREAKING CHANGE" in body or "BREAKING-CHANGE" in body
@@ -129,9 +142,11 @@ def suggest(
         signals.extend(_commit_signals(commit, flags))
     # Always compare the contracts: a release commit (left out of `commits`) may drop a platform or raise
     # min_herdr_version, and equal contracts yield nothing.
-    signals.extend(_contract_signals(old, new, old_keys, new_keys))
+    contract = _contract_signals(old, new, old_keys, new_keys)
+    signals.extend(contract)
     level = max((level for level, _ in signals), key=LEVELS.index, default="none")
-    breaking = tuple(reason for kind, reason in signals if kind == "breaking")
+    # A commit's own `!` already shows in its line of the notes: only contract breaks need a line of their own.
+    breaking = tuple(reason for kind, reason in contract if kind == "breaking")
     return Suggestion(level, tuple(reason for _, reason in signals), tuple(flags), breaking)
 
 

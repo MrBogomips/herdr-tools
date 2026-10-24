@@ -107,6 +107,29 @@ class CliTest(unittest.TestCase):
         self.assertIn("Breaking", out)
         self.assertIn("acme.sorter.sort", out)
 
+    def test_notes_follow_the_chosen_version(self) -> None:
+        # A `!` on a commit shared by several plugins may break only some: a patch version overrules it.
+        self.repo.commit("feat(plugins)!: require Herdr 0.9.5", {"sorter/sorter.py": "print('new')\n"})
+        code, out, _ = self.cli("notes", "sorter")
+        self.assertEqual(code, 0)
+        self.assertIn("sorter 0.2.0", out)
+        self.assertIn("Breaking\n- require Herdr 0.9.5", out)
+        self.assertNotIn("marked as a breaking change", out)
+        code, out, err = self.cli("notes", "sorter", "--version", "0.1.1")
+        self.assertEqual(code, 0)
+        self.assertNotIn("Breaking", out)
+        self.assertIn("Features\n- require Herdr 0.9.5", out)
+        self.assertEqual(err, "")
+
+    def test_notes_warn_when_a_contract_break_gets_a_patch(self) -> None:
+        manifest = render_manifest(tables=TABLES.replace('id = "sort"', 'id = "order"'))
+        self.repo.commit("refactor(sorter): rename the action", {"sorter/herdr-plugin.toml": manifest})
+        code, out, err = self.cli("notes", "sorter", "--version", "0.1.1")
+        self.assertEqual(code, 0)
+        self.assertIn("acme.sorter.sort", out.split("Breaking\n", 1)[1])
+        self.assertIn("0.1.1", err)
+        self.assertIn("breaking", err)
+
     def test_notes_refuse_a_plugin_in_error(self) -> None:
         self.repo.commit("feat(sorter): by date", {"sorter/sorter.py": "print('date')\n"})
         self.repo.write("sorter/herdr-plugin.toml", render_manifest({"version": "0.2.0"}))
@@ -161,6 +184,21 @@ class NotesTest(unittest.TestCase):
                                     breaking=("removes action 'sort': key bindings to acme.sorter.sort stop working",))
         breaking = text.split("Breaking\n", 1)[1].split("\n\n", 1)[0]
         self.assertIn("acme.sorter.sort", breaking)
+
+    def test_a_version_that_cannot_break_files_marked_commits_by_type(self) -> None:
+        commits = [self.commit("feat(plugins)!: require Herdr 0.9.5", "herdr-plugin.toml"),
+                   self.commit("fix!: find the socket", "herdr_api.py")]
+        text = release_notes.render("sorter", "0.1.1", commits, previous="0.1.0")
+        self.assertNotIn("Breaking", text)
+        self.assertIn("Features\n- require Herdr 0.9.5 (abcdef1)", text)
+        self.assertIn("Fixes\n- find the socket (abcdef1)", text)
+        text = release_notes.render("sorter", "0.2.0", commits, previous="0.1.0")
+        self.assertIn("Breaking\n- require Herdr 0.9.5 (abcdef1)\n- find the socket (abcdef1)", text)
+
+    def test_contract_breaks_stay_whatever_the_version(self) -> None:
+        text = release_notes.render("sorter", "0.1.1", [self.commit("refactor(sorter): rename", "herdr-plugin.toml")],
+                                    breaking=("raises min_herdr_version 0.9.3 -> 0.9.5",), previous="0.1.0")
+        self.assertIn("Breaking\n- raises min_herdr_version 0.9.3 -> 0.9.5", text)
 
     def test_says_so_when_nothing_ships(self) -> None:
         text = release_notes.render("sorter", "0.1.0", [self.commit("docs: x", "README.md")])
