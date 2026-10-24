@@ -1,6 +1,9 @@
 """Sanity checks on herdr-plugin.toml (Python 3.9 has no tomllib, so plain regexes)."""
 import json
+import os
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -9,6 +12,11 @@ from space_herder import HOOK_EVENTS, parse_args
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = (HERE / "herdr-plugin.toml").read_text(encoding="utf-8")
+# Herdr runs the first python3 on its server's PATH: -E ignores the user's PYTHON* variables
+# (PYTHONSAFEPATH would hide the plugin's own modules) and -X utf8 keeps the I/O UTF-8 whatever
+# the locale.
+PYTHON = ["python3", "-E", "-X", "utf8"]
+SCRIPT = len(PYTHON)
 # The Herdr event each [[events]] hook runs on, and the hook event it hands to space_herder.py.
 EVENT_HOOKS = {
     "workspace.created": "created",
@@ -23,6 +31,10 @@ def values(key):
     return re.findall(r'^{} = "([^"]*)"'.format(key), MANIFEST, re.MULTILINE)
 
 
+def commands():
+    return [json.loads(line) for line in re.findall(r"^command = (\[.*\])$", MANIFEST, re.MULTILINE)]
+
+
 class ManifestTest(unittest.TestCase):
     def test_declares_the_required_metadata(self):
         for key in ("id", "name", "version", "min_herdr_version"):
@@ -32,19 +44,25 @@ class ManifestTest(unittest.TestCase):
         self.assertRegex(values("version")[0], r"^\d+\.\d+\.\d+$")
 
     def test_every_command_runs_a_script_of_this_plugin(self):
-        commands = [json.loads(line) for line in re.findall(r"^command = (\[.*\])$", MANIFEST, re.MULTILINE)]
-        self.assertTrue(commands)
-        for command in commands:
+        self.assertTrue(commands())
+        for command in commands():
             with self.subTest(command=command):
-                self.assertEqual(command[0], "python3")
-                self.assertTrue((HERE / command[1]).is_file())
+                self.assertEqual(command[:SCRIPT], PYTHON)
+                self.assertTrue((HERE / command[SCRIPT]).is_file())
+
+    def test_every_script_starts_whatever_the_python_environment(self):
+        env = dict(os.environ, PYTHONSAFEPATH="1", LC_ALL="en_US.ISO8859-1", LANG="en_US.ISO8859-1")
+        for script in sorted({command[SCRIPT] for command in commands()}):
+            with self.subTest(script=script):
+                run = subprocess.run([sys.executable] + PYTHON[1:] + [script, "--help"], cwd=HERE, env=env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+                self.assertEqual(run.returncode, 0, run.stderr.decode("utf-8", "replace"))
 
     def test_every_space_herder_command_line_parses(self):
-        commands = [json.loads(line) for line in re.findall(r"^command = (\[.*\])$", MANIFEST, re.MULTILINE)]
-        for command in commands:
-            if command[1] == "space_herder.py":
+        for command in commands():
+            if command[SCRIPT] == "space_herder.py":
                 with self.subTest(command=command):
-                    parse_args(command[2:])
+                    parse_args(command[SCRIPT + 1:])
 
     def test_local_ids_have_no_dots(self):
         local_ids = values("id")[1:]
@@ -59,8 +77,8 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(sorted(on for on, _ in events), sorted(EVENT_HOOKS))
         for on, command in events:
             with self.subTest(on=on):
-                self.assertEqual(json.loads(command), ["python3", "space_herder.py", "hook", EVENT_HOOKS[on]])
-        self.assertEqual([json.loads(command) for command in startup], [["python3", "space_herder.py", "hook", "startup"]])
+                self.assertEqual(json.loads(command), PYTHON + ["space_herder.py", "hook", EVENT_HOOKS[on]])
+        self.assertEqual([json.loads(command) for command in startup], [PYTHON + ["space_herder.py", "hook", "startup"]])
         self.assertEqual(set(EVENT_HOOKS.values()) | {"startup"}, set(HOOK_EVENTS))
 
     def test_declares_every_action(self):

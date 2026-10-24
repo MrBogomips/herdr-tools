@@ -5,6 +5,9 @@ min_herdr_version = "0.9.5"
 description = "Herd the spaces sidebar: keep it sorted into ~, head (+), default and bottom (-) groups, colour every space of one customer alike, and create or rename spaces in dialogs that preview the result."
 platforms = ["macos", "linux"]
 
+# Herdr runs the first python3 on its server's PATH: -E ignores the user's PYTHON* variables and
+# -X utf8 keeps the I/O UTF-8 whatever the locale.
+
 # The colours show only after the [ui.sidebar.spaces] rows printed by
 # `python3 space_herder.py snippet` are in Herdr's config.toml (see the README).
 
@@ -13,27 +16,27 @@ platforms = ["macos", "linux"]
 
 # Token metadata does not survive a server restart: colour every space again at startup.
 [[startup]]
-command = ["python3", "space_herder.py", "hook", "startup"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "hook", "startup"]
 
 [[events]]
 on = "workspace.created"
-command = ["python3", "space_herder.py", "hook", "created"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "hook", "created"]
 
 [[events]]
 on = "workspace.renamed"
-command = ["python3", "space_herder.py", "hook", "renamed"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "hook", "renamed"]
 
 # A space nobody named takes its label from its pane's folder, and a `cd` changes it without a
 # hookable event (pane.updated cannot be hooked), so catch up on the next focus change. A run
 # with nothing to change writes nothing.
 [[events]]
 on = "pane.focused"
-command = ["python3", "space_herder.py", "hook", "focused"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "hook", "focused"]
 
 # Worktree provenance changes (a worktree child follows its parent's colour).
 [[events]]
 on = "workspace.updated"
-command = ["python3", "space_herder.py", "hook", "updated"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "hook", "updated"]
 
 # Bind a key in config.toml: type = "plugin_action", command = "mrbogomips.space-herder.sort".
 [[actions]]
@@ -41,28 +44,28 @@ id = "sort"
 title = "Sort the sidebar"
 description = "Sort the sidebar: ~ first, then names ending with ' +', plain names, names ending with ' -'."
 contexts = ["global", "workspace"]
-command = ["python3", "space_herder.py", "sort"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "sort"]
 
 [[actions]]
 id = "recolor"
 title = "Recolour the sidebar"
 description = "Colour every space name again, for example after editing config.json."
 contexts = ["global", "workspace"]
-command = ["python3", "space_herder.py", "recolor"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "recolor"]
 
 [[actions]]
 id = "snippet"
 title = "Write sidebar rows for config.toml"
 description = "Write the [ui.sidebar.spaces] rows for the current palette next to config.json and show its path."
 contexts = ["global", "workspace"]
-command = ["python3", "space_herder.py", "snippet", "--write"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "snippet", "--write"]
 
 [[actions]]
 id = "clear"
 title = "Clear the colours"
 description = "Remove the coloured names until the next hook run, for example to test the default rows."
 contexts = ["global", "workspace"]
-command = ["python3", "space_herder.py", "clear"]
+command = ["python3", "-E", "-X", "utf8", "space_herder.py", "clear"]
 
 # Dialogs that replace Herdr's own new-space and rename prompts: bind these actions to
 # prefix+shift+n and prefix+shift+w (see the README). Each opens the popup pane of the same id.
@@ -71,14 +74,14 @@ id = "new-space"
 title = "New space"
 description = "Create a space in a popup: folder, name, sort group and colour, with a preview of the sidebar."
 contexts = ["global", "workspace"]
-command = ["python3", "space_dialog.py", "open", "new"]
+command = ["python3", "-E", "-X", "utf8", "space_dialog.py", "open", "new"]
 
 [[actions]]
 id = "rename-space"
 title = "Rename space"
 description = "Rename the current space in a popup: name, sort group and colour, with a preview of the sidebar."
 contexts = ["workspace"]
-command = ["python3", "space_dialog.py", "open", "rename"]
+command = ["python3", "-E", "-X", "utf8", "space_dialog.py", "open", "rename"]
 
 [[panes]]
 id = "new-space"
@@ -86,7 +89,7 @@ title = "New space"
 placement = "popup"
 width = "70%"
 height = 22
-command = ["python3", "space_dialog.py", "run", "new"]
+command = ["python3", "-E", "-X", "utf8", "space_dialog.py", "run", "new"]
 
 [[panes]]
 id = "rename-space"
@@ -94,4 +97,4 @@ title = "Rename space"
 placement = "popup"
 width = "70%"
 height = 18
-command = ["python3", "space_dialog.py", "run", "rename"]
+command = ["python3", "-E", "-X", "utf8", "space_dialog.py", "run", "rename"]
