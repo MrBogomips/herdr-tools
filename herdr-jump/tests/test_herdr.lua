@@ -184,4 +184,11 @@ return {
     }
     h.eq({ herdr.agents({ type = "agent_list", agents = list }) }, { { good }, nil, 5 })
   end,
+
+  run_without_a_binary_says_herdr_was_not_found = function()
+    -- A fresh copy: other tests replace run. It must answer before reaching hs.task.
+    local fresh = h.load("herdr")
+    local got = capture(function(callback) fresh.run({ socket = CONN.socket }, fresh.listArgs(), callback) end)
+    h.eq({ got[1], got[2] }, { nil, "herdr not found" })
+  end,
 }

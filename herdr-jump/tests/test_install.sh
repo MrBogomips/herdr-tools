@@ -328,6 +328,15 @@ a_commented_out_load_does_not_count() {
   grep -q '^hs.loadSpoon("HerdrJump")' "$(init)" || fail "loadSpoon not added: $(cat "$(init)")"
 }
 
+a_spoon_loaded_through_spoon_install_counts() {
+  fresh_home
+  printf 'hs.loadSpoon("SpoonInstall")\nspoon.SpoonInstall:andUse("HerdrJump", { start = true })\n' > "$(init)"
+  cp "$(init)" "$HOME/.stub/before.lua"
+  run_install_keep
+  assert_status 0
+  assert_same "$(init)" "$HOME/.stub/before.lua"
+}
+
 an_indented_or_single_quoted_load_counts() {
   fresh_home
   printf "if true then\n  local jump = hs.loadSpoon('HerdrJump')\nend\n" > "$(init)"
@@ -443,6 +452,8 @@ check_on_a_ready_mac_passes_and_changes_nothing() {
   assert_output "iTerm"
   assert_output "terminal: iTerm2 · detected"
   grep -q '^fail' "$STUB_STATE/out" && fail "a check failed: $(cat "$STUB_STATE/out")"
+  # A HerdrJump older than diagnostics() must get a plain line, not a Lua error.
+  assert_called "has no diagnostics: run install.sh to update it"
 }
 
 check_without_hammerspoon_fails_and_installs_nothing() {
@@ -516,6 +527,7 @@ for t in \
   piped_into_sh_a_running_hammerspoon_is_still_reloaded_through_hs \
   a_moved_config_gets_the_spoon_and_the_init_beside_it \
   a_commented_out_load_does_not_count \
+  a_spoon_loaded_through_spoon_install_counts \
   an_indented_or_single_quoted_load_counts \
   the_herdr_of_the_shell_is_written_into_a_new_init \
   the_herdr_of_the_shell_is_written_into_the_appended_lines \

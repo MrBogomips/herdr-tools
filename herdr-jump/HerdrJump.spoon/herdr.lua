@@ -144,6 +144,11 @@ local lastCall = 0
 -- hs.task reads the output only after the process exits, so an output over the 64 KB pipe buffer
 -- would block herdr until the timeout: about 95 agents at today's ~700 bytes each.
 function M.run(conn, args, callback, timeoutSeconds)
+  -- hs.task.new raises on a nil path instead of returning nil.
+  if type(conn.bin) ~= "string" then
+    callback(nil, "herdr not found", "no herdr binary: see Diagnostics")
+    return
+  end
   lastCall = lastCall + 1
   local id = lastCall
   local function finish(result, err, detail)
