@@ -40,8 +40,13 @@ own with `herdr plugin install MrBogomips/herdr-tools/<plugin>`.
   dependencies. Logic lives in pure modules (no `hs.*` at load time) with the tests; `init.lua` is glue.
 - Tests: `lua herdr-jump/tests/run.lua`. The CI job `lua` runs every `*/tests/run.lua` with `lua5.4`.
 - Users install with `herdr-jump/install.sh` (`curl … | sh` from GitHub, POSIX sh, no clone); its tests
-  `sh herdr-jump/tests/test_install.sh` stub the system commands and run on `/bin/sh` and dash. The CI
-  job `unittest` runs every `*/tests/test_*.sh`. Keep `shellcheck -s sh` clean.
+  `sh herdr-jump/tests/test_install.sh` stub the system commands (`defaults`, `sleep` and `herdr`
+  included, so nothing reads the real Mac) and run on `/bin/sh` and dash. The CI job `unittest` runs
+  every `*/tests/test_*.sh`. Keep `shellcheck -s sh` clean. `install.sh --check` must stay read-only.
+- The Spoon finds the terminal of the Herdr client from `ps` (procs.lua → terminal.lua). Only iTerm2
+  and Terminal have a tab-selecting adapter; check a new one's AppleScript with `osacompile` (no
+  Automation prompt) before a live jump. `hs -q -c 'return spoon.HerdrJump:diagnostics()'` shows what
+  the running Spoon found.
 - Listed in the root README "Companions" table. Not released by `herdr-publish`: it ships with `main`;
   an annotated tag `herdr-jump-vX.Y.Z` only when the user asks (`install.sh --ref` pins one).
 - Live check: Hammerspoon loads the Spoon through `~/.hammerspoon/Spoons/HerdrJump.spoon`, a symlink to
