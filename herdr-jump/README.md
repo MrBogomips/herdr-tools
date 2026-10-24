@@ -1,8 +1,8 @@
 # herdr-jump
 
 A [Hammerspoon](https://www.hammerspoon.org) Spoon for macOS that gets you back to your Herdr
-agents from any app: one key back to iTerm, one key to the agent that needs you, and a menu bar
-icon that counts the agents waiting for you.
+agents from any app: one key back to your terminal, one key to the agent that needs you, and a menu
+bar icon that counts the agents waiting for you.
 
 **Website: [herdr-jump at a glance](https://mrbogomips.github.io/herdr-tools/herdr-jump.html)**;
 this README is the full reference.
@@ -24,16 +24,16 @@ not list it.
 
 - **An agent asks for a permission while you are in the browser.** The icon turns solid with a
   count. `⌃⌥⌘A` opens the picker with that agent on top and how long it has waited; Enter lands
-  you on its pane, with the iTerm window, tab and session running Herdr in front.
+  you on its pane, with the terminal window and tab running Herdr in front.
 - **Several agents finish while you are in a meeting.** The count says how many. The picker queues
   them oldest first, each with its wait ("done 25m · since 10:40"), so you serve them in turn;
   each one leaves the count once you have looked at it.
 - **Following the latest answers instead of the queue.** Tab in the picker sorts newest first
   (LIFO): among the `done` agents, the one that just finished is on top (`blocked` ones still come
   first). Tab again sorts every agent by name. The choice is remembered.
-- **Back and forth between iTerm and the app you were in.** `⌃⌥⌘I` brings iTerm forward on the
-  window you used last, Space or display included; pressed again from iTerm, it goes back to the
-  app you came from.
+- **Back and forth between your terminal and the app you were in.** `⌃⌥⌘I` brings the terminal
+  running Herdr forward on the window you used last, Space or display included; pressed again from
+  the terminal, it goes back to the app you came from.
 - **A glance instead of a switch.** The icon alone says whether anything waits. Click it for the
   same list as the picker, as a menu.
 
@@ -41,8 +41,8 @@ not list it.
 
 | Key | What happens |
 | --- | --- |
-| `⌃⌥⌘I` | Activates iTerm2. Herdr keeps its focused pane, so you land where you left. From iTerm, goes back to the previous app. |
-| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the iTerm window, tab and session running the Herdr client come forward. |
+| `⌃⌥⌘I` | Activates the terminal running Herdr (see [Terminals](#terminals)). Herdr keeps its focused pane, so you land where you left. From the terminal, goes back to the previous app. |
+| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the terminal window and tab running the Herdr client come forward. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -84,7 +84,8 @@ comes from Herdr's own change counter, so it is exact either way.
 | Two outlined agents and `?` | Herdr cannot be read; the menu says why |
 
 Click it for the drop-down: the agents in the picker's order, each with its icon and wait, then
-**Sort by** (FIFO, LIFO, by name; the checked one is in use) and **Legend**.
+**Sort by** (FIFO, LIFO, by name; the checked one is in use), **Legend** and **Diagnostics** (see
+[Troubleshooting](#troubleshooting)).
 
 <img src="docs/menu.png" alt="The menu bar drop-down under the solid agents icon with the count 4: the same seven fictional agents with their icons and waits, then the Sort by and Legend submenus" width="460">
 
@@ -96,14 +97,33 @@ up to `pollSeconds`.
 Herdr's server marks a `done` agent as seen when something focuses it through the API, as the
 picker does. Looking at it inside the Herdr TUI may not, and the count would stay high. So
 HerdrJump keeps its own record: a `done` agent counts as seen once it was the focused pane while
-iTerm was in front. A later completion of the same agent makes it `done` again. The record lives
+the terminal running Herdr was in front. A later completion of the same agent makes it `done` again. The record lives
 in Hammerspoon's settings (`HerdrJump.seen`) and survives a reload; an entry whose completion
 counter goes backwards (Herdr restarted and reused the pane id) is forgotten.
 
+## Terminals
+
+HerdrJump finds the terminal that runs the Herdr client by itself: it climbs from the client's
+process (`ps`) to the app that started it. Nothing to configure for the usual cases.
+
+| Terminal | A jump brings forward |
+| --- | --- |
+| iTerm2 | the window, tab and session running Herdr (AppleScript, by tty) |
+| Terminal | the window and tab running Herdr (AppleScript, by tty) |
+| Any other app: Ghostty, WezTerm, kitty, Alacritty, Warp, VS Code… | the app, on its last used window |
+
+- A client inside tmux, screen or zellij, or reached over ssh, hides its terminal: the keys bring
+  forward `terminalBundleID` (by default iTerm2 when installed, else Terminal), and Diagnostics
+  says why.
+- An iTerm2 restart can leave its shells under an `iTermServer` process that no longer belongs to
+  iTerm2: HerdrJump still takes it for iTerm2.
+- A client of a named session (`herdr --session <name>`) counts when `socketPath` is that session's
+  socket; with no client of it in sight, every client counts.
+
 ## Install
 
-Requirements: macOS, Herdr 0.9.5 or newer running in iTerm2, and Homebrew if
-[Hammerspoon](https://github.com/Hammerspoon/hammerspoon) (MIT) is not installed yet.
+Requirements: macOS, Herdr 0.9.5 or newer in a terminal (see [Terminals](#terminals)), and
+Homebrew if [Hammerspoon](https://github.com/Hammerspoon/hammerspoon) (MIT) is not installed yet.
 
 Paste into a terminal:
 
@@ -114,12 +134,26 @@ curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-j
 The script asks nothing and prints what it does:
 
 - installs Hammerspoon with Homebrew when it is missing;
-- downloads `HerdrJump.spoon` from this repository into `~/.hammerspoon/Spoons`, replacing the
-  previous copy: the same line updates it;
-- creates `~/.hammerspoon/init.lua` from [`init.example.lua`](init.example.lua) when you have
-  none (it also turns off Hammerspoon's crash reporting, starts it at login and hides its Dock
-  icon), or appends the three HerdrJump lines to yours;
+- downloads `HerdrJump.spoon` from this repository into the `Spoons` folder of Hammerspoon's
+  config (`~/.hammerspoon/Spoons`, or beside the `init.lua` that Hammerspoon's `MJConfigFile`
+  setting names), replacing the previous copy: the same line updates it;
+- creates `init.lua` from [`init.example.lua`](init.example.lua) when you have none (it also turns
+  off Hammerspoon's crash reporting, starts it at login and hides its Dock icon), or appends the
+  HerdrJump lines to yours. Either way it adds `herdrBin`, the `herdr` your shell runs, and
+  `socketPath` when `herdr status server` names another socket than the default: Hammerspoon sees
+  neither your `PATH` nor `XDG_CONFIG_HOME` or `HERDR_SESSION`. An `init.lua` that loads HerdrJump
+  already is left as it is;
 - reloads Hammerspoon, or starts it.
+
+To see what HerdrJump needs and what it finds, on a Mac with or without it, changing nothing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh -s -- --check
+```
+
+It checks Hammerspoon, `init.lua` and the Spoon, `herdr` and its version, the server socket and
+the installed terminals, then prints the running HerdrJump's own Diagnostics through the `hs`
+command line. It exits 1 when Hammerspoon or `herdr` is missing.
 
 To read the script first, or to install a branch or a release tag (`herdr-jump-vX.Y.Z`, when one
 has been cut) instead of `main`:
@@ -136,13 +170,13 @@ follows your checkout instead; the script leaves such a link alone unless you pa
 macOS asks for two permissions:
 
 - **Accessibility** for Hammerspoon, on first launch: global hotkeys need it.
-- **Automation: Hammerspoon → iTerm2**, on the first jump: selecting the Herdr session uses
-  iTerm's AppleScript. Without it, a jump still focuses the agent and activates iTerm, but cannot
-  pick the window when you have several; an alert points to System Settings › Privacy &
-  Security › Automation.
+- **Automation: Hammerspoon → iTerm2, or → Terminal**, on the first jump: selecting the Herdr tab
+  uses the terminal's AppleScript. Without it, a jump still focuses the agent and activates the
+  terminal, but cannot pick the window when you have several; an alert points to System Settings ›
+  Privacy & Security › Automation, and so does Diagnostics.
 
-To remove HerdrJump, delete `~/.hammerspoon/Spoons/HerdrJump.spoon` and its lines in
-`~/.hammerspoon/init.lua`, then reload Hammerspoon.
+To remove HerdrJump, delete `HerdrJump.spoon` from Hammerspoon's `Spoons` folder and its lines in
+`init.lua`, then reload Hammerspoon.
 
 ## Configure
 
@@ -150,9 +184,9 @@ Set these before `start()`:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `herdrBin` | `/opt/homebrew/bin/herdr` | The `herdr` binary (Hammerspoon's PATH has no Homebrew) |
-| `socketPath` | `~/.config/herdr/herdr.sock` | The Herdr server socket, passed as `HERDR_SOCKET_PATH` |
-| `itermBundleID` | `com.googlecode.iterm2` | The app to bring forward |
+| `herdrBin` | found | The `herdr` binary. Unset or missing, it is looked for in `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin` (Herdr's installer), `~/.cargo/bin`, the Nix profiles, `/opt/local/bin` and mise's shims: Hammerspoon's PATH has none of them |
+| `socketPath` | `~/.config/herdr/herdr.sock` | The Herdr server socket, passed as `HERDR_SOCKET_PATH`: set it when your Herdr uses another one (`herdr status server` prints it), such as a named session's `~/.config/herdr/sessions/<name>/herdr.sock` |
+| `terminalBundleID` | iTerm2 when installed, else Terminal | The terminal to bring forward when no Herdr client shows its own (Herdr in tmux, or not running); `itermBundleID`, its former name, still works |
 | `pollSeconds` | `5` | How often the agent list is read |
 | `showMenubar` | `true` | Show the menu bar icon and count |
 | `defaultOrder` | `"fifo"` | The sort until you choose one: `"fifo"`, `"lifo"` or `"name"`; your last choice (Tab, menu) wins |
@@ -165,19 +199,23 @@ Other keys: pass your own mapping instead of `defaultHotkeys`.
 hs.loadSpoon("HerdrJump")
 spoon.HerdrJump.pollSeconds = 10
 spoon.HerdrJump:bindHotkeys({
-  iterm = { { "ctrl", "alt", "cmd" }, "t" },
+  terminal = { { "ctrl", "alt", "cmd" }, "t" },
   agents = { { "ctrl", "alt", "cmd" }, "space" },
 })
 spoon.HerdrJump:start()
 ```
+
+`iterm`, the former name of `terminal`, still works in the mapping.
 
 ## How it works
 
 - Every `pollSeconds` it runs `herdr agent list` (about 0.1 s), which prints the agents as JSON on
   stdout; errors come as a JSON envelope on stderr. Herdr can push status events, but only one
   pane per subscription, so polling is simpler.
-- A jump runs `herdr agent focus <pane id>`, then finds the Herdr client's terminal with `ps` and
-  selects the iTerm session on that tty, with its tab and window.
+- A jump runs `herdr agent focus <pane id>`, then finds the Herdr client with `ps`, climbs its
+  parent processes to the app that runs it (apps come from `hs.application.runningApplications()`),
+  and has iTerm2 or Terminal select the tab on the client's tty over AppleScript; any other app is
+  activated.
 - The icon is drawn with `hs.canvas` as a template image, so macOS tints it for light and dark
   menu bars; the count is the item's title. The status icons are drawn the same way, in color.
 - Tab is bound only while the picker is open, and released when it closes.
@@ -189,8 +227,11 @@ spoon.HerdrJump:start()
 
 ## Limits
 
-- Only agents in Herdr: agents running in plain iTerm tabs or in tmux are not listed.
-- With several Herdr clients, a jump brings forward the frontmost iTerm window running one.
+- Only agents in Herdr: agents running in plain terminal tabs or in tmux are not listed.
+- With Herdr clients in several terminals, a jump brings forward the one `ps` lists first; in it,
+  the frontmost window running a client.
+- Terminals other than iTerm2 and Terminal come forward as an app, on their last used window: their
+  tab is not selected.
 - iTerm documents its AppleScript support as deprecated; if a future iTerm drops it, a jump falls
   back to activating iTerm.
 - The picker is sized when it opens. With more agents than the screen holds, or new ones arriving
@@ -198,20 +239,26 @@ spoon.HerdrJump:start()
 
 ## Troubleshooting
 
-- The Hammerspoon console (menu bar icon → Console) shows the `HerdrJump` log lines: failed
-  agent list reads with the raw reply, dropped malformed agents, agent statuses it does not know,
-  focus errors and why the iTerm session could not be selected.
+- **Diagnostics**, at the bottom of the menu bar drop-down, lists what HerdrJump found: `herdr` and
+  where, the socket, the terminal and how a jump brings it forward, the last jump's problem. **Copy
+  diagnostics** puts it on the clipboard; `hs -c 'return spoon.HerdrJump:diagnostics()'` prints it,
+  and `install.sh --check` adds Hammerspoon, `init.lua` and the installed terminals.
+- The Hammerspoon console (Diagnostics › Open the Hammerspoon console) shows the `HerdrJump` log
+  lines: failed agent list reads with the raw reply, dropped malformed agents, agent statuses it
+  does not know, focus errors and why the terminal's tab could not be selected.
 - `?` next to the icon and "Herdr is not running" in the menu: no Herdr server answers on
-  `socketPath`; start Herdr. "cannot run /opt/homebrew/bin/herdr": set `herdrBin` to the output
-  of `which herdr`. The count recovers on the next poll.
+  `socketPath`; start Herdr, or set `socketPath` to the socket `herdr status server` prints. "herdr
+  not found": set `herdrBin` to the output of `command -v herdr`. The count recovers on the next
+  poll.
 - No icon in sight: look left of the other icons on the main display; a crowded menu bar can push
   it out, as for any app.
-- An alert after a jump says why the Herdr tab could not be selected; iTerm still comes forward.
+- An alert after a jump means macOS refused the Automation permission, or the terminal could not
+  be activated at all; other reasons go to the console and to Diagnostics.
 
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (sorting, seen record, wait times, icons, herdr replies, iTerm, picker layout), Lua 5.4 or newer
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker layout), Lua 5.4
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 

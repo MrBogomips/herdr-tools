@@ -4,10 +4,10 @@
 } -->
 <div class="wrap">
   <header class="phero">
-    <div class="kicker">// companion for macOS · v{{version:herdr-jump}} · Hammerspoon · herdr ≥ {{min_herdr:herdr-jump}} in iTerm2</div>
+    <div class="kicker">// companion for macOS · v{{version:herdr-jump}} · Hammerspoon · herdr ≥ {{min_herdr:herdr-jump}} · any terminal</div>
     <h1>herdr-jump</h1>
-    <p class="lede">Your agents, one key away from any app. One key back to iTerm, one key to the agent that needs you,
-      and a menu bar icon that counts the agents waiting for you.</p>
+    <p class="lede">Your agents, one key away from any app. One key back to your terminal, one key to the agent that needs
+      you, and a menu bar icon that counts the agents waiting for you.</p>
     <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code><button type="button">copy</button></div>
     <div class="row-actions">
       <a class="btn primary" href="#install">What the installer does →</a>
@@ -26,6 +26,7 @@
     <nav class="toc" aria-label="On this page">
       <a href="#use-cases">Use cases</a>
       <a href="#keys">Keys</a>
+      <a href="#terminals">Terminals</a>
       <a href="#menubar">Menu bar</a>
       <a href="#symbols">Symbols</a>
       <a href="#install">Install</a>
@@ -40,13 +41,13 @@
           served, tells you how long each one has waited, and takes you to its pane with Enter.</p>
         <div class="uses">
           <div><h3>A permission, while you browse</h3><p>The icon turns solid with a count. <kbd>⌃⌥⌘A</kbd> opens the picker
-            with that agent on top; Enter lands you on its pane, iTerm window and tab in front.</p></div>
+            with that agent on top; Enter lands you on its pane, terminal window and tab in front.</p></div>
           <div><h3>Done during a meeting</h3><p>The picker queues finished agents oldest first, each with its wait
             (“done 25m · since 10:40”). Each one leaves the count once you have looked at it.</p></div>
           <div><h3>Latest answers first</h3><p><kbd>Tab</kbd> sorts newest first: the agent that just finished is on top,
             blocked ones still first. Tab again sorts by name. The choice is remembered.</p></div>
-          <div><h3>Back and forth</h3><p><kbd>⌃⌥⌘I</kbd> brings iTerm forward on the window you used last; pressed again
-            from iTerm, it goes back to the app you came from.</p></div>
+          <div><h3>Back and forth</h3><p><kbd>⌃⌥⌘I</kbd> brings your terminal forward on the window you used last; pressed
+            again from the terminal, it goes back to the app you came from.</p></div>
         </div>
       </section>
 
@@ -58,22 +59,41 @@
           <tbody>
             <tr><td><kbd>⌃⌥⌘A</kbd></td><td>The agents picker, most urgent first: blocked, done, unknown, idle, working; within a status the
               oldest change first. Type to filter by title or folder, Enter to jump.</td></tr>
-            <tr><td><kbd>⌃⌥⌘I</kbd></td><td>Activates iTerm2 where Herdr keeps its focused pane; from iTerm, back to the previous app.</td></tr>
+            <tr><td><kbd>⌃⌥⌘I</kbd></td><td>Activates the terminal running Herdr, where it keeps its focused pane; from the terminal, back to the
+              previous app.</td></tr>
             <tr><td><kbd>Tab</kbd> in the picker</td><td>Next sort: FIFO (default), LIFO, then by name. The filter you typed stays.</td></tr>
           </tbody>
         </table></div>
         <p>Both keys can be changed, see <a href="#configure">Configure</a>.</p>
       </section>
 
-      <section id="menubar" aria-labelledby="menubar-title">
+      <section id="terminals" aria-labelledby="terminals-title">
         <div class="kicker">// 03</div>
+        <h2 id="terminals-title">Whatever terminal runs Herdr</h2>
+        <p>herdr-jump finds the terminal that runs the Herdr client by itself, climbing from the client's process to the app
+          that started it.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Terminal</th><th>A jump brings forward</th></tr></thead>
+          <tbody>
+            <tr><td>iTerm2</td><td>the window, tab and session running Herdr</td></tr>
+            <tr><td>Terminal</td><td>the window and tab running Herdr</td></tr>
+            <tr><td>Ghostty, WezTerm, kitty, Alacritty, Warp, VS Code…</td><td>the app, on its last used window</td></tr>
+          </tbody>
+        </table></div>
+        <p>Herdr inside tmux or over ssh hides its terminal: the keys then bring forward <code>terminalBundleID</code>
+          (iTerm2 when installed, else Terminal). <b>Diagnostics</b>, in the menu, says what was found and why.</p>
+      </section>
+
+      <section id="menubar" aria-labelledby="menubar-title">
+        <div class="kicker">// 04</div>
         <h2 id="menubar-title">A glance instead of a switch</h2>
         <figure>
           <img src="img/herdr-jump/menubar.svg" width="440" height="68" loading="lazy"
             alt="The menu bar item: two outlined agents while nothing waits, two solid agents with a count while some wait, outlined with a question mark when Herdr cannot be read">
           <figcaption>Nothing waiting · two agents waiting · Herdr cannot be read.</figcaption>
         </figure>
-        <p>Click the icon for the same list as the picker, as a menu, with <b>Sort by</b> and a <b>Legend</b>.</p>
+        <p>Click the icon for the same list as the picker, as a menu, with <b>Sort by</b>, a <b>Legend</b> and
+          <b>Diagnostics</b>: the <code>herdr</code>, socket and terminal herdr-jump found, ready to copy.</p>
         <figure>
           <img class="shot" src="img/herdr-jump/menu.png" width="920" height="568" loading="lazy" style="max-width: 460px"
             alt="The menu bar drop-down under the solid agents icon with the count 4: the same seven fictional agents with their icons and waits, then the Sort by and Legend submenus">
@@ -81,7 +101,7 @@
       </section>
 
       <section id="symbols" aria-labelledby="symbols-title">
-        <div class="kicker">// 04</div>
+        <div class="kicker">// 05</div>
         <h2 id="symbols-title">Symbols</h2>
         <p>A filled icon waits for you, an outlined one does not.</p>
         <div class="table-wrap"><table>
@@ -99,43 +119,52 @@
       </section>
 
       <section id="install" aria-labelledby="install-title">
-        <div class="kicker">// 05</div>
+        <div class="kicker">// 06</div>
         <h2 id="install-title">One line to install, the same line to update</h2>
-        <p>Requirements: macOS, Herdr {{min_herdr:herdr-jump}} or newer running in iTerm2, and Homebrew if
+        <p>Requirements: macOS, Herdr {{min_herdr:herdr-jump}} or newer in a terminal, and Homebrew if
           <a href="https://www.hammerspoon.org">Hammerspoon</a> is not installed yet.</p>
         <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code></pre>
         <p>The script asks nothing and prints what it does:</p>
         <ul>
           <li>installs Hammerspoon with Homebrew when it is missing;</li>
-          <li>downloads <code>HerdrJump.spoon</code> into <code>~/.hammerspoon/Spoons</code>, replacing the previous copy;</li>
-          <li>creates <code>~/.hammerspoon/init.lua</code> when you have none, or appends the three HerdrJump lines to yours;</li>
+          <li>downloads <code>HerdrJump.spoon</code> into Hammerspoon's <code>Spoons</code> folder (<code>~/.hammerspoon</code>, or the
+            folder its <code>MJConfigFile</code> setting names), replacing the previous copy;</li>
+          <li>creates <code>init.lua</code> when you have none, or appends the HerdrJump lines to yours, with the <code>herdr</code>
+            and the Herdr socket your shell uses;</li>
           <li>reloads Hammerspoon, or starts it.</li>
         </ul>
+        <p>To see what herdr-jump needs and finds on a Mac, changing nothing:</p>
+        <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh -s -- --check</code></pre>
         <p>To read the script first, or to install a branch or a release tag:</p>
         <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh -o install.sh
 less install.sh
 sh install.sh --ref &lt;branch-or-tag&gt;</code></pre>
         <div class="callout"><p>macOS asks for <b>Accessibility</b> for Hammerspoon (global hotkeys) and, on the first jump,
-          <b>Automation: Hammerspoon → iTerm2</b> to select the Herdr session.</p></div>
+          <b>Automation: Hammerspoon → iTerm2</b> (or <b>→ Terminal</b>) to select the Herdr tab.</p></div>
         <p>herdr-jump is not a Herdr plugin: it runs in Hammerspoon, outside Herdr, and talks to the Herdr server through
           the <code>herdr</code> command line, so the plugin marketplace does not list it.</p>
       </section>
 
       <section id="configure" aria-labelledby="configure-title">
-        <div class="kicker">// 06</div>
+        <div class="kicker">// 07</div>
         <h2 id="configure-title">Configure</h2>
-        <p>Set these in <code>~/.hammerspoon/init.lua</code> before <code>start()</code>:</p>
+        <p>Set these in Hammerspoon's <code>init.lua</code> before <code>start()</code>:</p>
         <pre class="code"><code>hs.loadSpoon("HerdrJump")
 spoon.HerdrJump.pollSeconds = 10
 spoon.HerdrJump:bindHotkeys({
-  iterm = { { "ctrl", "alt", "cmd" }, "t" },
+  terminal = { { "ctrl", "alt", "cmd" }, "t" },
   agents = { { "ctrl", "alt", "cmd" }, "space" },
 })
 spoon.HerdrJump:start()</code></pre>
         <div class="table-wrap"><table>
           <thead><tr><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead>
           <tbody>
-            <tr><td><code>herdrBin</code></td><td><code>/opt/homebrew/bin/herdr</code></td><td>The <code>herdr</code> binary</td></tr>
+            <tr><td><code>herdrBin</code></td><td>found</td><td>The <code>herdr</code> binary; unset, it is looked for in Homebrew, Herdr's installer
+              (<code>~/.local/bin</code>), cargo, Nix, MacPorts and mise folders</td></tr>
+            <tr><td><code>socketPath</code></td><td><code>~/.config/herdr/herdr.sock</code></td><td>The Herdr server socket
+              (<code>herdr status server</code> prints yours)</td></tr>
+            <tr><td><code>terminalBundleID</code></td><td>iTerm2, else Terminal</td><td>The terminal to bring forward when no Herdr client
+              shows its own</td></tr>
             <tr><td><code>pollSeconds</code></td><td><code>5</code></td><td>How often the agent list is read</td></tr>
             <tr><td><code>showMenubar</code></td><td><code>true</code></td><td>Show the menu bar icon and count</td></tr>
             <tr><td><code>defaultOrder</code></td><td><code>"fifo"</code></td><td><code>"fifo"</code>, <code>"lifo"</code> or <code>"name"</code> until you choose one</td></tr>
@@ -144,11 +173,12 @@ spoon.HerdrJump:start()</code></pre>
       </section>
 
       <section id="limits" aria-labelledby="limits-title">
-        <div class="kicker">// 07</div>
+        <div class="kicker">// 08</div>
         <h2 id="limits-title">Good to know</h2>
         <ul>
-          <li>Only agents in Herdr: agents in plain iTerm tabs or in tmux are not listed.</li>
-          <li>With several Herdr clients, a jump brings forward the frontmost iTerm window running one.</li>
+          <li>Only agents in Herdr: agents in plain terminal tabs or in tmux are not listed.</li>
+          <li>With Herdr clients in several terminals, a jump brings forward the first one found.</li>
+          <li>Terminals other than iTerm2 and Terminal come forward as an app: their tab is not selected.</li>
           <li>The count can lag by up to <code>pollSeconds</code>.</li>
         </ul>
         <div class="row-actions">
