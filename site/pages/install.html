@@ -7,7 +7,7 @@
     <div class="kicker">// install</div>
     <h1>One command per plugin.</h1>
     <p class="lede">Every plugin lives in its own folder with its manifest, code and tests, and installs on its own.
-      Take only the ones you want.</p>
+      No tool needs another: take only the ones you want.</p>
   </header>
 </div>
 
@@ -29,6 +29,8 @@
             <tr><td>System</td><td>macOS or Linux</td><td>macOS</td></tr>
             <tr><td><a href="https://herdr.dev">Herdr</a></td><td>{{min_herdr}} or newer</td>
               <td>{{min_herdr:herdr-jump}} or newer, on the same Mac</td></tr>
+            <tr><td>Other herdr-tools</td><td>none: each plugin works alone</td>
+              <td>none: it reads the Herdr server only, with or without plugins</td></tr>
             <tr><td>Runs on</td><td><code>python3</code> 3.9 or newer, standard library only</td>
               <td><a href="https://www.hammerspoon.org">Hammerspoon</a></td></tr>
             <tr><td>Shell</td><td>none needed; auto-tab-name's optional shell integration covers zsh, bash and fish</td>
@@ -71,8 +73,9 @@ herdr plugin uninstall mrbogomips.&lt;plugin&gt;             <span class="c"># r
 
       <section id="herdr-jump" aria-labelledby="jump-title">
         <h2 id="jump-title">herdr-jump</h2>
-        <p>A Hammerspoon Spoon, not a Herdr plugin, so <code>herdr plugin install</code> does not handle it. One line installs
-          it, and the same line updates it (v{{version:herdr-jump}} today):</p>
+        <p>A Hammerspoon Spoon, not a Herdr plugin, so <code>herdr plugin install</code> does not handle it. It needs only a
+          running Herdr server: no plugin, nothing to set up inside Herdr. One line installs it, and the same line updates
+          it (v{{version:herdr-jump}} today):</p>
         <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/MrBogomips/herdr-tools/main/herdr-jump/install.sh | sh</code></pre>
         <p>See <a href="herdr-jump.html#install">what the installer does</a> and how to read it before running it.</p>
       </section>
