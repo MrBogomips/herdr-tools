@@ -29,6 +29,9 @@ M.COLOR = {
   idle = { red = 0.56, green = 0.56, blue = 0.58, alpha = 1 },
   working = { red = 0.04, green = 0.52, blue = 1.0, alpha = 1 },
 }
+-- The bookmark of an agent marked to review. Not a status color: icon.badges() draws one icon per
+-- entry of COLOR.
+M.MARK_COLOR = { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 }
 
 -- The sort orders, in the order Tab cycles them. state_change_seq is one counter for all panes, so
 -- it orders the queue exactly. fifo: oldest change first; lifo: newest first; name: by title.

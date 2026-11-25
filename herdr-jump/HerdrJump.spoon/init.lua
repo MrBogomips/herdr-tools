@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.5.1"
+obj.version = "0.6.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -30,12 +30,14 @@ local locate = load("locate")
 local panel = load("panel")
 local picker = load("picker")
 local procs = load("procs")
+local review = load("review")
 local since = load("since")
 local terminal = load("terminal")
 
 local SEEN_KEY = "HerdrJump.seen"
 local SINCE_KEY = "HerdrJump.since"
 local ORDER_KEY = "HerdrJump.order"
+local REVIEW_KEY = "HerdrJump.review"
 local HAMMERSPOON = "org.hammerspoon.Hammerspoon"
 local PS = "/bin/ps -axo pid=,ppid=,tty=,command="
 local AUTOMATION_SETTINGS = "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
@@ -119,6 +121,8 @@ function obj:init()
   self.err = nil
   self.seen = {}
   self.since = {}
+  -- The agents marked to review (review.lua).
+  self.marks = {}
   -- Whether the last agent list read worked: a change seen after a gap only has an approximate time.
   self.lastPollOk = false
   self.order = attention.order(nil)
@@ -166,6 +170,12 @@ function obj:start()
   end
   self.seen = type(stored) == "table" and stored or {}
   self.since = since.valid(hs.settings.get(SINCE_KEY))
+  local storedMarks = hs.settings.get(REVIEW_KEY)
+  local marks, malformed = review.valid(storedMarks)
+  if malformed then
+    self.logger.w("ignoring malformed entries of the " .. REVIEW_KEY .. " setting: " .. hs.inspect(storedMarks))
+  end
+  self.marks = marks
   self.lastPollOk = false
   self.order = self:_initialOrder()
   self:_setUpSound()
@@ -276,13 +286,19 @@ function obj:_onPicker(message)
     self.panel:hide()
   elseif message.action == "order" then
     self:_cycleOrder()
+  elseif message.action == "review" and type(message.pane) == "string" then
+    self:toggleReview(message.pane)
   end
 end
 
 -- The picker's model as JSON and its window, for the rows in the order in use.
 function obj:_pickerView()
   local rows = picker.shortcuts(self:_rows())
-  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order), attention.COLOR)
+  local colors = { mark = attention.MARK_COLOR }
+  for status, color in pairs(attention.COLOR) do
+    colors[status] = color
+  end
+  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order), colors)
   local screen = hs.screen.mainScreen()
   return picker.frame(screen and screen:frame() or FALLBACK_SCREEN, rows), hs.json.encode(model)
 end
@@ -432,6 +448,7 @@ function obj:refresh(onDone)
         self.seen = seen
         hs.settings.set(SEEN_KEY, seen)
       end
+      self:_setMarks(review.prune(self.marks, agents))
       local started = since.update(self.since, agents, os.time(), self.lastPollOk)
       if not since.same(started, self.since) then
         self.since = started
@@ -488,8 +505,17 @@ function obj:_reportUnknownStatuses(agents)
 end
 
 function obj:_rows()
-  return attention.rows(self.agents, self.seen, self.order, since.describe(self.since, os.time()), self.family,
-    not self.groupChildren)
+  local now = os.time()
+  return attention.rows(self.agents, self.seen, self.order, since.describe(self.since, now), self.family,
+    not self.groupChildren, review.describe(self.marks, now, since.clock))
+end
+
+-- Keeps and stores new marks when they differ.
+function obj:_setMarks(marks)
+  if not review.same(marks, self.marks) then
+    self.marks = marks
+    hs.settings.set(REVIEW_KEY, marks)
+  end
 end
 
 -- The hs.menubar entry of an attention.menu item: its status icon, a jump or a sort when clicked.
@@ -653,6 +679,31 @@ function obj:showAgents()
   end
   self.panel:show(self:_pickerView())
   self:refresh()
+end
+
+--- HerdrJump:toggleReview(paneId)
+--- Method
+--- Marks the agent to review, or clears its mark: the picker's bookmark and ⌘R. Only a done or idle
+--- agent can be marked; a done one counts as seen then. The mark stays while the agent works again.
+function obj:toggleReview(paneId)
+  local found
+  for _, agent in ipairs(self.agents) do
+    if agent.pane_id == paneId then
+      found = agent
+    end
+  end
+  if found == nil then
+    self.logger.w("review: no agent in pane " .. tostring(paneId))
+    return
+  end
+  local marks, seen = review.toggle(self.marks, self.seen, found, attention.status(found, self.seen), os.time())
+  self:_setMarks(marks)
+  if not attention.sameSeen(seen, self.seen) then
+    self.seen = seen
+    hs.settings.set(SEEN_KEY, seen)
+  end
+  self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
+  self:_updatePicker()
 end
 
 --- HerdrJump:jump(paneId)

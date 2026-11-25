@@ -86,6 +86,17 @@ test("a single row stays selected", () => {
 test("an unknown mode moves like all", () => {
   eq(nextIndex(rows, 0, 1, "other"), 1);
 });
+test("a marked row offers to clear the mark, whatever its status", () => {
+  eq(reviewAction({ marked: true, markable: false }), "reviewed");
+  eq(reviewAction({ marked: true, markable: true }), "reviewed");
+});
+test("a done or idle row offers the mark", () => {
+  eq(reviewAction({ marked: false, markable: true }), "to review");
+});
+test("other rows offer nothing", () => {
+  eq(reviewAction({ marked: false, markable: false }), null);
+  eq(reviewAction({}), null);
+});
 
 let failed = 0;
 for (const [name, body] of tests) {

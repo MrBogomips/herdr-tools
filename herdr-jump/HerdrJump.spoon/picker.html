@@ -2,8 +2,10 @@
 <!-- The agents picker, drawn by panel.lua in an hs.webview. picker.inline() puts the model
      (picker.model()) in the script below, and init.lua calls render(model) when the list changes
      while it is open.
-     Messages to Hammerspoon go through the "herdrJump" port: jump, close, order.
-     The arrows move over every row; with ⌥ over top-level rows, with ⇧ over the waiting ones. -->
+     Messages to Hammerspoon go through the "herdrJump" port: jump, close, order, review.
+     The arrows move over every row; with ⌥ over top-level rows, with ⇧ over the waiting ones.
+     The bookmark after a title marks the agent to review, or clears the mark: a click on it, or ⌘R
+     on the selected row. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -47,6 +49,18 @@
   .row.child .title { flex: none; max-width: 55%; font-size: 13px; }
   .row.child .sub { flex: 1; margin: 0; font-size: 11px; }
   .row.child .key { font-size: 12px; }
+  .title { display: flex; align-items: center; gap: 6px; }
+  .title .name { overflow: hidden; text-overflow: ellipsis; }
+  .mark { flex: none; display: inline-flex; width: 18px; height: 18px; border-radius: 4px;
+    align-items: center; justify-content: center; cursor: pointer; }
+  .mark svg { width: 13px; height: 15px; }
+  .mark:hover { background: var(--line); }
+  .row.child .mark { width: 14px; height: 14px; }
+  .row.child .mark svg { width: 10px; height: 12px; }
+  .act { flex: none; color: var(--dim); font-size: 12px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  .row.child .act { font-size: 10.5px; padding: 0 5px; }
+  footer .bm { display: inline-flex; vertical-align: -2px; }
+  footer .bm svg { width: 9px; height: 11px; }
   footer { box-sizing: border-box; height: 30px; flex: none; display: flex; align-items: center; gap: 16px;
     padding: 0 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--dim); white-space: nowrap; }
   footer .parts { display: flex; gap: 12px; }
@@ -76,6 +90,13 @@ function nextIndex(rows, from, step, mode) {
   }
   return from;
 }
+
+// What the bookmark of a row does: "reviewed" clears the mark of a marked row, "to review" marks a
+// done or idle one; null when the row has no bookmark.
+function reviewAction(row) {
+  if (row.marked) return "reviewed";
+  return row.markable ? "to review" : null;
+}
 </script>
 <script>
 let model = __MODEL__;
@@ -102,6 +123,33 @@ function icon(status) {
   return `<svg class="icon" viewBox="0 0 20 20">${shapes[status] || shapes.unknown}</svg>`;
 }
 
+// The bookmark: filled in the mark color when marked, an outline otherwise.
+function bookmark(filled) {
+  const c = model.colors.mark;
+  const stroke = filled ? c : "var(--dim)";
+  return `<svg viewBox="0 0 12 15"><path d="M1.5 1.5h9v12L6 10.2 1.5 13.5z" fill="${filled ? c : "none"}" ` +
+    `stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+// The bookmark after a title, a button that marks or clears; nothing when the row has none.
+function markButton(row) {
+  const action = reviewAction(row);
+  if (!action) return "";
+  const tip = action === "reviewed" ? "Reviewed (⌘R)" : "To review (⌘R)";
+  return `<span class="mark" title="${tip}">${bookmark(row.marked)}</span>`;
+}
+
+// On the selected row, what ⌘R does there.
+function reviewChip(row) {
+  const action = row.pane === selected && reviewAction(row);
+  return action ? `<span class="act">⌘R ${action}</span>` : "";
+}
+
+function review(pane) {
+  const row = visible.find((r) => r.pane === pane);
+  if (row && reviewAction(row)) send({ action: "review", pane: pane });
+}
+
 function escape(text) {
   return String(text == null ? "" : text).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
 }
@@ -125,11 +173,13 @@ function render(next) {
   list.innerHTML = visible.length ? visible.map((r) =>
     `<div class="row${r.depth > 0 ? " child" : ""}${r.pane === selected ? " sel" : ""}" data-pane="${escape(r.pane)}">` +
     icon(r.status) +
-    `<div class="text"><div class="title">${escape(r.title)}</div><div class="sub">${subText(r)}</div></div>` +
-    (r.key ? `<span class="key">⌘${r.key}</span>` : "") + `</div>`).join("")
+    `<div class="text"><div class="title"><span class="name">${escape(r.title)}</span>${markButton(r)}</div>` +
+    `<div class="sub">${subText(r)}</div></div>` +
+    reviewChip(r) + (r.key ? `<span class="key">⌘${r.key}</span>` : "") + `</div>`).join("")
     : `<div class="empty">No matching agents</div>`;
-  document.getElementById("legend").innerHTML = model.legend.parts.map((p) =>
-    `<span><span style="color:${model.colors[p.status]}">${escape(p.glyph)}</span> ${escape(p.meaning)}</span>`).join("");
+  document.getElementById("legend").innerHTML = model.legend.parts.map((p) => p.status === "mark"
+    ? `<span><span class="bm">${bookmark(true)}</span> ${escape(p.meaning)}</span>`
+    : `<span><span style="color:${model.colors[p.status]}">${escape(p.glyph)}</span> ${escape(p.meaning)}</span>`).join("");
   document.getElementById("hint").textContent = model.legend.hint;
   const row = list.querySelector(".sel");
   if (row) row.scrollIntoView({ block: "nearest" });
@@ -161,6 +211,12 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     return;
   }
+  // Always taken, so that ⌘R never reloads the page.
+  if (event.metaKey && event.key.toLowerCase() === "r") {
+    event.preventDefault();
+    if (selected) review(selected);
+    return;
+  }
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     const mode = arrowMode(event);
     if (mode) {
@@ -181,6 +237,10 @@ document.addEventListener("keydown", (event) => {
 });
 list.addEventListener("click", (event) => {
   const row = event.target.closest(".row");
+  if (row && event.target.closest(".mark")) {
+    review(row.dataset.pane);
+    return;
+  }
   if (row) jump(row.dataset.pane);
 });
 list.addEventListener("mousemove", (event) => {
