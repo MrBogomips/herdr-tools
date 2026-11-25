@@ -47,11 +47,43 @@ return {
     local legend = { parts = { { status = "done", glyph = "✓", meaning = "done, not seen" } }, hint = "Sorted FIFO · Tab: LIFO, name" }
     local rows = picker.shortcuts({ row("w1:p1", "done"), row("w1:p2", "idle", 1) })
     local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } })
-    h.eq(model.rows[1], { pane = "w1:p1", title = "w1:p1", sub = "done · x", when = "done", status = "done", depth = 0, key = 1 })
+    h.eq(model.rows[1], {
+      pane = "w1:p1", title = "w1:p1", sub = "done · x", when = "done", status = "done", depth = 0, key = 1, waits = true,
+    })
+    h.eq(model.rows[2].waits, false)
     h.eq(model.rows[2].depth, 1)
     h.eq(model.placeholder, "Filter agents")
     h.eq(model.legend, legend)
     h.eq(model.colors, { done = "rgb(0, 255, 0)" })
+  end,
+
+  waiting_rows_are_the_ones_with_shortcuts_and_beyond_the_ninth = function()
+    local rows = {}
+    -- Nine done rows (six between idle ones, three in a row), then a tenth waiting row: a blocked
+    -- sub-session with no shortcut left.
+    for i = 1, 11 do
+      rows[i] = row("p" .. i, i % 2 == 0 and "idle" or "done")
+    end
+    rows[12] = row("d1", "done")
+    rows[13] = row("d2", "done")
+    rows[14] = row("d3", "done")
+    rows[15] = row("b", "blocked", 1)
+    rows[16] = row("w", "working", 1)
+    local model = picker.model(picker.shortcuts(rows), { parts = {}, hint = "" }, "", {})
+    for i, r in ipairs(model.rows) do
+      h.eq(r.waits, r.status == "blocked" or r.status == "done", "row " .. i)
+      if r.key then
+        h.eq(r.waits, true, "row " .. i)
+      end
+    end
+    h.eq(model.rows[14].key, 9)
+    h.eq(model.rows[15].key, nil)
+    h.eq(model.rows[15].waits, true)
+  end,
+
+  a_seen_done_row_reported_idle_does_not_wait = function()
+    local model = picker.model({ row("a", "idle") }, { parts = {}, hint = "" }, "", {})
+    h.eq(model.rows[1].waits, false)
   end,
 
   a_sub_session_row_is_lower_than_a_top_level_row = function()
@@ -89,6 +121,8 @@ return {
     local _, count = page:gsub("__MODEL__", "")
     h.eq(count, 1)
     h.eq(page:find("let model = __MODEL__;", 1, true) ~= nil, true)
+    local _, navs = page:gsub('<script id="nav">', "")
+    h.eq(navs, 1)
   end,
 
   the_model_is_inlined_in_the_page_without_closing_its_script = function()

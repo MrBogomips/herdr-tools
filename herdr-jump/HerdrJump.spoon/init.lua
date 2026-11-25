@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.5.0"
+obj.version = "0.5.1"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"

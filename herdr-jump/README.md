@@ -11,7 +11,7 @@ Run five agents at once and they queue up for you: a permission here, a finished
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
 
-<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, then an idle agent; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it, the finished one with ⌘5; then a working agent; a line at the bottom explains the icons and the sort in use" width="800">
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, then an idle agent; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it, the finished one with ⌘5; then a working agent; a line at the bottom explains the icons, the sort in use and the arrow keys" width="800">
 
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
 first, each with its ⌘ shortcut; then the others, sub-sessions under their master. Tab sorts newest
@@ -54,8 +54,10 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 | Key | What happens |
 | --- | --- |
 | `⌃⌥⌘I` | Activates the terminal running Herdr (see [Terminals](#terminals)). Herdr keeps its focused pane, so you land where you left. From the terminal, goes back to the previous app. |
-| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, arrows to move, Enter or a click to jump: Herdr focuses the agent's pane and the terminal window and tab running the Herdr client come forward. Esc, a click elsewhere or `⌃⌥⌘A` again closes it. |
+| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, arrows to move (every arrow mode works on the rows the filter leaves; at the top or bottom the selection stays), Enter or a click to jump: Herdr focuses the agent's pane and the terminal window and tab running the Herdr client come forward. Esc, a click elsewhere or `⌃⌥⌘A` again closes it. |
 | `⌘1`…`⌘9` (in the picker) | Jump to an agent that waits for you, `blocked` or `done` and not seen, sub-sessions included, numbered in list order. The others have no shortcut: pick them with the arrows, the filter or the mouse. A shortcut stays on its agent while you filter. |
+| `⌥↑` `⌥↓` (in the picker) | Move over the top-level rows only: masters and agents without sub-sessions. The sub-sessions stay on screen and are skipped; from one, `⌥↑` goes back to its master. With `groupChildren = false` every row is top-level, so they move like the plain arrows. |
+| `⇧↑` `⇧↓` (in the picker) | Move over the agents that wait for you only, `blocked` or `done` and not seen, sub-sessions included, past the ninth too (the rows with no `⌘` key left). |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -64,7 +66,8 @@ Both keys can be changed, see [Configure](#configure).
 
 Each row starts with a colored icon; the status and its time under the title take the same color.
 A filled icon waits for you, an outlined one does not. The line at the bottom of the picker is the
-legend, with the sort in use and the ones Tab moves to; it is not a row, so it cannot be selected.
+legend, with the sort in use, the ones Tab moves to and the arrows' modifiers (`⌥↑↓ masters · ⇧↑↓
+waiting`); it is not a row, so it cannot be selected.
 The menu bar drop-down has a Legend submenu with the icons.
 
 | Icon | Color | Status |

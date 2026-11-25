@@ -13,6 +13,12 @@ M.WIDTH, M.MARGIN, M.TOP = 780, 24, 0.12
 
 local WAITING = { blocked = true, done = true }
 
+-- Whether a row waits for the user: blocked, or done and not seen (attention.status reports a seen
+-- done as idle). Waiting rows get the shortcuts and are the stops of ⇧↑↓ in the page.
+local function waits(row)
+  return WAITING[row.status] == true
+end
+
 -- New rows where each waiting one (blocked, or done and not seen) gets a shortcut key, 1 to 9 in
 -- list order; the others are chosen by hand.
 function M.shortcuts(rows)
@@ -22,7 +28,7 @@ function M.shortcuts(rows)
     for k, v in pairs(row) do
       copy[k] = v
     end
-    if WAITING[row.status] and next <= 9 then
+    if waits(row) and next <= 9 then
       copy.key = next
       next = next + 1
     end
@@ -39,14 +45,14 @@ function M.css(color)
   return ("rgb(%d, %d, %d)"):format(byte(color.red), byte(color.green), byte(color.blue))
 end
 
--- What picker.html renders: rows (from attention.rows, with shortcuts), the legend and its hint,
--- the filter's placeholder and the status colors.
+-- What picker.html renders: rows (from attention.rows, with shortcuts, and whether each waits), the
+-- legend and its hint, the filter's placeholder and the status colors.
 function M.model(rows, legend, placeholder, colors)
   local out, css = {}, {}
   for i, row in ipairs(rows) do
     out[i] = {
       pane = row.paneId, title = row.text, sub = row.subText, when = row.when, status = row.status,
-      depth = row.depth or 0, key = row.key,
+      depth = row.depth or 0, key = row.key, waits = waits(row),
     }
   end
   for status, color in pairs(colors) do
