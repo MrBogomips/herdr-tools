@@ -11,10 +11,11 @@ Run five agents at once and they queue up for you: a permission here, a finished
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
 
-<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, then an idle agent; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it, the finished one with ⌘5; then a working agent; a line at the bottom explains the icons, the sort in use and the arrow keys" width="800">
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, each with an outlined bookmark after its title; then an idle agent with a pink bookmark, to review since 18:04; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it: the finished one with ⌘5, an idle one with a pink bookmark, a working one; then a working agent that keeps its pink bookmark; a line at the bottom explains the icons, the bookmark, the sort in use and the arrow keys" width="800">
 
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
-first, each with its ⌘ shortcut; then the others, sub-sessions under their master. Tab sorts newest
+first, each with its ⌘ shortcut; then the agents marked to review (pink bookmark), then the
+others, sub-sessions under their master. The outlined bookmark marks an agent; Tab sorts newest
 first or by name.
 
 ## Standalone
