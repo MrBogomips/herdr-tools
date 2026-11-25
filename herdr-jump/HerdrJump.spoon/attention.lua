@@ -6,11 +6,16 @@
 -- "seen" maps a pane_id to the completion_seq the user has already looked at.
 -- "times" maps a pane_id to how long its current state has lasted and when it began, as
 -- since.describe() says it: { age = "12m", clock = "09:41" }.
+-- "marked" maps a pane_id the user marked to review to when, as review.describe() says it:
+-- { at = epoch seconds, clock = "10:02" }. A mark never changes the status; it ranks an idle
+-- agent between done and unknown, by mark time, and adds "to review since" to its row.
 
 local M = {}
 
 -- Lower comes first. Statuses Herdr may add later rank with "unknown".
 local PRIORITY = { blocked = 1, done = 2, unknown = 3, idle = 4, working = 5 }
+-- Where rows rank: by status, with marked idle agents between done and unknown.
+local RANK = { blocked = 1, done = 2, marked = 3, unknown = 4, idle = 5, working = 6 }
 local STATUSES = { "blocked", "done", "unknown", "idle", "working" }
 -- The legend's text glyphs, close to the symbol inside each status icon (icon.lua).
 local GLYPH = { blocked = "⏸", done = "✓", unknown = "?", idle = "○", working = "◐" }
@@ -78,11 +83,31 @@ local function label(agent)
   return tostring(agent.pane_id)
 end
 
+-- The status an agent ranks as: "marked" for a marked agent that reads idle.
+local function rankStatus(agent, seen, marked)
+  local status = M.status(agent, seen)
+  if status == "idle" and marked and marked[agent.pane_id] then
+    return "marked"
+  end
+  return status
+end
+
 -- The comparison of two agents for an order; each returns nil on a tie.
-local function byStatus(a, b, seen)
-  local pa, pb = PRIORITY[M.status(a, seen)], PRIORITY[M.status(b, seen)]
+local function byStatus(a, b, seen, marked)
+  local pa, pb = RANK[rankStatus(a, seen, marked)], RANK[rankStatus(b, seen, marked)]
   if pa ~= pb then
     return pa < pb
+  end
+end
+
+-- Two marked agents that read idle, by mark time.
+local function byMark(a, b, seen, marked, newestFirst)
+  if rankStatus(a, seen, marked) ~= "marked" or rankStatus(b, seen, marked) ~= "marked" then
+    return nil
+  end
+  local ma, mb = marked[a.pane_id].at, marked[b.pane_id].at
+  if ma ~= mb then
+    return (ma > mb) == newestFirst
   end
 end
 
@@ -101,16 +126,20 @@ local function byName(a, b)
 end
 
 -- Whether agent a comes before agent b in the given order: by status, most urgent first, then by
--- state change; or by title, then status. A full tie goes by pane id, so the order is stable.
-local function before(a, b, seen, order)
+-- mark time between marked agents, then by state change; or by title, then status. A full tie goes
+-- by pane id, so the order is stable.
+local function before(a, b, seen, order, marked)
   local first
   if order == "name" then
     first = byName(a, b)
     if first == nil then
-      first = byStatus(a, b, seen)
+      first = byStatus(a, b, seen, marked)
     end
   else
-    first = byStatus(a, b, seen)
+    first = byStatus(a, b, seen, marked)
+    if first == nil then
+      first = byMark(a, b, seen, marked, order == "lifo")
+    end
     if first == nil then
       first = byChange(a, b, order == "lifo")
     end
@@ -121,12 +150,12 @@ local function before(a, b, seen, order)
   return first
 end
 
-local function sorted(agents, seen, order)
+local function sorted(agents, seen, order, marked)
   local list = {}
   for i, agent in ipairs(agents) do
     list[i] = agent
   end
-  table.sort(list, function(a, b) return before(a, b, seen, order) end)
+  table.sort(list, function(a, b) return before(a, b, seen, order, marked) end)
   return list
 end
 
@@ -138,7 +167,7 @@ end
 
 -- Each master or top-level agent with its sub-sessions, keyed by the member that ranks the group:
 -- the most urgent one that is not quiet (the head, in the name order).
-local function groups(agents, seen, order, fam)
+local function groups(agents, seen, order, fam, marked)
   local byPane, list = {}, {}
   for _, agent in ipairs(agents) do
     byPane[agent.pane_id] = agent
@@ -150,29 +179,29 @@ local function groups(agents, seen, order, fam)
         local child = byPane[pane]
         if child then
           children[#children + 1] = child
-          if order ~= "name" and not M.quiet(child, seen, fam) and before(child, key, seen, order) then
+          if order ~= "name" and not M.quiet(child, seen, fam) and before(child, key, seen, order, marked) then
             key = child
           end
         end
       end
-      list[#list + 1] = { head = agent, key = key, children = sorted(children, seen, order) }
+      list[#list + 1] = { head = agent, key = key, children = sorted(children, seen, order, marked) }
     end
   end
   -- Keys are distinct agents and before() breaks every tie, so the groups' order is stable.
-  table.sort(list, function(a, b) return before(a.key, b.key, seen, order) end)
+  table.sort(list, function(a, b) return before(a.key, b.key, seen, order, marked) end)
   return list
 end
 
 -- A new list in the given order (default "fifo"), see before(). With a family (family.of()), each
 -- master is followed by its sub-sessions, and the group ranks as its most urgent member that is
--- not quiet.
-function M.rank(agents, seen, order, fam)
+-- not quiet. With marks (see the top), marked idle agents rank between done and unknown.
+function M.rank(agents, seen, order, fam, marked)
   order = M.order(order)
   if fam == nil then
-    return sorted(agents, seen, order)
+    return sorted(agents, seen, order, marked)
   end
   local ranked = {}
-  for _, group in ipairs(groups(agents, seen, order, fam)) do
+  for _, group in ipairs(groups(agents, seen, order, fam, marked)) do
     ranked[#ranked + 1] = group.head
     for _, child in ipairs(group.children) do
       ranked[#ranked + 1] = child
@@ -233,17 +262,20 @@ local function waiting(status)
   return status == "blocked" or status == "done"
 end
 
--- What a master's row says about its sub-sessions: how many, and how many wait.
-local function summary(pane, byPane, seen, fam)
+-- What a master's row says about its sub-sessions: how many, how many wait, how many to review.
+local function summary(pane, byPane, seen, fam, marked)
   local children = fam.childrenOf[pane]
   if children == nil then
     return nil
   end
-  local waits = { blocked = 0, done = 0 }
+  local waits, toReview = { blocked = 0, done = 0 }, 0
   for _, child in ipairs(children) do
     local status = byPane[child] and M.status(byPane[child], seen)
     if waits[status] then
       waits[status] = waits[status] + 1
+    end
+    if byPane[child] and marked[child] then
+      toReview = toReview + 1
     end
   end
   local parts = { ("+%d sub"):format(#children) }
@@ -252,6 +284,9 @@ local function summary(pane, byPane, seen, fam)
       parts[#parts + 1] = ("%d %s"):format(waits[status], status)
     end
   end
+  if toReview > 0 then
+    parts[#parts + 1] = ("%d to review"):format(toReview)
+  end
   return table.concat(parts, " · ")
 end
 
@@ -259,15 +294,16 @@ end
 -- and how long it has lasted ("blocked 12m"); a waiting agent's subText also says since when.
 -- With a family (family.of()), sub-sessions follow their master at depth 1 (the caller indents
 -- them), and the master's subText sums them up; `flat` keeps one list and names the master in the
--- subText instead.
-function M.rows(agents, seen, order, times, fam, flat)
+-- subText instead. A marked agent's row has marked = true and says since when it is to review.
+function M.rows(agents, seen, order, times, fam, flat, marked)
   times = times or {}
   local byPane = {}
   for _, agent in ipairs(agents) do
     byPane[agent.pane_id] = agent
   end
   local rows = {}
-  for i, agent in ipairs(M.rank(agents, seen, order, not flat and fam or nil)) do
+  marked = marked or {}
+  for i, agent in ipairs(M.rank(agents, seen, order, not flat and fam or nil, marked)) do
     local status = M.status(agent, seen)
     local time = times[agent.pane_id]
     local age = time and time.age
@@ -275,6 +311,10 @@ function M.rows(agents, seen, order, times, fam, flat)
     local parts = { when }
     if time and waiting(status) then
       parts[#parts + 1] = "since " .. time.clock
+    end
+    local mark = marked[agent.pane_id]
+    if mark then
+      parts[#parts + 1] = "to review since " .. mark.clock
     end
     parts[#parts + 1] = folder(agent.cwd)
     local master = fam and fam.parentOf[agent.pane_id]
@@ -284,7 +324,7 @@ function M.rows(agents, seen, order, times, fam, flat)
     elseif master then
       depth = 1
     elseif fam then
-      parts[#parts + 1] = summary(agent.pane_id, byPane, seen, fam)
+      parts[#parts + 1] = summary(agent.pane_id, byPane, seen, fam, marked)
     end
     rows[i] = {
       text = label(agent),
@@ -294,6 +334,7 @@ function M.rows(agents, seen, order, times, fam, flat)
       when = when,
       age = age,
       depth = depth,
+      marked = mark and true or nil,
     }
   end
   return rows
@@ -321,11 +362,16 @@ end
 -- The picker's keys besides Tab, shown after the order: arrows with a modifier.
 local NAV_HINT = "⌥↑↓ masters · ⇧↑↓ waiting"
 
+-- The legend's last part: the bookmark of a marked agent, which the page draws itself.
+local MARK_PART = { status = "mark", glyph = "", meaning = "to review" }
+
 -- The picker's footer line: what the glyphs mean, then the order, where Tab goes and the arrows.
 function M.legend(order)
   order = M.order(order)
+  local parts = legendParts()
+  parts[#parts + 1] = MARK_PART
   return {
-    parts = legendParts(),
+    parts = parts,
     hint = ("Sorted %s · Tab: %s · %s"):format(ORDER_NAME[order], others(order), NAV_HINT),
   }
 end
@@ -349,6 +395,9 @@ function M.menu(rows, err, order)
   local items = {}
   for i, row in ipairs(rows) do
     local title = row.age and (row.text .. " · " .. row.age) or row.text
+    if row.marked then
+      title = title .. " · to review"
+    end
     items[i] = { title = title, tooltip = row.subText, paneId = row.paneId, status = row.status, indent = row.depth }
   end
   local sorts, legend = {}, {}
@@ -358,6 +407,7 @@ function M.menu(rows, err, order)
   for i, part in ipairs(legendParts()) do
     legend[i] = { title = part.meaning, status = part.status }
   end
+  legend[#legend + 1] = { title = MARK_PART.meaning }
   items[#items + 1] = { title = "-" }
   items[#items + 1] = { title = "Sort by", menu = sorts }
   items[#items + 1] = { title = "Legend", menu = legend }

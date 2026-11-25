@@ -300,6 +300,7 @@ return {
         { status = "unknown", glyph = "?", meaning = "unknown" },
         { status = "idle", glyph = "○", meaning = "idle" },
         { status = "working", glyph = "◐", meaning = "working" },
+        { status = "mark", glyph = "", meaning = "to review" },
       },
     })
     h.eq(attention.legend("name").hint, "Sorted by name · Tab: FIFO, LIFO · ⌥↑↓ masters · ⇧↑↓ waiting")
@@ -330,6 +331,7 @@ return {
         { title = "unknown", status = "unknown" },
         { title = "idle", status = "idle" },
         { title = "working", status = "working" },
+        { title = "to review" },
       } },
     })
   end,
@@ -371,5 +373,71 @@ return {
       agent("w5:p1", nil),
     }
     h.eq(attention.unknownStatuses(agents), { "paused", "waiting_input" })
+  end,
+  a_marked_idle_agent_ranks_between_done_and_unknown = function()
+    local agents = {
+      agent("w1:p1", "idle", { state_change_seq = 1 }),
+      agent("w2:p1", "unknown", { state_change_seq = 2 }),
+      agent("w3:p1", "done", { state_change_seq = 3, completion_seq = 3 }),
+      agent("w4:p1", "idle", { state_change_seq = 4 }),
+      agent("w5:p1", "done", { state_change_seq = 5, completion_seq = 5 }),
+    }
+    local marked = { ["w4:p1"] = { at = 100, clock = "10:00" }, ["w5:p1"] = { at = 90, clock = "09:50" } }
+    -- w5 is seen, so it reads idle and its mark lifts it too.
+    h.eq(panes(attention.rank(agents, { ["w5:p1"] = 5 }, "fifo", nil, marked)),
+      { "w3:p1", "w5:p1", "w4:p1", "w2:p1", "w1:p1" })
+  end,
+
+  marked_idle_agents_sort_by_mark_time_not_by_state_change = function()
+    local agents = {
+      agent("w1:p1", "idle", { state_change_seq = 1 }),
+      agent("w2:p1", "idle", { state_change_seq = 2 }),
+    }
+    local marked = { ["w1:p1"] = { at = 200, clock = "b" }, ["w2:p1"] = { at = 100, clock = "a" } }
+    h.eq(panes(attention.rank(agents, {}, "fifo", nil, marked)), { "w2:p1", "w1:p1" })
+    h.eq(panes(attention.rank(agents, {}, "lifo", nil, marked)), { "w1:p1", "w2:p1" })
+  end,
+
+  a_marked_agent_with_another_status_ranks_with_that_status = function()
+    local agents = {
+      agent("w1:p1", "working", { state_change_seq = 1 }),
+      agent("w2:p1", "idle", { state_change_seq = 2 }),
+    }
+    local marked = { ["w1:p1"] = { at = 100, clock = "10:00" } }
+    h.eq(panes(attention.rank(agents, {}, "fifo", nil, marked)), { "w2:p1", "w1:p1" })
+  end,
+
+  name_order_ignores_marks_between_different_titles = function()
+    local agents = {
+      agent("w1:p1", "idle", { terminal_title_stripped = "Beta" }),
+      agent("w2:p1", "idle", { terminal_title_stripped = "Alpha" }),
+    }
+    local marked = { ["w1:p1"] = { at = 100, clock = "10:00" } }
+    h.eq(panes(attention.rank(agents, {}, "name", nil, marked)), { "w2:p1", "w1:p1" })
+  end,
+
+  rows_of_marked_agents_keep_their_status_and_say_since_when_to_review = function()
+    local agents = {
+      agent("w1:p1", "idle", { state_change_seq = 1, cwd = "/srv/initech-reports" }),
+      agent("w2:p1", "blocked", { state_change_seq = 2, cwd = "/srv/acme-api" }),
+    }
+    local times = { ["w1:p1"] = { age = "2h", clock = "09:00" }, ["w2:p1"] = { age = "4m", clock = "11:58" } }
+    local marked = { ["w1:p1"] = { at = 100, clock = "10:02" }, ["w2:p1"] = { at = 50, clock = "09:30" } }
+    local rows = attention.rows(agents, {}, "fifo", times, nil, nil, marked)
+    h.eq({ rows[1].status, rows[1].marked, rows[1].subText },
+      { "blocked", true, "blocked 4m · since 11:58 · to review since 09:30 · acme-api" })
+    h.eq({ rows[2].status, rows[2].marked, rows[2].subText },
+      { "idle", true, "idle 2h · to review since 10:02 · initech-reports" })
+  end,
+
+  rows_without_a_mark_have_no_marked_field = function()
+    local agents = { agent("w1:p1", "idle", {}) }
+    h.eq(attention.rows(agents, {}, "fifo", {}, nil, nil, {})[1].marked, nil)
+  end,
+
+  menu_says_a_marked_row_is_to_review = function()
+    local rows = { { text = "Initech", subText = "idle 2h", paneId = "w1:p1", status = "idle", age = "2h", marked = true } }
+    h.eq(attention.menu(rows, nil, "fifo")[1],
+      { title = "Initech · 2h · to review", tooltip = "idle 2h", paneId = "w1:p1", status = "idle" })
   end,
 }
