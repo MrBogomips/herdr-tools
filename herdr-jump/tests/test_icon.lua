@@ -139,4 +139,9 @@ return {
     h.eq(ok, false)
     h.eq(tostring(err):find("bogus", 1, true) ~= nil, true, err)
   end,
+
+  an_inset_icon_sits_smaller_at_the_right_of_its_box_and_centred_in_height = function()
+    h.eq(icon.insetFrame(32, 22), { x = 10, y = 5, w = 22, h = 22 })
+    h.eq(icon.insetFrame(18, 18), { x = 0, y = 0, w = 18, h = 18 })
+  end,
 }

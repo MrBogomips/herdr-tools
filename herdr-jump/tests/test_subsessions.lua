@@ -77,8 +77,8 @@ return {
     h.eq(rows[1].text, "Master")
     h.eq(rows[1].subText, "idle · hub · +2 sub · 1 blocked · 1 done")
     h.eq(rows[1].depth, nil)
-    h.eq({ rows[2].text, rows[2].depth, rows[2].subText }, { "↳ product", 1, "blocked · product" })
-    h.eq({ rows[3].text, rows[3].depth }, { "↳ design", 1 })
+    h.eq({ rows[2].text, rows[2].depth, rows[2].subText }, { "product", 1, "blocked · product" })
+    h.eq({ rows[3].text, rows[3].depth }, { "design", 1 })
   end,
 
   a_master_with_quiet_children_only_says_how_many = function()
@@ -91,7 +91,7 @@ return {
     local agents = hub("idle", "done", "working")
     local rows = attention.rows(agents, {}, "fifo", {}, family.of(agents), true)
     h.eq(rows[1].text, "design")
-    h.eq(rows[1].subText, "done · design · ↳ Master")
+    h.eq(rows[1].subText, "done · design · sub of Master")
     h.eq(rows[1].depth, nil)
     h.eq(rows[2].text, "Solo")
   end,
@@ -99,7 +99,7 @@ return {
   menu_indents_child_rows = function()
     local items = attention.menu({
       { text = "Master", subText = "idle", paneId = "w1:p1", status = "idle" },
-      { text = "↳ design", subText = "done", paneId = "w1:p2", status = "done", depth = 1 },
+      { text = "design", subText = "done", paneId = "w1:p2", status = "done", depth = 1 },
     }, nil, "fifo")
     h.eq(items[1].indent, nil)
     h.eq(items[2].indent, 1)

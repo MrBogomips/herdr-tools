@@ -128,12 +128,12 @@ a top-level agent.
 
 | What | A sub-session |
 | --- | --- |
-| Picker and menu | right under its master, indented: `↳ <name>`; the group ranks as its most urgent member, quiet ones aside, and keeps the sort in use inside |
+| Picker and menu | right under its master, indented; in the picker with a smaller title and icon. The group ranks as its most urgent member, quiet ones aside, and keeps the sort in use inside |
 | Master's row | `+4 sub`, then how many sub-sessions are `blocked` and `done` |
 | `done` | quiet: listed with its icon, not counted, no sound |
 | `blocked` | counted, and chimes, like any agent |
 
-`groupChildren = false` keeps one flat list, each sub-session naming its master (`↳ <master>`);
+`groupChildren = false` keeps one flat list, each sub-session naming its master (`sub of <master>`);
 a `done` sub-session stays quiet either way.
 
 ## Sound

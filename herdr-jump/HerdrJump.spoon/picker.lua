@@ -16,6 +16,19 @@ local CHROME, ROW, LIST_TOP, ROW_DRAWN = 94, 42, 99, 44
 -- between the legend and the hint.
 local FOOTER_HEIGHT, FOOTER_GAP, SEPARATOR, TEXT_INSET, HINT_GAP = 28, 6, 1, 18, 24
 
+-- How a row looks, by depth: font sizes of its title and subtext, the left indent of both, and
+-- which status icons it takes (init.lua's badges). A sub-session is smaller and indented, its icon
+-- smaller too (CHILD_BADGE points in the row's icon box).
+M.LOOK = {
+  [0] = { text = 18, subText = 12, indent = 0, badges = "chooser" },
+  [1] = { text = 15, subText = 11, indent = 10, badges = "child" },
+}
+M.CHILD_BADGE = 22
+
+function M.look(depth)
+  return M.LOOK[depth or 0] or M.LOOK[1]
+end
+
 -- The chooser rows that fit on a screen this tall: at least one agent and the legend. A whole
 -- number: hs.chooser:rows() sets no rows at all for 7.5.
 function M.maxRows(screenHeight)
