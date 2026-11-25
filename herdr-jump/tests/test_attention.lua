@@ -291,6 +291,11 @@ return {
     end
   end,
 
+  the_mark_has_its_own_color_outside_the_status_colors = function()
+    h.eq(attention.MARK_COLOR, { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 })
+    h.eq(attention.COLOR.mark, nil)
+  end,
+
   legend_explains_the_glyphs_and_the_order = function()
     h.eq(attention.legend("fifo"), {
       hint = "Sorted FIFO · Tab: LIFO, name · ⌥↑↓ masters · ⇧↑↓ waiting",

@@ -49,12 +49,24 @@ return {
     local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } })
     h.eq(model.rows[1], {
       pane = "w1:p1", title = "w1:p1", sub = "done · x", when = "done", status = "done", depth = 0, key = 1, waits = true,
+      marked = false, markable = true,
     })
     h.eq(model.rows[2].waits, false)
     h.eq(model.rows[2].depth, 1)
     h.eq(model.placeholder, "Filter agents")
     h.eq(model.legend, legend)
     h.eq(model.colors, { done = "rgb(0, 255, 0)" })
+  end,
+
+  done_and_idle_rows_can_be_marked_and_marked_rows_say_so = function()
+    local rows = { row("a", "done"), row("b", "idle"), row("c", "blocked"), row("d", "working"), row("e", "unknown") }
+    rows[4].marked = true
+    local model = picker.model(rows, { parts = {}, hint = "" }, "", {})
+    local got = {}
+    for i, r in ipairs(model.rows) do
+      got[i] = { r.markable, r.marked }
+    end
+    h.eq(got, { { true, false }, { true, false }, { false, false }, { false, true }, { false, false } })
   end,
 
   waiting_rows_are_the_ones_with_shortcuts_and_beyond_the_ninth = function()
