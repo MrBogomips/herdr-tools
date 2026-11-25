@@ -48,6 +48,10 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
   indented, and its row sums them up (`+4 sub · 1 done`). A helper that is done stays out of the
   count and, with the sound on, plays nothing: its master hears about it. One that waits on a
   permission counts and chimes like any agent, since only you can answer it.
+- **You looked at the result but have not reviewed it yet.** Once seen, a `done` agent turns
+  `idle` and looks finished. Click the bookmark after its title in the picker (or press `⌘R`) to
+  keep it "to review": it stays above the idle agents, pink bookmark and "to review since 10:02",
+  even when you set it to work again, until you click the bookmark again.
 
 ## Keys
 
@@ -58,6 +62,7 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 | `⌘1`…`⌘9` (in the picker) | Jump to an agent that waits for you, `blocked` or `done` and not seen, sub-sessions included, numbered in list order. The others have no shortcut: pick them with the arrows, the filter or the mouse. A shortcut stays on its agent while you filter. |
 | `⌥↑` `⌥↓` (in the picker) | Move over the top-level rows only: masters and agents without sub-sessions. The sub-sessions stay on screen and are skipped; from one, `⌥↑` goes back to its master. With `groupChildren = false` every row is top-level, so they move like the plain arrows. |
 | `⇧↑` `⇧↓` (in the picker) | Move over the agents that wait for you only, `blocked` or `done` and not seen, sub-sessions included, past the ninth too (the rows with no `⌘` key left). |
+| `⌘R` or a click on the bookmark (in the picker) | Mark the agent to review, or clear its mark (see [To review](#to-review)). Only a `done` or `idle` agent can be marked; marking a `done` one also counts as seeing it. A click on the bookmark does not jump. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -77,6 +82,9 @@ The menu bar drop-down has a Legend submenu with the icons.
 | Ring with `?` | purple | `unknown`: a status HerdrJump does not know (listed, never counted) |
 | Empty ring | grey | `idle`, or `done` and already seen |
 | Half-filled ring | blue | `working` |
+
+After the title, a pink filled bookmark marks an agent [to review](#to-review); an outlined grey
+one, on every `done` or `idle` agent, is the button that marks it.
 
 ## Waiting times
 
@@ -116,6 +124,22 @@ HerdrJump keeps its own record: a `done` agent counts as seen once it was the fo
 the terminal running Herdr was in front. A later completion of the same agent makes it `done` again. The record lives
 in Hammerspoon's settings (`HerdrJump.seen`) and survives a reload; an entry whose completion
 counter goes backwards (Herdr restarted and reused the pane id) is forgotten.
+
+### To review
+
+A `done` agent you have looked at turns `idle`, which reads as "can be closed" even when you have
+not reviewed its work yet. Mark it to review: the bookmark after its title, or `⌘R` on the
+selected row. A marked agent keeps the icon of its real status, with a pink bookmark after the
+title and "to review since 10:02" under it. While it reads `idle` it ranks after the `done` ones
+and before `unknown`, oldest mark first (newest first in LIFO); while it works again, is blocked
+or done, it ranks with that status and keeps the bookmark. Masters add "N to review" for their
+sub-sessions, and the menu bar drop-down ends a marked row with "· to review". A mark never
+counts, chimes or gets a `⌘` key.
+
+The mark goes when you click the bookmark (or `⌘R`) again, when the pane closes, or when Herdr
+restarts (its pane ids are reused). The marks live in Hammerspoon's settings
+(`HerdrJump.review`) and survive a reload. `spoon.HerdrJump:toggleReview(paneId)` does the same
+from a script.
 
 ## Sub-sessions
 
