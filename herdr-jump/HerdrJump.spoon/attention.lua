@@ -100,41 +100,94 @@ local function byName(a, b)
   end
 end
 
--- A new list in the given order (default "fifo"): by status, most urgent first, then by state
--- change; or by title, then status. A full tie goes by pane id, so the order is stable.
-function M.rank(agents, seen, order)
-  order = M.order(order)
-  local ranked = {}
-  for i, agent in ipairs(agents) do
-    ranked[i] = agent
-  end
-  table.sort(ranked, function(a, b)
-    local first
-    if order == "name" then
-      first = byName(a, b)
-      if first == nil then
-        first = byStatus(a, b, seen)
-      end
-    else
-      first = byStatus(a, b, seen)
-      if first == nil then
-        first = byChange(a, b, order == "lifo")
-      end
-    end
+-- Whether agent a comes before agent b in the given order: by status, most urgent first, then by
+-- state change; or by title, then status. A full tie goes by pane id, so the order is stable.
+local function before(a, b, seen, order)
+  local first
+  if order == "name" then
+    first = byName(a, b)
     if first == nil then
-      return tostring(a.pane_id) < tostring(b.pane_id)
+      first = byStatus(a, b, seen)
     end
-    return first
-  end)
+  else
+    first = byStatus(a, b, seen)
+    if first == nil then
+      first = byChange(a, b, order == "lifo")
+    end
+  end
+  if first == nil then
+    return tostring(a.pane_id) < tostring(b.pane_id)
+  end
+  return first
+end
+
+local function sorted(agents, seen, order)
+  local list = {}
+  for i, agent in ipairs(agents) do
+    list[i] = agent
+  end
+  table.sort(list, function(a, b) return before(a, b, seen, order) end)
+  return list
+end
+
+-- Whether an agent waits without a sound or a count: a sub-session that is done. Its master hears
+-- about it; one blocked on a question still needs the user. fam comes from family.of().
+function M.quiet(agent, seen, fam)
+  return fam ~= nil and fam.parentOf[agent.pane_id] ~= nil and M.status(agent, seen) == "done"
+end
+
+-- Each master or top-level agent with its sub-sessions, keyed by the member that ranks the group:
+-- the most urgent one that is not quiet (the head, in the name order).
+local function groups(agents, seen, order, fam)
+  local byPane, list = {}, {}
+  for _, agent in ipairs(agents) do
+    byPane[agent.pane_id] = agent
+  end
+  for _, agent in ipairs(agents) do
+    if fam.parentOf[agent.pane_id] == nil then
+      local children, key = {}, agent
+      for _, pane in ipairs(fam.childrenOf[agent.pane_id] or {}) do
+        local child = byPane[pane]
+        if child then
+          children[#children + 1] = child
+          if order ~= "name" and not M.quiet(child, seen, fam) and before(child, key, seen, order) then
+            key = child
+          end
+        end
+      end
+      list[#list + 1] = { head = agent, key = key, children = sorted(children, seen, order) }
+    end
+  end
+  -- Keys are distinct agents and before() breaks every tie, so the groups' order is stable.
+  table.sort(list, function(a, b) return before(a.key, b.key, seen, order) end)
+  return list
+end
+
+-- A new list in the given order (default "fifo"), see before(). With a family (family.of()), each
+-- master is followed by its sub-sessions, and the group ranks as its most urgent member that is
+-- not quiet.
+function M.rank(agents, seen, order, fam)
+  order = M.order(order)
+  if fam == nil then
+    return sorted(agents, seen, order)
+  end
+  local ranked = {}
+  for _, group in ipairs(groups(agents, seen, order, fam)) do
+    ranked[#ranked + 1] = group.head
+    for _, child in ipairs(group.children) do
+      ranked[#ranked + 1] = child
+    end
+  end
   return ranked
 end
 
--- How many agents wait for the user: blocked on a question, or done and not yet seen.
-function M.count(agents, seen)
+-- How many agents wait for the user: blocked on a question, or done and not yet seen; with a
+-- family, a sub-session that is done does not count (see quiet()).
+function M.count(agents, seen, fam)
   local n = 0
   for _, agent in ipairs(agents) do
     local status = M.status(agent, seen)
-    if status == "blocked" or status == "done" then
+    if (status == "blocked" or status == "done") and not M.quiet(agent, seen, fam) then
       n = n + 1
     end
   end
@@ -180,12 +233,40 @@ local function waiting(status)
   return status == "blocked" or status == "done"
 end
 
+-- What a master's row says about its sub-sessions: how many, and how many wait.
+local function summary(pane, byPane, seen, fam)
+  local children = fam.childrenOf[pane]
+  if children == nil then
+    return nil
+  end
+  local waits = { blocked = 0, done = 0 }
+  for _, child in ipairs(children) do
+    local status = byPane[child] and M.status(byPane[child], seen)
+    if waits[status] then
+      waits[status] = waits[status] + 1
+    end
+  end
+  local parts = { ("+%d sub"):format(#children) }
+  for _, status in ipairs({ "blocked", "done" }) do
+    if waits[status] > 0 then
+      parts[#parts + 1] = ("%d %s"):format(waits[status], status)
+    end
+  end
+  return table.concat(parts, " · ")
+end
+
 -- Chooser and menu rows, in the given order; the caller shows the status icon. `when` is the status
 -- and how long it has lasted ("blocked 12m"); a waiting agent's subText also says since when.
-function M.rows(agents, seen, order, times)
+-- With a family (family.of()), sub-sessions follow their master, indented (depth 1), and the
+-- master's subText sums them up; `flat` keeps one list and names the master in the subText instead.
+function M.rows(agents, seen, order, times, fam, flat)
   times = times or {}
+  local byPane = {}
+  for _, agent in ipairs(agents) do
+    byPane[agent.pane_id] = agent
+  end
   local rows = {}
-  for i, agent in ipairs(M.rank(agents, seen, order)) do
+  for i, agent in ipairs(M.rank(agents, seen, order, not flat and fam or nil)) do
     local status = M.status(agent, seen)
     local time = times[agent.pane_id]
     local age = time and time.age
@@ -195,13 +276,23 @@ function M.rows(agents, seen, order, times)
       parts[#parts + 1] = "since " .. time.clock
     end
     parts[#parts + 1] = folder(agent.cwd)
+    local master = fam and fam.parentOf[agent.pane_id]
+    local depth
+    if master and flat then
+      parts[#parts + 1] = "↳ " .. label(byPane[master] or { pane_id = master })
+    elseif master then
+      depth = 1
+    elseif fam then
+      parts[#parts + 1] = summary(agent.pane_id, byPane, seen, fam)
+    end
     rows[i] = {
-      text = label(agent),
+      text = depth and ("↳ " .. label(agent)) or label(agent),
       subText = table.concat(parts, " · "),
       paneId = agent.pane_id,
       status = status,
       when = when,
       age = age,
+      depth = depth,
     }
   end
   return rows
@@ -254,7 +345,7 @@ function M.menu(rows, err, order)
   local items = {}
   for i, row in ipairs(rows) do
     local title = row.age and (row.text .. " · " .. row.age) or row.text
-    items[i] = { title = title, tooltip = row.subText, paneId = row.paneId, status = row.status }
+    items[i] = { title = title, tooltip = row.subText, paneId = row.paneId, status = row.status, indent = row.depth }
   end
   local sorts, legend = {}, {}
   for i, name in ipairs(M.ORDERS) do
