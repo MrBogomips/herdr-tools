@@ -10,7 +10,7 @@ jobs:
     name: vendored herdr_api copies match
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compare every plugin's copy with the first one
         run: |
           set -eu
@@ -29,9 +29,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The plugins must run on the system Python of macOS (3.9).
-          - os: macos-14
+          # The plugins must run on the system Python of macOS (3.9). GitHub retires macOS images:
+          # pin the newest one whose /usr/bin/python3 is still 3.9 (the check below says when not).
+          - os: macos-15
             python: /usr/bin/python3
+            expect: "3.9"
           # Herdr runs the first python3 on its PATH, often a newer one from Homebrew or python.org.
           - os: macos-latest
             setup: "3.13"
@@ -42,11 +44,23 @@ jobs:
           - os: ubuntu-latest
             python: python3
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         if: matrix.setup
         with:
           python-version: ${{ matrix.setup }}
+      # A runner image update can change the system Python: fail then, instead of testing another
+      # version under the same name.
+      - name: Check the Python version
+        if: matrix.expect
+        run: |
+          set -eu
+          version=$(${{ matrix.python }} -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+          echo "${{ matrix.python }} is $version"
+          if [ "$version" != "${{ matrix.expect }}" ]; then
+            echo "::error::${{ matrix.python }} is $version, expected ${{ matrix.expect }}: pick another runner image"
+            exit 1
+          fi
       - name: Run each plugin's tests from its own folder
         run: |
           set -eu
@@ -92,7 +106,7 @@ jobs:
     name: lua companions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Lua 5.4
         run: sudo apt-get update -q && sudo apt-get install -y -q lua5.4
       - name: Run each companion's tests
