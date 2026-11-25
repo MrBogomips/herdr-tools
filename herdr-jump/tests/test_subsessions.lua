@@ -104,4 +104,17 @@ return {
     h.eq(items[1].indent, nil)
     h.eq(items[2].indent, 1)
   end,
+  a_master_sums_up_its_children_to_review = function()
+    local agents = hub("idle", "idle", "working")
+    local marked = { ["w1:p2"] = { at = 5, clock = "10:00" }, ["w1:p3"] = { at = 6, clock = "10:01" } }
+    local rows = attention.rows(agents, {}, "fifo", {}, family.of(agents), nil, marked)
+    h.eq(rows[2].subText, "idle · hub · +2 sub · 2 to review")
+  end,
+
+  a_marked_child_ranks_by_mark_time_in_a_flat_list = function()
+    local agents = hub("working", "idle", "idle")
+    local marked = { ["w1:p2"] = { at = 9, clock = "10:09" }, ["w1:p3"] = { at = 5, clock = "10:05" } }
+    local rows = attention.rows(agents, {}, "fifo", {}, family.of(agents), true, marked)
+    h.eq({ rows[2].text, rows[2].marked, rows[3].text, rows[3].marked }, { "product", true, "design", true })
+  end,
 }
