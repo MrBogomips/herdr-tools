@@ -45,14 +45,15 @@ local TERMINAL_RECHECK_SECONDS = 30
 
 -- Styled text brings its own font and color, so the picker rows set both. Named system colors
 -- follow the light or dark appearance.
-local TEXT_FONT_SIZE, SUBTEXT_FONT_SIZE = 18, 12
+local SUBTEXT_FONT_SIZE = picker.look(0).subText
 local TEXT_COLOR = { list = "System", name = "labelColor" }
 local SUBTEXT_COLOR = { list = "System", name = "secondaryLabelColor" }
 local SEPARATOR_COLOR = { list = "System", name = "separatorColor" }
 -- How long the legend footer follows the picker's window as it opens: reads, and seconds apart.
 local FOOTER_FOLLOW = { reads = 8, seconds = 0.05 }
--- The status icons, in points: the picker fits its row images to the row, the menu shows them as is.
-local BADGE_SIZE = { chooser = 32, menu = 18 }
+-- The status icons, in points: the picker fits its row images to the row, the menu shows them as is;
+-- a sub-session's icon is drawn smaller, at the right of its box.
+local BADGES = { chooser = { size = 32 }, menu = { size = 18 }, child = { size = 32, inner = picker.CHILD_BADGE } }
 
 --- HerdrJump.herdrBin
 --- Variable
@@ -191,7 +192,7 @@ function obj:start()
       self.previousApp = app
     end
   end):start()
-  self.badges = self:_badges()
+  self.badges = icon.badges(attention.COLOR, BADGES)
   self:_newChooser()
   if self.showMenubar then
     self.menubar = hs.menubar.new()
@@ -303,18 +304,6 @@ function obj:_initialOrder()
     self.logger.w("unknown defaultOrder " .. hs.inspect(self.defaultOrder) .. ": sorting FIFO")
   end
   return attention.order(self.defaultOrder)
-end
-
--- The status icons, per status, at the picker's and the menu's size.
-function obj:_badges()
-  local badges = {}
-  for use, size in pairs(BADGE_SIZE) do
-    badges[use] = {}
-    for status, color in pairs(attention.COLOR) do
-      badges[use][status] = icon.status(status, color, size)
-    end
-  end
-  return badges
 end
 
 function obj:_conn()
@@ -493,23 +482,25 @@ function obj:_rows()
     not self.groupChildren)
 end
 
-local function styled(text, size, color, alignment)
+local function styled(text, size, color, alignment, indent)
   return hs.styledtext.new(text, {
     font = { name = hs.styledtext.defaultFonts.system.name, size = size },
     color = color,
-    paragraphStyle = alignment and { alignment = alignment } or nil,
+    paragraphStyle = { alignment = alignment, firstLineHeadIndent = indent or 0, headIndent = indent or 0 },
   })
 end
 
--- The picker entries: the status icon, the title, the status and its age in the status color.
+-- The picker entries: the status icon, the title, the status and its age in the status color; a
+-- sub-session smaller and indented (picker.look).
 function obj:_choices()
   local choices = {}
   for i, row in ipairs(self:_rows()) do
+    local look = picker.look(row.depth)
     choices[i] = {
-      text = styled(row.text, TEXT_FONT_SIZE, TEXT_COLOR),
-      subText = styled(row.when, SUBTEXT_FONT_SIZE, attention.COLOR[row.status])
-        .. styled(row.subText:sub(#row.when + 1), SUBTEXT_FONT_SIZE, SUBTEXT_COLOR),
-      image = self.badges.chooser[row.status],
+      text = styled(row.text, look.text, TEXT_COLOR, nil, look.indent),
+      subText = styled(row.when, look.subText, attention.COLOR[row.status], nil, look.indent)
+        .. styled(row.subText:sub(#row.when + 1), look.subText, SUBTEXT_COLOR, nil, look.indent),
+      image = self.badges[look.badges][row.status],
       paneId = row.paneId,
     }
   end

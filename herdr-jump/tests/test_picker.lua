@@ -87,4 +87,13 @@ return {
     local footer = picker.footer({ x = 0, y = 0, w = 576, h = 346 }, { w = 362, h = 15 }, { w = 170, h = 15 })
     h.eq(footer.hint, false)
   end,
+
+  a_sub_session_row_is_smaller_and_indented = function()
+    local top, child = picker.look(nil), picker.look(1)
+    h.eq(top, picker.look(0))
+    h.eq(child.text < top.text and child.subText < top.subText, true)
+    h.eq(child.indent > top.indent, true)
+    h.eq({ top.badges, child.badges }, { "chooser", "child" })
+    h.eq(picker.CHILD_BADGE < 32, true)
+  end,
 }

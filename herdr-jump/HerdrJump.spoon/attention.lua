@@ -257,8 +257,9 @@ end
 
 -- Chooser and menu rows, in the given order; the caller shows the status icon. `when` is the status
 -- and how long it has lasted ("blocked 12m"); a waiting agent's subText also says since when.
--- With a family (family.of()), sub-sessions follow their master, indented (depth 1), and the
--- master's subText sums them up; `flat` keeps one list and names the master in the subText instead.
+-- With a family (family.of()), sub-sessions follow their master at depth 1 (the caller indents
+-- them), and the master's subText sums them up; `flat` keeps one list and names the master in the
+-- subText instead.
 function M.rows(agents, seen, order, times, fam, flat)
   times = times or {}
   local byPane = {}
@@ -279,14 +280,14 @@ function M.rows(agents, seen, order, times, fam, flat)
     local master = fam and fam.parentOf[agent.pane_id]
     local depth
     if master and flat then
-      parts[#parts + 1] = "↳ " .. label(byPane[master] or { pane_id = master })
+      parts[#parts + 1] = "sub of " .. label(byPane[master] or { pane_id = master })
     elseif master then
       depth = 1
     elseif fam then
       parts[#parts + 1] = summary(agent.pane_id, byPane, seen, fam)
     end
     rows[i] = {
-      text = depth and ("↳ " .. label(agent)) or label(agent),
+      text = label(agent),
       subText = table.concat(parts, " · "),
       paneId = agent.pane_id,
       status = status,
