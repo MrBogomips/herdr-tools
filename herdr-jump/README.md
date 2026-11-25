@@ -50,8 +50,8 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
   permission counts and chimes like any agent, since only you can answer it.
 - **You looked at the result but have not reviewed it yet.** Once seen, a `done` agent turns
   `idle` and looks finished. Click the bookmark after its title in the picker (or press `⌘R`) to
-  keep it "to review": it stays above the idle agents, pink bookmark and "to review since 10:02",
-  even when you set it to work again, until you click the bookmark again.
+  keep it "to review": a pink bookmark and "to review since 10:02", above the idle agents while it
+  is idle. The bookmark stays when you set it to work again, until you click it again.
 
 ## Keys
 
