@@ -1,0 +1,168 @@
+<!doctype html>
+<!-- The agents picker, drawn by panel.lua in an hs.webview. picker.inline() puts the model
+     (picker.model()) in the script below, and init.lua calls render(model) when the list changes
+     while it is open.
+     Messages to Hammerspoon go through the "herdrJump" port: jump, close, order. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: rgba(242, 242, 244, 0.98);
+    --fg: #1d1d1f;
+    --dim: #6e6e73;
+    --sel: rgba(0, 0, 0, 0.08);
+    --line: rgba(0, 0, 0, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: rgba(38, 38, 40, 0.98);
+      --fg: #f2f2f4;
+      --dim: #9a9aa0;
+      --sel: rgba(255, 255, 255, 0.11);
+      --line: rgba(255, 255, 255, 0.12);
+    }
+  }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--fg); cursor: default; -webkit-user-select: none; }
+  .box { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  input { box-sizing: border-box; height: 56px; flex: none; padding: 0 18px; border: 0; outline: 0;
+    border-bottom: 1px solid var(--line); background: transparent; color: var(--fg); font: 22px -apple-system, sans-serif; }
+  input::placeholder { color: var(--dim); }
+  #list { flex: 1; overflow-y: auto; padding: 6px; }
+  .row { box-sizing: border-box; display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px; border-radius: 7px; }
+  .row.sel { background: var(--sel); }
+  .icon { flex: none; width: 24px; height: 24px; }
+  .text { flex: 1; min-width: 0; }
+  .title, .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .title { font-size: 16px; }
+  .sub { font-size: 11.5px; color: var(--dim); margin-top: 1px; }
+  .key { flex: none; color: var(--dim); font-size: 15px; }
+  .row.child { height: 24px; padding-left: 48px; gap: 8px; }
+  .row.child .icon { width: 13px; height: 13px; }
+  .row.child .text { display: flex; align-items: baseline; gap: 8px; }
+  .row.child .title { flex: none; max-width: 55%; font-size: 13px; }
+  .row.child .sub { flex: 1; margin: 0; font-size: 11px; }
+  .row.child .key { font-size: 12px; }
+  footer { box-sizing: border-box; height: 30px; flex: none; display: flex; align-items: center; gap: 16px;
+    padding: 0 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--dim); white-space: nowrap; }
+  footer .parts { display: flex; gap: 12px; }
+  footer .hint { margin-left: auto; overflow: hidden; text-overflow: ellipsis; }
+  .empty { padding: 14px 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="box">
+  <input id="filter" autofocus spellcheck="false" autocomplete="off">
+  <div id="list"></div>
+  <footer><span class="parts" id="legend"></span><span class="hint" id="hint"></span></footer>
+</div>
+<script>
+let model = __MODEL__;
+let visible = [];
+let selected = null;
+const filter = document.getElementById("filter");
+const list = document.getElementById("list");
+
+function send(message) {
+  const port = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.herdrJump;
+  if (port) port.postMessage(message);
+}
+
+// The status icons, drawn like the menu's (icon.lua): a filled disc waits for the user.
+function icon(status) {
+  const c = model.colors[status] || model.colors.unknown;
+  const shapes = {
+    blocked: `<circle cx="10" cy="10" r="9" fill="${c}"/><rect x="6.4" y="5.5" width="2.5" height="9" rx="0.8" fill="#fff"/><rect x="11.1" y="5.5" width="2.5" height="9" rx="0.8" fill="#fff"/>`,
+    done: `<circle cx="10" cy="10" r="9" fill="${c}"/><path d="M5.6 10.4l3 3 5.8-6.2" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`,
+    unknown: `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="1.8"/><text x="10" y="14" text-anchor="middle" font-size="11" font-weight="700" font-family="-apple-system" fill="${c}">?</text>`,
+    idle: `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="1.8"/>`,
+    working: `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="1.8"/><path d="M10 2a8 8 0 0 1 0 16z" fill="${c}"/>`,
+  };
+  return `<svg class="icon" viewBox="0 0 20 20">${shapes[status] || shapes.unknown}</svg>`;
+}
+
+function escape(text) {
+  return String(text == null ? "" : text).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+}
+
+// The status and its age in the status color, then the rest of the subtext.
+function subText(row) {
+  const sub = row.sub || "";
+  const rest = sub.startsWith(row.when) ? sub.slice(row.when.length) : " · " + sub;
+  return `<span style="color:${model.colors[row.status] || "inherit"}">${escape(row.when)}</span>${escape(rest)}`;
+}
+
+function render(next) {
+  if (next) model = next;
+  filter.placeholder = model.placeholder;
+  const query = filter.value.trim().toLowerCase();
+  visible = model.rows.filter((r) => !query || (r.title + " " + r.sub).toLowerCase().includes(query));
+  if (!visible.some((r) => r.pane === selected)) {
+    const first = visible.find((r) => r.key) || visible[0];
+    selected = first ? first.pane : null;
+  }
+  list.innerHTML = visible.length ? visible.map((r) =>
+    `<div class="row${r.depth > 0 ? " child" : ""}${r.pane === selected ? " sel" : ""}" data-pane="${escape(r.pane)}">` +
+    icon(r.status) +
+    `<div class="text"><div class="title">${escape(r.title)}</div><div class="sub">${subText(r)}</div></div>` +
+    (r.key ? `<span class="key">⌘${r.key}</span>` : "") + `</div>`).join("")
+    : `<div class="empty">No matching agents</div>`;
+  document.getElementById("legend").innerHTML = model.legend.parts.map((p) =>
+    `<span><span style="color:${model.colors[p.status]}">${escape(p.glyph)}</span> ${escape(p.meaning)}</span>`).join("");
+  document.getElementById("hint").textContent = model.legend.hint;
+  const row = list.querySelector(".sel");
+  if (row) row.scrollIntoView({ block: "nearest" });
+}
+
+function move(step) {
+  if (!visible.length) return;
+  const at = visible.findIndex((r) => r.pane === selected);
+  const next = Math.min(visible.length - 1, Math.max(0, (at < 0 ? 0 : at) + step));
+  selected = visible[next].pane;
+  render();
+}
+
+function jump(pane) {
+  if (pane) send({ action: "jump", pane: pane });
+}
+
+filter.addEventListener("input", () => { selected = null; render(); });
+document.addEventListener("keydown", (event) => {
+  if (event.metaKey && /^[1-9]$/.test(event.key)) {
+    const row = visible.find((r) => r.key === Number(event.key));
+    if (row) jump(row.pane);
+    event.preventDefault();
+    return;
+  }
+  const actions = {
+    ArrowDown: () => move(1),
+    ArrowUp: () => move(-1),
+    Enter: () => jump(selected),
+    Escape: () => send({ action: "close" }),
+    Tab: () => send({ action: "order" }),
+  };
+  if (actions[event.key]) {
+    event.preventDefault();
+    actions[event.key]();
+  }
+});
+list.addEventListener("click", (event) => {
+  const row = event.target.closest(".row");
+  if (row) jump(row.dataset.pane);
+});
+list.addEventListener("mousemove", (event) => {
+  const row = event.target.closest(".row");
+  if (row && row.dataset.pane !== selected) {
+    selected = row.dataset.pane;
+    render();
+  }
+});
+window.addEventListener("focus", () => filter.focus());
+render();
+filter.focus();
+</script>
+</body>
+</html>
