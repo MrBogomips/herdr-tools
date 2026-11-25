@@ -2,7 +2,8 @@
 <!-- The agents picker, drawn by panel.lua in an hs.webview. picker.inline() puts the model
      (picker.model()) in the script below, and init.lua calls render(model) when the list changes
      while it is open.
-     Messages to Hammerspoon go through the "herdrJump" port: jump, close, order. -->
+     Messages to Hammerspoon go through the "herdrJump" port: jump, close, order.
+     The arrows move over every row; with ⌥ over top-level rows, with ⇧ over the waiting ones. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -59,6 +60,23 @@
   <div id="list"></div>
   <footer><span class="parts" id="legend"></span><span class="hint" id="hint"></span></footer>
 </div>
+<script id="nav">
+// The arrow keys' navigation, kept apart from the page so that tests/test_picker_js.sh runs it
+// under node: the index of the next row after `from` in direction `step` (+1 or -1) that the mode
+// stops on ("top": top-level rows; "waiting": rows that wait; anything else: every row), or `from`
+// when there is none that way. Nothing selected (-1) stays so.
+function nextIndex(rows, from, step, mode) {
+  if (from < 0) return from;
+  const stops = {
+    top: (row) => row.depth === 0,
+    waiting: (row) => row.waits === true,
+  }[mode] || (() => true);
+  for (let at = from + step; at >= 0 && at < rows.length; at += step) {
+    if (stops(rows[at])) return at;
+  }
+  return from;
+}
+</script>
 <script>
 let model = __MODEL__;
 let visible = [];
@@ -117,12 +135,18 @@ function render(next) {
   if (row) row.scrollIntoView({ block: "nearest" });
 }
 
-function move(step) {
-  if (!visible.length) return;
-  const at = visible.findIndex((r) => r.pane === selected);
-  const next = Math.min(visible.length - 1, Math.max(0, (at < 0 ? 0 : at) + step));
+function move(step, mode) {
+  const next = nextIndex(visible, visible.findIndex((r) => r.pane === selected), step, mode);
+  if (next < 0 || visible[next].pane === selected) return;
   selected = visible[next].pane;
   render();
+}
+
+// The navigation mode of an arrow key's modifiers: none, ⌥ alone or ⇧ alone; null for the others,
+// which keep the field's own behaviour.
+function arrowMode(event) {
+  if (event.metaKey || event.ctrlKey || (event.altKey && event.shiftKey)) return null;
+  return event.altKey ? "top" : event.shiftKey ? "waiting" : "all";
 }
 
 function jump(pane) {
@@ -137,9 +161,15 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     return;
   }
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    const mode = arrowMode(event);
+    if (mode) {
+      event.preventDefault();
+      move(event.key === "ArrowDown" ? 1 : -1, mode);
+    }
+    return;
+  }
   const actions = {
-    ArrowDown: () => move(1),
-    ArrowUp: () => move(-1),
     Enter: () => jump(selected),
     Escape: () => send({ action: "close" }),
     Tab: () => send({ action: "order" }),

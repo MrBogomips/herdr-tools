@@ -318,12 +318,15 @@ local function others(order)
   return table.concat(names, ", ")
 end
 
--- The picker's footer line: what the glyphs mean, then the order and where Tab goes.
+-- The picker's keys besides Tab, shown after the order: arrows with a modifier.
+local NAV_HINT = "⌥↑↓ masters · ⇧↑↓ waiting"
+
+-- The picker's footer line: what the glyphs mean, then the order, where Tab goes and the arrows.
 function M.legend(order)
   order = M.order(order)
   return {
     parts = legendParts(),
-    hint = ("Sorted %s · Tab: %s"):format(ORDER_NAME[order], others(order)),
+    hint = ("Sorted %s · Tab: %s · %s"):format(ORDER_NAME[order], others(order), NAV_HINT),
   }
 end
 

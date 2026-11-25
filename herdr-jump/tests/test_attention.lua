@@ -293,7 +293,7 @@ return {
 
   legend_explains_the_glyphs_and_the_order = function()
     h.eq(attention.legend("fifo"), {
-      hint = "Sorted FIFO · Tab: LIFO, name",
+      hint = "Sorted FIFO · Tab: LIFO, name · ⌥↑↓ masters · ⇧↑↓ waiting",
       parts = {
         { status = "blocked", glyph = "⏸", meaning = "blocked" },
         { status = "done", glyph = "✓", meaning = "done, not seen" },
@@ -302,7 +302,7 @@ return {
         { status = "working", glyph = "◐", meaning = "working" },
       },
     })
-    h.eq(attention.legend("name").hint, "Sorted by name · Tab: FIFO, LIFO")
+    h.eq(attention.legend("name").hint, "Sorted by name · Tab: FIFO, LIFO · ⌥↑↓ masters · ⇧↑↓ waiting")
   end,
 
   placeholder_names_the_order = function()
