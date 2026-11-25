@@ -162,25 +162,13 @@ function M.status(status, color, size)
   return render(M.statusElements(status, color, size), size)
 end
 
--- Where an icon `inner` points wide sits in a box `size` wide: at the right, centred in height, so
--- it reads as indented and smaller.
-function M.insetFrame(size, inner)
-  return { x = size - inner, y = (size - inner) / 2, w = inner, h = inner }
-end
-
--- The status icons for each use, per status: uses = { name = { size =, inner = } }, inner (the
--- drawn icon, inset in its box) defaulting to size. Needs Hammerspoon.
+-- The status icons for each use, per status: uses = { name = { size = points } }. Needs Hammerspoon.
 function M.badges(colors, uses)
   local badges = {}
   for use, spec in pairs(uses) do
     badges[use] = {}
     for status, color in pairs(colors) do
-      local inner = spec.inner or spec.size
-      local image = M.status(status, color, inner)
-      if inner ~= spec.size then
-        image = render({ { type = "image", image = image, frame = M.insetFrame(spec.size, inner) } }, spec.size)
-      end
-      badges[use][status] = image
+      badges[use][status] = M.status(status, color, spec.size)
     end
   end
   return badges

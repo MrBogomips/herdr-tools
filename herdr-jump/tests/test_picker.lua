@@ -1,99 +1,98 @@
 local h = ...
 local picker = h.load("picker")
 
-local HAMMERSPOON = 42
-
--- An entry of hs.window.list(true), as CGWindowListCopyWindowInfo describes a window.
-local function window(pid, name, onscreen, bounds)
-  return {
-    kCGWindowOwnerPID = pid,
-    kCGWindowName = name,
-    kCGWindowIsOnscreen = onscreen or nil,
-    kCGWindowLayer = 27,
-    kCGWindowBounds = bounds,
-  }
+local function row(pane, status, depth)
+  return { paneId = pane, text = pane, subText = status .. " · x", when = status, status = status, depth = depth }
 end
 
-local BOUNDS = { X = -1344, Y = 207, Width = 768, Height = 346 }
+local function keys(rows)
+  local out = {}
+  for i, r in ipairs(rows) do
+    out[i] = r.key or 0
+  end
+  return out
+end
+
+local SCREEN = { x = 0, y = 25, w = 1440, h = 875 }
 
 return {
-  rows_leave_room_under_the_agents_for_the_legend = function()
-    -- The window grows 42 points per row, the list draws one every 44 from 99 points down; the
-    -- legend needs 28 points and 6 more above it: 5 agents end at 319, 6 rows give 346, 7 give 388.
-    h.eq(picker.rows(1, 22), 2)
-    h.eq(picker.rows(5, 22), 7)
-    h.eq(picker.rows(7, 22), 9)
-    h.eq(picker.rows(10, 22), 12)
-  end,
-
-  rows_stop_at_what_the_screen_holds = function()
-    h.eq(picker.rows(30, 22), 22)
-  end,
-
-  max_rows_fit_the_picker_on_the_screen = function()
-    -- 94 points of search field and margins, then 42 per row.
-    h.eq(picker.maxRows(1049), 22)
-    h.eq(picker.maxRows(94 + 42 * 3), 3)
-  end,
-
-  max_rows_are_whole_for_a_float_screen_height = function()
-    -- hs.chooser:rows() takes a whole number: 7.5 would set no rows at all.
-    h.eq(math.type(picker.maxRows(1049.0)), "integer")
-    h.eq(math.type(picker.rows(30, picker.maxRows(1049.0))), "integer")
-  end,
-
-  max_rows_keep_room_for_an_agent_and_the_legend = function()
-    h.eq(picker.maxRows(100), 2)
-  end,
-
-  finds_the_frontmost_visible_chooser_of_hammerspoon = function()
-    local windows = {
-      window(7, "Chooser", true, { X = 0, Y = 0, Width = 10, Height = 10 }),
-      window(HAMMERSPOON, "Hammerspoon Console", true, { X = 0, Y = 0, Width = 500, Height = 400 }),
-      window(HAMMERSPOON, "Chooser", false, { X = 0, Y = 0, Width = 20, Height = 20 }),
-      window(HAMMERSPOON, "Chooser", true, BOUNDS),
-      window(HAMMERSPOON, "Chooser", true, { X = 1, Y = 1, Width = 30, Height = 30 }),
+  shortcuts_go_to_waiting_rows_only_in_list_order = function()
+    local rows = {
+      row("a", "blocked"), row("b", "idle", 1), row("c", "done", 1), row("d", "working"), row("e", "done"),
     }
-    h.eq(picker.chooserWindow(windows, HAMMERSPOON), { x = -1344, y = 207, w = 768, h = 346, layer = 27 })
+    h.eq(keys(picker.shortcuts(rows)), { 1, 0, 2, 0, 3 })
   end,
 
-  no_chooser_window_when_none_is_visible = function()
-    h.eq(picker.chooserWindow({ window(HAMMERSPOON, "Chooser", false, BOUNDS) }, HAMMERSPOON), nil)
-    h.eq(picker.chooserWindow({}, HAMMERSPOON), nil)
+  shortcuts_stop_at_nine = function()
+    local rows = {}
+    for i = 1, 11 do
+      rows[i] = row("p" .. i, "done")
+    end
+    local out = picker.shortcuts(rows)
+    h.eq(out[9].key, 9)
+    h.eq(out[10].key, nil)
   end,
 
-  a_chooser_entry_without_bounds_is_skipped = function()
-    local windows = { window(HAMMERSPOON, "Chooser", true, nil), window(HAMMERSPOON, "Chooser", true, BOUNDS) }
-    h.eq(picker.chooserWindow(windows, HAMMERSPOON).h, 346)
+  shortcuts_leave_the_rows_given_unchanged = function()
+    local rows = { row("a", "blocked") }
+    picker.shortcuts(rows)
+    h.eq(rows[1].key, nil)
   end,
 
-  same_frame_compares_position_and_size = function()
-    local frame = { x = 576, y = 207, w = 768, h = 346, layer = 27 }
-    h.eq(picker.sameFrame(frame, { x = 576, y = 207, w = 768, h = 346, layer = 27 }), true)
-    h.eq(picker.sameFrame(frame, { x = 580, y = 209, w = 760, h = 342, layer = 27 }), false)
-    h.eq(picker.sameFrame(frame, nil), false)
+  css_colors_come_from_hammerspoon_colors = function()
+    h.eq(picker.css({ red = 1.0, green = 0.58, blue = 0.0, alpha = 1 }), "rgb(255, 148, 0)")
   end,
 
-  footer_covers_the_bottom_of_the_picker_with_the_text_centered = function()
-    local footer = picker.footer({ x = -1344, y = 207, w = 768, h = 346 }, { w = 362, h = 15 }, { w = 170, h = 15 })
-    h.eq(footer, {
-      frame = { x = -1344, y = 525, w = 768, h = 28 },
-      text = { x = 18, y = 7, w = 732, h = 15 },
-      hint = true,
-    })
+  the_model_carries_rows_legend_hint_and_colors = function()
+    local legend = { parts = { { status = "done", glyph = "✓", meaning = "done, not seen" } }, hint = "Sorted FIFO · Tab: LIFO, name" }
+    local rows = picker.shortcuts({ row("w1:p1", "done"), row("w1:p2", "idle", 1) })
+    local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } })
+    h.eq(model.rows[1], { pane = "w1:p1", title = "w1:p1", sub = "done · x", when = "done", status = "done", depth = 0, key = 1 })
+    h.eq(model.rows[2].depth, 1)
+    h.eq(model.placeholder, "Filter agents")
+    h.eq(model.legend, legend)
+    h.eq(model.colors, { done = "rgb(0, 255, 0)" })
   end,
 
-  footer_drops_the_hint_when_it_does_not_fit_next_to_the_legend = function()
-    local footer = picker.footer({ x = 0, y = 0, w = 576, h = 346 }, { w = 362, h = 15 }, { w = 170, h = 15 })
-    h.eq(footer.hint, false)
+  a_sub_session_row_is_lower_than_a_top_level_row = function()
+    h.eq(picker.ROW[1] < picker.ROW[0], true)
   end,
 
-  a_sub_session_row_is_smaller_and_indented = function()
-    local top, child = picker.look(nil), picker.look(1)
-    h.eq(top, picker.look(0))
-    h.eq(child.text < top.text and child.subText < top.subText, true)
-    h.eq(child.indent > top.indent, true)
-    h.eq({ top.badges, child.badges }, { "chooser", "child" })
-    h.eq(picker.CHILD_BADGE < 32, true)
+  the_frame_fits_the_rows_and_sits_centred_in_the_upper_screen = function()
+    local rows = { row("a", "idle"), row("b", "idle", 1), row("c", "idle", 1) }
+    local frame = picker.frame(SCREEN, rows)
+    h.eq(frame.h, picker.CHROME + picker.ROW[0] + 2 * picker.ROW[1])
+    h.eq(frame.w, picker.WIDTH)
+    h.eq(frame.x, (1440 - picker.WIDTH) // 2)
+    h.eq(frame.y > SCREEN.y and frame.y < SCREEN.y + SCREEN.h / 4, true)
+  end,
+
+  the_frame_stops_at_what_the_screen_holds = function()
+    local rows = {}
+    for i = 1, 60 do
+      rows[i] = row("p" .. i, "idle")
+    end
+    local frame = picker.frame(SCREEN, rows)
+    h.eq(frame.y + frame.h <= SCREEN.y + SCREEN.h, true)
+    h.eq(frame.h >= picker.CHROME + picker.ROW[0], true)
+  end,
+
+  the_frame_narrows_on_a_small_screen = function()
+    h.eq(picker.frame({ x = 0, y = 0, w = 500, h = 400 }, {}).w <= 500 - 2 * picker.MARGIN, true)
+  end,
+
+  the_page_has_one_place_for_the_model_in_its_script = function()
+    local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
+    local file = assert(io.open(here .. "/../HerdrJump.spoon/picker.html", "r"))
+    local page = file:read("a")
+    file:close()
+    local _, count = page:gsub("__MODEL__", "")
+    h.eq(count, 1)
+    h.eq(page:find("let model = __MODEL__;", 1, true) ~= nil, true)
+  end,
+
+  the_model_is_inlined_in_the_page_without_closing_its_script = function()
+    local page = picker.inline("<script>let model = __MODEL__;</script>", '{"t":"</script><b>","p":"100%"}')
+    h.eq(page, '<script>let model = {"t":"<\\/script><b>","p":"100%"};</script>')
   end,
 }

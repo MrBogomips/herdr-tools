@@ -11,10 +11,11 @@ Run five agents at once and they queue up for you: a permission here, a finished
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
 
-<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, waiting 12 and 3 minutes, then two finished agents with green check marks, waiting 25 and 4 minutes, then an idle agent and two working ones; a line at the bottom explains the icons and the sort in use" width="800">
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, then an idle agent; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it, the finished one with ⌘5; then a working agent; a line at the bottom explains the icons and the sort in use" width="800">
 
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
-first; then the others. Tab sorts newest first or by name.
+first, each with its ⌘ shortcut; then the others, sub-sessions under their master. Tab sorts newest
+first or by name.
 
 ## Standalone
 
@@ -53,7 +54,8 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 | Key | What happens |
 | --- | --- |
 | `⌃⌥⌘I` | Activates the terminal running Herdr (see [Terminals](#terminals)). Herdr keeps its focused pane, so you land where you left. From the terminal, goes back to the previous app. |
-| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, Enter to jump: Herdr focuses the agent's pane and the terminal window and tab running the Herdr client come forward. |
+| `⌃⌥⌘A` | The agents picker, most urgent first: `blocked` (waiting on a permission or a question), `done` (finished, not seen yet), `unknown`, `idle`, `working`; within a status the oldest change first (FIFO). Type to filter by title or folder, arrows to move, Enter or a click to jump: Herdr focuses the agent's pane and the terminal window and tab running the Herdr client come forward. Esc, a click elsewhere or `⌃⌥⌘A` again closes it. |
+| `⌘1`…`⌘9` (in the picker) | Jump to an agent that waits for you, `blocked` or `done` and not seen, sub-sessions included, numbered in list order. The others have no shortcut: pick them with the arrows, the filter or the mouse. A shortcut stays on its agent while you filter. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -128,7 +130,7 @@ a top-level agent.
 
 | What | A sub-session |
 | --- | --- |
-| Picker and menu | right under its master, indented; in the picker with a smaller title and icon. The group ranks as its most urgent member, quiet ones aside, and keeps the sort in use inside |
+| Picker and menu | right under its master, indented; in the picker on one compact line. The group ranks as its most urgent member, quiet ones aside, and keeps the sort in use inside |
 | Master's row | `+4 sub`, then how many sub-sessions are `blocked` and `done` |
 | `done` | quiet: listed with its icon, not counted, no sound |
 | `blocked` | counted, and chimes, like any agent |
@@ -277,10 +279,10 @@ spoon.HerdrJump:start()
   activated.
 - The icon is drawn with `hs.canvas` as a template image, so macOS tints it for light and dark
   menu bars; the count is the item's title. The status icons are drawn the same way, in color.
-- Tab is bound only while the picker is open, and released when it closes.
-- `hs.chooser` has no footer: the legend is a click-through `hs.canvas` drawn over the bottom of
-  the picker's window, which is sized to the agents plus room for it, and found through
-  `hs.window.list()`.
+- The picker is a page of its own, `picker.html`, in an `hs.webview` that takes the keyboard and
+  closes when it loses focus; the page filters, moves the selection and handles the keys, and
+  posts jump, close and sort back to Lua. `picker.lua` builds what it shows. `hs.chooser` could not
+  do it: its rows all have one height, and it numbers the first nine rows whatever they are.
 - It does not use `hs.socket` on Herdr's socket: in Hammerspoon 1.1.1, connecting `hs.socket` to
   a Unix socket aborts Hammerspoon (GCDAsyncSocket throws while building the peer's URL).
 
@@ -297,8 +299,8 @@ spoon.HerdrJump:start()
   (`herdr agent rename`) in a tab with another, unnamed agent is listed as its sub-session.
 - The sound plays only while Hammerspoon runs; with Herdr's own sound off, nothing chimes without
   it.
-- The picker is sized when it opens. With more agents than the screen holds, or new ones arriving
-  while it is open, the list scrolls and its last row can slide under the legend.
+- The picker grows with the list up to the screen's height, then the list scrolls. It opens on
+  the main screen (the one with the focused window).
 
 ## Troubleshooting
 
@@ -321,7 +323,7 @@ spoon.HerdrJump:start()
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, sounds, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker layout), Lua 5.4
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, sounds, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker model and size), Lua 5.4
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 

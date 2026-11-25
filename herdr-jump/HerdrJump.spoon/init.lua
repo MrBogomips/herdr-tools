@@ -27,6 +27,7 @@ local family = load("family")
 local herdr = load("herdr")
 local icon = load("icon")
 local locate = load("locate")
+local panel = load("panel")
 local picker = load("picker")
 local procs = load("procs")
 local since = load("since")
@@ -43,17 +44,10 @@ local HERDR_NOT_FOUND = "herdr not found: set spoon.HerdrJump.herdrBin (see Diag
 -- move to another terminal or quit after start(). Looking costs one ps run, about 0.1 s.
 local TERMINAL_RECHECK_SECONDS = 30
 
--- Styled text brings its own font and color, so the picker rows set both. Named system colors
--- follow the light or dark appearance.
-local SUBTEXT_FONT_SIZE = picker.look(0).subText
-local TEXT_COLOR = { list = "System", name = "labelColor" }
-local SUBTEXT_COLOR = { list = "System", name = "secondaryLabelColor" }
-local SEPARATOR_COLOR = { list = "System", name = "separatorColor" }
--- How long the legend footer follows the picker's window as it opens: reads, and seconds apart.
-local FOOTER_FOLLOW = { reads = 8, seconds = 0.05 }
--- The status icons, in points: the picker fits its row images to the row, the menu shows them as is;
--- a sub-session's icon is drawn smaller, at the right of its box.
-local BADGES = { chooser = { size = 32 }, menu = { size = 18 }, child = { size = 32, inner = picker.CHILD_BADGE } }
+-- The menu's status icons, in points.
+local BADGES = { menu = { size = 18 } }
+-- Where the picker's window goes when no screen is reported.
+local FALLBACK_SCREEN = { x = 0, y = 0, w = 1440, h = 900 }
 
 --- HerdrJump.herdrBin
 --- Variable
@@ -193,7 +187,7 @@ function obj:start()
     end
   end):start()
   self.badges = icon.badges(attention.COLOR, BADGES)
-  self:_newChooser()
+  self:_newPanel()
   if self.showMenubar then
     self.menubar = hs.menubar.new()
     if self.menubar then
@@ -255,8 +249,7 @@ function obj:stop()
       self[name] = nil
     end
   end
-  self:_hideFooter()
-  for _, name in ipairs({ "sortKey", "menubar", "chooser" }) do
+  for _, name in ipairs({ "menubar", "panel" }) do
     if self[name] then
       self[name]:delete()
       self[name] = nil
@@ -266,29 +259,32 @@ function obj:stop()
   return self
 end
 
--- The agents picker; its legend is a footer drawn while it is open (see _showFooter).
-function obj:_newChooser()
-  self.chooser = hs.chooser.new(function(choice)
-    if choice and choice.paneId then
-      self:jump(choice.paneId)
-    end
-  end)
-  self.chooser:searchSubText(true)
-  self.chooser:choices(function() return self:_choices() end)
-  self.chooser:placeholderText(attention.placeholder(self.order))
-  -- Tab changes the sort only while the picker is open; anywhere else it stays Tab.
-  self.sortKey = hs.hotkey.new({}, "tab", function() self:_cycleOrder() end)
-  self.chooser:showCallback(function()
-    if self.sortKey then
-      self.sortKey:enable()
-    end
-  end)
-  self.chooser:hideCallback(function()
-    if self.sortKey then
-      self.sortKey:disable()
-    end
-    self:_hideFooter()
-  end)
+-- The agents picker: picker.html in a window of its own (panel.lua); the page filters, selects and
+-- sends jump, close and order back.
+function obj:_newPanel()
+  local file = assert(io.open(hs.spoons.resourcePath("picker.html"), "r"))
+  local template = file:read("a")
+  file:close()
+  self.panel = panel.new(template, picker.inline, function(message) self:_onPicker(message) end)
+end
+
+function obj:_onPicker(message)
+  if message.action == "jump" and type(message.pane) == "string" then
+    self.panel:hide()
+    self:jump(message.pane)
+  elseif message.action == "close" then
+    self.panel:hide()
+  elseif message.action == "order" then
+    self:_cycleOrder()
+  end
+end
+
+-- The picker's model as JSON and its window, for the rows in the order in use.
+function obj:_pickerView()
+  local rows = picker.shortcuts(self:_rows())
+  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order), attention.COLOR)
+  local screen = hs.screen.mainScreen()
+  return picker.frame(screen and screen:frame() or FALLBACK_SCREEN, rows), hs.json.encode(model)
 end
 
 -- The sort chosen last, or defaultOrder; an unknown value is logged and ignored.
@@ -446,6 +442,7 @@ function obj:refresh(onDone)
       self.lastPollOk = true
     end
     self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
+    self:_updatePicker()
     if onDone then
       onDone()
     end
@@ -467,6 +464,19 @@ function obj:_chime(agents)
   self.chimeSnapshot = chime.snapshot(agents, statusOf)
 end
 
+-- The open picker follows each read; an error closes it, as an empty list would read "no agents".
+function obj:_updatePicker()
+  if not (self.panel and self.panel:visible()) then
+    return
+  end
+  if self.err then
+    self.panel:hide()
+    hs.alert.show("HerdrJump: " .. self.err)
+    return
+  end
+  self.panel:update(self:_pickerView())
+end
+
 -- Agents with such a status are never counted, so say it once in the log.
 function obj:_reportUnknownStatuses(agents)
   for _, status in ipairs(attention.unknownStatuses(agents)) do
@@ -480,104 +490,6 @@ end
 function obj:_rows()
   return attention.rows(self.agents, self.seen, self.order, since.describe(self.since, os.time()), self.family,
     not self.groupChildren)
-end
-
-local function styled(text, size, color, alignment, indent)
-  return hs.styledtext.new(text, {
-    font = { name = hs.styledtext.defaultFonts.system.name, size = size },
-    color = color,
-    paragraphStyle = { alignment = alignment, firstLineHeadIndent = indent or 0, headIndent = indent or 0 },
-  })
-end
-
--- The picker entries: the status icon, the title, the status and its age in the status color; a
--- sub-session smaller and indented (picker.look).
-function obj:_choices()
-  local choices = {}
-  for i, row in ipairs(self:_rows()) do
-    local look = picker.look(row.depth)
-    choices[i] = {
-      text = styled(row.text, look.text, TEXT_COLOR, nil, look.indent),
-      subText = styled(row.when, look.subText, attention.COLOR[row.status], nil, look.indent)
-        .. styled(row.subText:sub(#row.when + 1), look.subText, SUBTEXT_COLOR, nil, look.indent),
-      image = self.badges[look.badges][row.status],
-      paneId = row.paneId,
-    }
-  end
-  return choices
-end
-
--- The legend as styled text: each glyph in its status color; and the hint (order, Tab), to be
--- right-aligned.
-function obj:_legendTexts()
-  local legend = attention.legend(self.order)
-  local text = styled("", SUBTEXT_FONT_SIZE, TEXT_COLOR)
-  for i, part in ipairs(legend.parts) do
-    text = text .. styled((i > 1 and "    " or "") .. part.glyph, SUBTEXT_FONT_SIZE, attention.COLOR[part.status])
-      .. styled(" " .. part.meaning, SUBTEXT_FONT_SIZE, TEXT_COLOR)
-  end
-  return text, styled(legend.hint, SUBTEXT_FONT_SIZE, SUBTEXT_COLOR, "right")
-end
-
--- The legend, as one line over the free space at the bottom of the open picker: a choice row would
--- be selectable. The canvas lets clicks through and goes away with the picker. The picker's window
--- can reach the window list a moment after it opens, and zooms in, so the footer follows its frame
--- for a moment.
-function obj:_showFooter()
-  self:_hideFooter()
-  self:_drawFooter()
-  local reads = 0
-  self.footerTimer = hs.timer.doEvery(FOOTER_FOLLOW.seconds, function()
-    reads = reads + 1
-    self:_drawFooter()
-    if reads >= FOOTER_FOLLOW.reads then
-      self.footerTimer:stop()
-      self.footerTimer = nil
-      if self.footer == nil then
-        self.logger.w("picker window not found: no legend")
-      end
-    end
-  end)
-end
-
--- Draws the footer at the bottom of the picker window, unless it is there already or the window is
--- not on screen.
-function obj:_drawFooter()
-  local window = picker.chooserWindow(hs.window.list(true), hs.processInfo.processID)
-  if window == nil or picker.sameFrame(window, self.footerWindow) then
-    return
-  end
-  local footer = self.footer or hs.canvas.new({ x = window.x, y = window.y, w = 1, h = 1 })
-  local legend, hint = self:_legendTexts()
-  local layout = picker.footer(window, footer:minimumTextSize(legend), footer:minimumTextSize(hint))
-  local elements = {
-    {
-      type = "segments", action = "stroke", strokeWidth = 1, strokeColor = SEPARATOR_COLOR,
-      coordinates = { { x = 0, y = 0.5 }, { x = layout.frame.w, y = 0.5 } },
-    },
-    { type = "text", text = legend, frame = layout.text },
-  }
-  if layout.hint then
-    elements[#elements + 1] = { type = "text", text = hint, frame = layout.text }
-  end
-  footer:frame(layout.frame)
-  footer:level(window.layer + 1)
-  footer:behaviorAsLabels({ "canJoinAllSpaces", "fullScreenAuxiliary" })
-  footer:replaceElements(elements)
-  footer:show()
-  self.footer, self.footerWindow = footer, window
-end
-
-function obj:_hideFooter()
-  if self.footerTimer then
-    self.footerTimer:stop()
-    self.footerTimer = nil
-  end
-  if self.footer then
-    self.footer:delete()
-    self.footer = nil
-  end
-  self.footerWindow = nil
 end
 
 -- The hs.menubar entry of an attention.menu item: its status icon, a jump or a sort when clicked.
@@ -676,12 +588,8 @@ function obj:setOrder(order)
   end
   self.order = order
   hs.settings.set(ORDER_KEY, order)
-  if self.chooser then
-    self.chooser:placeholderText(attention.placeholder(order))
-    if self.chooser:isVisible() then
-      self.chooser:refreshChoicesCallback(true)
-      self:_showFooter()
-    end
+  if self.panel then
+    self.panel:update(self:_pickerView())
   end
   return self
 end
@@ -718,11 +626,15 @@ end
 
 --- HerdrJump:showAgents()
 --- Method
---- Opens the agents picker, in the chosen order (oldest wait first by default); the list is
---- refreshed once while it is open.
+--- Opens the agents picker, in the chosen order (oldest wait first by default), or closes it when
+--- open; the list follows every read while it is open.
 function obj:showAgents()
-  if self.chooser == nil then
+  if self.panel == nil then
     hs.alert.show("HerdrJump is stopped: call spoon.HerdrJump:start()")
+    return
+  end
+  if self.panel:visible() then
+    self.panel:hide()
     return
   end
   if self.herdrInfo.path == nil and not self:_connect(true) then
@@ -739,23 +651,8 @@ function obj:showAgents()
     self:refresh()
     return
   end
-  local screen = hs.screen.mainScreen()
-  self.chooser:rows(picker.rows(#self.agents, picker.maxRows(screen and screen:frame().h or 0)))
-  self.chooser:refreshChoicesCallback()
-  self.chooser:show()
-  self:_showFooter()
-  self:refresh(function()
-    if not (self.chooser and self.chooser:isVisible()) then
-      return
-    end
-    if self.err then
-      -- An empty picker would look like "no agents": close it and say why.
-      self.chooser:hide()
-      hs.alert.show("HerdrJump: " .. self.err)
-      return
-    end
-    self.chooser:refreshChoicesCallback(true)
-  end)
+  self.panel:show(self:_pickerView())
+  self:refresh()
 end
 
 --- HerdrJump:jump(paneId)

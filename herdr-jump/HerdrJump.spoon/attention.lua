@@ -327,7 +327,7 @@ function M.legend(order)
   }
 end
 
--- The chooser's search field text while nothing is typed.
+-- The picker's filter field text while nothing is typed.
 function M.placeholder(order)
   return ("Filter agents · sorted %s (Tab to change)"):format(ORDER_NAME[M.order(order)])
 end

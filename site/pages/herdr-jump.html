@@ -15,9 +15,9 @@
       <a class="btn" href="#use-cases">Use cases</a>
     </div>
     <figure>
-      <img class="shot" src="img/herdr-jump/picker.png" width="1676" height="1084"
-        alt="The agents picker: two blocked agents with orange pause icons on top, waiting 12 and 3 minutes, then two finished agents with green check marks, waiting 25 and 4 minutes, then an idle agent and two working ones; a line at the bottom explains the icons and the sort in use">
-      <figcaption>The picker (⌃⌥⌘A, from any app): blocked first, then done, each oldest first. Tab sorts newest first or by name.</figcaption>
+      <img class="shot" src="img/herdr-jump/picker.png" width="1720" height="1148"
+        alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, then an idle agent; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it, the finished one with ⌘5; then a working agent; a line at the bottom explains the icons and the sort in use">
+      <figcaption>The picker (⌃⌥⌘A, from any app): blocked first, then done, each oldest first, each a ⌘ key away; sub-sessions under their master. Tab sorts newest first or by name.</figcaption>
     </figure>
   </header>
 </div>
@@ -63,6 +63,8 @@
           <tbody>
             <tr><td><kbd>⌃⌥⌘A</kbd></td><td>The agents picker, most urgent first: blocked, done, unknown, idle, working; within a status the
               oldest change first. Type to filter by title or folder, Enter to jump.</td></tr>
+            <tr><td><kbd>⌘1</kbd>…<kbd>⌘9</kbd> in the picker</td><td>Jump to an agent that waits for you, blocked or done; the others have no
+              shortcut, so the keys stay on what needs you.</td></tr>
             <tr><td><kbd>⌃⌥⌘I</kbd></td><td>Activates the terminal running Herdr, where it keeps its focused pane; from the terminal, back to the
               previous app.</td></tr>
             <tr><td><kbd>Tab</kbd> in the picker</td><td>Next sort: FIFO (default), LIFO, then by name. The filter you typed stays.</td></tr>
@@ -132,7 +134,7 @@
         <div class="table-wrap"><table>
           <thead><tr><th>What</th><th>A sub-session</th></tr></thead>
           <tbody>
-            <tr><td>Picker and menu</td><td>right under its master, indented; in the picker with a smaller title and icon</td></tr>
+            <tr><td>Picker and menu</td><td>right under its master, indented; in the picker on one compact line</td></tr>
             <tr><td>Master's row</td><td><code>+4 sub</code>, then how many are blocked and done</td></tr>
             <tr><td><code>done</code></td><td>quiet: listed, not counted, no sound</td></tr>
             <tr><td><code>blocked</code></td><td>counted, and chimes, like any agent</td></tr>
