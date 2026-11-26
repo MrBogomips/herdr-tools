@@ -113,7 +113,7 @@ Click it for the drop-down: the agents in the picker's order, each with its icon
 **Sort by** (FIFO, LIFO, by name; the checked one is in use), **Legend** and **Diagnostics** (see
 [Troubleshooting](#troubleshooting)).
 
-<img src="docs/menu.png" alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review and its bookmark color; then the Sort by, Legend and Diagnostics submenus" width="426">
+<img src="docs/menu.png" alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review and its bookmark color; then the Sort by, Legend and Diagnostics submenus" width="479">
 
 macOS adds the item left of the other menu bar icons, on the main display. The count can lag by
 up to `pollSeconds`.
