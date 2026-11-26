@@ -50,7 +50,7 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
   count and, with the sound on, plays nothing: its master hears about it. One that waits on a
   permission counts and chimes like any agent, since only you can answer it.
 - **You looked at the result but have not reviewed it yet.** Once seen, a `done` agent turns
-  `idle` and looks finished. Click the bookmark after its title in the picker (or press `⌘R`) to
+  `idle` and looks finished. Click the bookmark after its title in the picker (or press Space) to
   keep it "to review": a pink bookmark and "to review since 10:02", above the idle agents while it
   is idle. Click again for yellow, then teal, to tell your marks apart; once more clears it. Any
   agent can be marked, a working one too, and the bookmark stays while it works.
@@ -64,7 +64,7 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 | `⌘1`…`⌘9` (in the picker) | Jump to an agent that waits for you, `blocked` or `done` and not seen, sub-sessions included, numbered in list order. The others have no shortcut: pick them with the arrows, the filter or the mouse. A shortcut stays on its agent while you filter. |
 | `⌥↑` `⌥↓` (in the picker) | Move over the top-level rows only: masters and agents without sub-sessions. The sub-sessions stay on screen and are skipped; from one, `⌥↑` goes back to its master. With `groupChildren = false` every row is top-level, so they move like the plain arrows. |
 | `⇧↑` `⇧↓` (in the picker) | Move over the agents that wait for you only, `blocked` or `done` and not seen, sub-sessions included, past the ninth too (the rows with no `⌘` key left). |
-| `⌘R` or a click on the bookmark (in the picker) | Mark the agent to review in pink, then move the mark to yellow, then teal, then clear it (see [To review](#to-review)). Any agent can be marked, whatever its status; marking a `done` one also counts as seeing it. A click on the bookmark does not jump. |
+| `Space`, `⌘R` or a click on the bookmark (in the picker) | Mark the selected agent to review in pink, then move the mark to yellow, then teal, then clear it (see [To review](#to-review)). Any agent can be marked, whatever its status; marking a `done` one also counts as seeing it. Space marks only while the filter is empty; with text in it, Space types a space (a filter can hold several words) and `⌘R` marks. The chip on the selected row names the key that marks it now (`␣` or `⌘R`). A click on the bookmark does not jump. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -130,7 +130,7 @@ counter goes backwards (Herdr restarted and reused the pane id) is forgotten.
 ### To review
 
 A `done` agent you have looked at turns `idle`, which reads as "can be closed" even when you have
-not reviewed its work yet. Mark it to review: the bookmark after its title, or `⌘R` on the
+not reviewed its work yet. Mark it to review: the bookmark after its title, or Space (filter empty) or `⌘R` on the
 selected row. Each further click moves the mark to the next color, pink, yellow, teal, and the
 one after teal clears it: three colors to sort your marks by whatever you like (urgent, waiting
 for someone, to discuss). Any agent can be marked, a working or blocked one too. A marked agent
@@ -141,7 +141,7 @@ or done, it ranks with that status and keeps the bookmark. Masters add "N to rev
 sub-sessions, and the menu bar drop-down ends a marked row with "· to review (yellow)". A mark
 never counts, chimes or gets a `⌘` key.
 
-The mark goes when you click the bookmark (or `⌘R`) past teal, when the pane closes, or when Herdr
+The mark goes when you click the bookmark (or press Space or `⌘R`) past teal, when the pane closes, or when Herdr
 restarts (its pane ids are reused; a restart goes unnoticed on an agent that never finished since it was marked). The marks live in Hammerspoon's settings
 (`HerdrJump.review`) and survive a reload; a mark stored by an older version reads as pink.
 `spoon.HerdrJump:toggleReview(paneId)` does the same as a click from a script.
