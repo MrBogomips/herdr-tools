@@ -13,6 +13,18 @@ local function fakeRun(result, err, detail)
   return runs
 end
 
+-- Like fakeRun, with one canned outcome per command: outcomes.agent and outcomes.pane are
+-- { result, err, detail } for `herdr agent …` and `herdr pane …`.
+local function fakeRuns(outcomes)
+  local runs = {}
+  herdr.run = function(conn, args, callback)
+    runs[#runs + 1] = { conn = conn, args = args }
+    local outcome = outcomes[args[1]] or {}
+    callback(outcome[1], outcome[2], outcome[3])
+  end
+  return runs
+end
+
 -- Calls fn(callback) and returns every argument the callback received.
 local function capture(fn)
   local got
@@ -42,10 +54,13 @@ end
 return {
   listAgents_returns_the_listed_agents = function()
     local list = { { pane_id = "w1:p1", agent_status = "blocked" } }
-    local runs = fakeRun({ type = "agent_list", agents = list }, nil)
+    local runs = fakeRuns({
+      agent = { { type = "agent_list", agents = list } },
+      pane = { { type = "pane_list", panes = {} } },
+    })
     local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
-    h.eq({ got[1], got[2] }, { list, nil })
-    h.eq(runs, { { conn = CONN, args = { "agent", "list" } } })
+    h.eq({ got[1], got[2], got[3] }, { list, nil, nil })
+    h.eq(runs[1], { conn = CONN, args = { "agent", "list" } })
   end,
 
   listAgents_passes_on_a_failed_run = function()
@@ -61,7 +76,10 @@ return {
   end,
 
   listAgents_reports_how_many_malformed_agents_it_dropped = function()
-    fakeRun({ type = "agent_list", agents = { { pane_id = "w1:p1" }, "junk" } }, nil)
+    fakeRuns({
+      agent = { { type = "agent_list", agents = { { pane_id = "w1:p1" }, "junk" } } },
+      pane = { { type = "pane_list", panes = {} } },
+    })
     local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
     h.eq({ got[1], got[2], got[3] }, { { { pane_id = "w1:p1" } }, nil, "dropped 1 malformed agent(s)" })
   end,
@@ -70,6 +88,49 @@ return {
     fakeRun({ type = "pane_info" }, nil)
     local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
     h.eq({ got[1], got[2] }, { nil, "unexpected reply from Herdr" })
+  end,
+
+  listAgents_adds_the_label_of_each_agent_pane = function()
+    local list = { { pane_id = "w1:p1" }, { pane_id = "w1:p2" } }
+    local runs = fakeRuns({
+      agent = { { type = "agent_list", agents = list } },
+      pane = { { type = "pane_list", panes = {
+        { pane_id = "w1:p2", label = "pr59-design" },
+        { pane_id = "w1:p9", label = "nvim sidebar" },
+      } } },
+    })
+    local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
+    h.eq({ got[1], got[2], got[3] }, { { { pane_id = "w1:p1" }, { pane_id = "w1:p2", pane_label = "pr59-design" } }, nil, nil })
+    h.eq(runs, { { conn = CONN, args = { "agent", "list" } }, { conn = CONN, args = { "pane", "list" } } })
+    -- The decoded agents are left as they were.
+    h.eq(list[2], { pane_id = "w1:p2" })
+  end,
+
+  listAgents_still_returns_the_agents_when_the_pane_list_fails = function()
+    local list = { { pane_id = "w1:p1" } }
+    fakeRuns({ agent = { { type = "agent_list", agents = list } }, pane = { nil, "Herdr is not answering", "timed out" } })
+    local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
+    h.eq({ got[1], got[2], got[3] }, { list, nil, "pane labels: Herdr is not answering (timed out)" })
+  end,
+
+  listAgents_ignores_a_reply_that_is_not_a_pane_list = function()
+    local list = { { pane_id = "w1:p1" } }
+    fakeRuns({ agent = { { type = "agent_list", agents = list } }, pane = { { type = "agent_list" } } })
+    local got = capture(function(cb) herdr.listAgents(CONN, cb) end)
+    h.eq({ got[1], got[2], got[3] }, { list, nil, "pane labels: unexpected reply from Herdr" })
+  end,
+
+  paneLabels_keeps_only_text_labels_of_well_formed_panes = function()
+    h.eq(herdr.paneLabels({ type = "pane_list", panes = {
+      { pane_id = "w1:p1", label = "a" },
+      { pane_id = "w1:p2", label = "" },
+      { pane_id = "w1:p3" },
+      { pane_id = "-x:p4", label = "bad id" },
+      { pane_id = "w1:p5", label = 7 },
+      "junk",
+    } }), { ["w1:p1"] = "a" })
+    h.eq(herdr.paneLabels({ type = "pane_list" }), {})
+    h.eq({ herdr.paneLabels({ type = "agent_list" }) }, { nil, "unexpected reply from Herdr" })
   end,
 
   focus_runs_agent_focus_on_the_pane_and_reports_success_as_nil = function()
