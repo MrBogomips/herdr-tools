@@ -94,6 +94,26 @@ test("a marked row offers the next color until the last one", () => {
   eq(reviewAction({ mark: 1 }, 3), "next color");
   eq(reviewAction({ mark: 2 }, 3), "next color");
 });
+const key = (k, mods = {}) => Object.assign({ key: k, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false }, mods);
+test("Space marks only while the filter is empty", () => {
+  eq(isReviewKey(key(" "), ""), true);
+  eq(isReviewKey(key(" "), "acme"), false);
+});
+test("Space with a modifier never marks", () => {
+  eq(isReviewKey(key(" ", { shiftKey: true }), ""), false);
+  eq(isReviewKey(key(" ", { metaKey: true }), ""), false);
+  eq(isReviewKey(key(" ", { altKey: true }), ""), false);
+  eq(isReviewKey(key(" ", { ctrlKey: true }), ""), false);
+});
+test("⌘R marks whatever the filter holds", () => {
+  eq(isReviewKey(key("r", { metaKey: true }), "acme"), true);
+  eq(isReviewKey(key("R", { metaKey: true }), ""), true);
+  eq(isReviewKey(key("r"), ""), false);
+});
+test("the chip names Space while the filter is empty, ⌘R otherwise", () => {
+  eq(reviewKeyLabel(""), "␣");
+  eq(reviewKeyLabel("acme"), "⌘R");
+});
 test("a row in the last color offers to clear the mark", () => {
   eq(reviewAction({ mark: 3 }, 3), "reviewed");
   eq(reviewAction({ mark: 1 }, 1), "reviewed");

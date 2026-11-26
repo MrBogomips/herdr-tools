@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.7.0"
+obj.version = "0.8.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -681,7 +681,7 @@ end
 --- HerdrJump:toggleReview(paneId)
 --- Method
 --- Marks the agent to review, moves its mark to the next color, or clears it after the last one: the
---- picker's bookmark and ⌘R. Any agent can be marked; a done one counts as seen then. The mark stays
+--- picker's bookmark, Space (filter empty) and ⌘R. Any agent can be marked; a done one counts as seen then. The mark stays
 --- while the agent works.
 function obj:toggleReview(paneId)
   local found

@@ -5,7 +5,8 @@
      Messages to Hammerspoon go through the "herdrJump" port: jump, close, order, review.
      The arrows move over every row; with ⌥ over top-level rows, with ⇧ over the waiting ones.
      The bookmark after a title marks the agent to review, moves the mark to the next color, or
-     clears it after the last: a click on it, or ⌘R on the selected row. -->
+     clears it after the last: a click on it, or on the selected row Space (while the filter is
+     empty) or ⌘R. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -98,6 +99,19 @@ function reviewAction(row, count) {
   if (mark === 0) return "to review";
   return mark < count ? "next color" : "reviewed";
 }
+
+// Whether a keydown marks the selected row: ⌘R always; Space alone while the filter is empty
+// (with text in it, Space types a space, which a multi-word filter needs).
+function isReviewKey(event, filterText) {
+  if (event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === "r") return true;
+  const bare = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+  return bare && event.key === " " && filterText.trim() === "";
+}
+
+// The key the chip of the selected row names: the one that marks it now.
+function reviewKeyLabel(filterText) {
+  return filterText.trim() === "" ? "␣" : "⌘R";
+}
 </script>
 <script>
 let model = __MODEL__;
@@ -132,7 +146,9 @@ function bookmark(mark) {
     `stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 }
 
-const TIPS = { "to review": "To review (⌘R)", "next color": "Next color (⌘R)", reviewed: "Reviewed (⌘R)" };
+const TIPS = {
+  "to review": "To review (Space or ⌘R)", "next color": "Next color (Space or ⌘R)", reviewed: "Reviewed (Space or ⌘R)",
+};
 
 // The bookmark after a title, a button that marks, changes the color or clears.
 function markButton(row) {
@@ -143,7 +159,7 @@ function markButton(row) {
 // On the selected row, what ⌘R does there.
 function reviewChip(row) {
   const action = row.pane === selected && reviewAction(row, model.markColors.length);
-  return action ? `<span class="act">⌘R ${action}</span>` : "";
+  return action ? `<span class="act">${reviewKeyLabel(filter.value)} ${action}</span>` : "";
 }
 
 function review(pane) {
@@ -211,10 +227,10 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     return;
   }
-  // Always taken, so that ⌘R never reloads the page.
-  if (event.metaKey && event.key.toLowerCase() === "r") {
+  // ⌘R is always taken, so that it never reloads the page; Space only while the filter is empty.
+  if (isReviewKey(event, filter.value) || (event.metaKey && event.key.toLowerCase() === "r")) {
     event.preventDefault();
-    if (selected) review(selected);
+    if (isReviewKey(event, filter.value) && selected) review(selected);
     return;
   }
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
