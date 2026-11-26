@@ -138,8 +138,10 @@
         <h2 id="subsessions-title">Sub-sessions and sound</h2>
         <p>An agent that starts helpers with <code>herdr agent start &lt;name&gt;</code> gives each one a Herdr name; the agent
           itself has none. So in a tab, the named agents are sub-sessions of the only unnamed one; a helper in a tab of its
-          own belongs to the only unnamed agent of its workspace whose folder holds its folder. Anything ambiguous stays
-          top-level.</p>
+          own belongs to the only unnamed agent of its workspace whose folder holds its folder. When
+          <code>herdr agent start</code> times out and the helper comes up unnamed, the only unnamed agent of the tab whose
+          pane has no label is the master (session-hub labels the helper's pane); failing that, the oldest unnamed agent of the tab is the master when its folder holds the folders of all the others.
+          Anything else ambiguous stays top-level.</p>
         <div class="table-wrap"><table>
           <thead><tr><th>What</th><th>A sub-session</th></tr></thead>
           <tbody>
@@ -180,7 +182,7 @@ sh install.sh --ref &lt;branch-or-tag&gt;</code></pre>
           <b>Automation: Hammerspoon → iTerm2</b> (or <b>→ Terminal</b>) to select the Herdr tab.</p></div>
         <p><b>Standalone.</b> herdr-jump needs only a running Herdr server: no Herdr plugin, from herdr-tools or anywhere
           else, and nothing to change in your config, spaces or tabs. It reads the server with the <code>herdr</code> command
-          that ships with Herdr (<code>herdr agent list</code>, then <code>herdr agent focus</code> on a jump), so it works with
+          that ships with Herdr (<code>herdr agent list</code> and <code>herdr pane list</code>, then <code>herdr agent focus</code> on a jump), so it works with
           any Herdr setup, plugins or none.</p>
         <p>It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr, so the plugin marketplace does not list
           it.</p>

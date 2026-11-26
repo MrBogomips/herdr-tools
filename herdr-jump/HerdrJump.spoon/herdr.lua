@@ -20,6 +20,10 @@ function M.listArgs()
   return { "agent", "list" }
 end
 
+function M.paneListArgs()
+  return { "pane", "list" }
+end
+
 function M.focusArgs(paneId)
   if type(paneId) ~= "string" or not paneId:match(PANE_ID) then
     return nil, "not a Herdr pane id: " .. tostring(paneId)
@@ -183,7 +187,50 @@ function M.run(conn, args, callback, timeoutSeconds)
   end
 end
 
+-- The label of each pane of a pane_list result that has one: pane id -> label.
+function M.paneLabels(result)
+  if type(result) ~= "table" or result.type ~= "pane_list" then
+    return nil, UNEXPECTED
+  end
+  local labels = {}
+  for _, pane in ipairs(type(result.panes) == "table" and result.panes or {}) do
+    if type(pane) == "table" and type(pane.pane_id) == "string" and pane.pane_id:match(PANE_ID)
+      and text(pane.label) then
+      labels[pane.pane_id] = pane.label
+    end
+  end
+  return labels
+end
+
+-- New agent tables, each with the label of its pane as pane_label when it has one.
+local function labelled(agents, labels)
+  local out = {}
+  for i, agent in ipairs(agents) do
+    local label = labels[agent.pane_id]
+    if label then
+      local copy = {}
+      for k, v in pairs(agent) do
+        copy[k] = v
+      end
+      copy.pane_label = label
+      out[i] = copy
+    else
+      out[i] = agent
+    end
+  end
+  return out
+end
+
+local function joined(a, b)
+  if a and b then
+    return a .. "; " .. b
+  end
+  return a or b
+end
+
 -- callback(agents, err, detail): detail is for the log (what went wrong, what was dropped).
+-- The agents carry the label of their pane (pane_label), which names a helper Herdr left unnamed
+-- (see family.lua); without the pane list they come back unlabelled, and detail says why.
 function M.listAgents(conn, callback)
   M.run(conn, M.listArgs(), function(result, err, detail)
     if err then
@@ -195,7 +242,19 @@ function M.listAgents(conn, callback)
       callback(nil, invalid)
       return
     end
-    callback(agents, nil, dropped > 0 and ("dropped %d malformed agent(s)"):format(dropped) or nil)
+    local note = dropped > 0 and ("dropped %d malformed agent(s)"):format(dropped) or nil
+    M.run(conn, M.paneListArgs(), function(panes, paneErr, paneDetail)
+      local labels, badPanes = nil, paneErr
+      if not paneErr then
+        labels, badPanes = M.paneLabels(panes)
+      end
+      if badPanes then
+        local why = paneDetail and ("%s (%s)"):format(badPanes, paneDetail) or badPanes
+        callback(agents, nil, joined(note, "pane labels: " .. why))
+        return
+      end
+      callback(labelled(agents, labels), nil, note)
+    end)
   end)
 end
 

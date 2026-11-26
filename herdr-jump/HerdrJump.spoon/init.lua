@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.8.0"
+obj.version = "0.9.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -432,9 +432,11 @@ function obj:refresh(onDone)
       self.chimeSnapshot = nil
       self.lastPollOk = false
     else
-      if detail then
+      -- Like an error, a detail (dropped agents, no pane labels) is logged when it starts or changes.
+      if detail and detail ~= self.lastDetail then
         self.logger.w("agent list: " .. detail)
       end
+      self.lastDetail = detail
       self:_reportUnknownStatuses(agents)
       self.agents, self.err = agents, nil
       if self:_freshTerminal() == nil then

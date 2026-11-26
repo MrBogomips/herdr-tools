@@ -22,8 +22,8 @@ Tab sorts newest first or by name.
 
 HerdrJump needs only a running Herdr server. No Herdr plugin, from this repository or anywhere
 else, and nothing to set up inside Herdr: your config, spaces and tabs stay as they are. It reads
-the server with two commands of the `herdr` binary that ships with Herdr, `herdr agent list` every
-`pollSeconds` and `herdr agent focus` on a jump (see [How it works](#how-it-works)), so it works
+the server with three commands of the `herdr` binary that ships with Herdr, `herdr agent list` and
+`herdr pane list` every `pollSeconds`, and `herdr agent focus` on a jump (see [How it works](#how-it-works)), so it works
 with any Herdr setup, plugins or none. One line installs it, and the next key press switches agents.
 
 It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has no
@@ -150,15 +150,27 @@ restarts (its pane ids are reused; a restart goes unnoticed on an agent that nev
 
 An agent that starts helpers with `herdr agent start <name>` (as session-hub does, or a script
 of yours) gives each one a Herdr name; the agent itself has none. HerdrJump reads that from
-`herdr agent list` alone:
+`herdr agent list`:
 
 - in a tab, the named agents are sub-sessions of the only unnamed agent there (helpers split into
   panes next to their master);
 - a named agent in a tab with no unnamed agent (helpers in tabs of their own) is a sub-session of
   the only unnamed agent of its workspace whose folder holds the helper's folder.
 
-Anything ambiguous, such as two unnamed agents in the tab or two masters on the same folder, stays
-a top-level agent.
+When `herdr agent start` times out, the helper often comes up anyway and Herdr detects it, but
+without a name. Two fallbacks cover it:
+
+- in a tab where only one unnamed agent has a pane without a label (`herdr pane list`), that one
+  is the master and the others are its sub-sessions, as session-hub labels a helper's pane before
+  the start. A label alone never makes an agent a sub-session, since you may label panes of your
+  own: a labelled master keeps its helpers;
+- in a tab with several unnamed agents, the oldest one is the master when its folder holds the
+  folder of every other agent of the tab, and is not the same folder. Herdr numbers panes in order
+  within a workspace (`w12:p2K` before `w12:p3H`), which tells the oldest. The numbering is not a
+  documented contract, so the folder check has to agree.
+
+Anything else ambiguous, such as two unnamed agents in one folder or two masters on the same
+folder, stays a top-level agent.
 
 | What | A sub-session |
 | --- | --- |
@@ -303,7 +315,8 @@ spoon.HerdrJump:start()
 ## How it works
 
 - Every `pollSeconds` it runs `herdr agent list` (about 0.1 s), which prints the agents as JSON on
-  stdout; errors come as a JSON envelope on stderr. Herdr can push status events, but only one
+  stdout; errors come as a JSON envelope on stderr. Then `herdr pane list` for the pane labels that
+  name helpers (see [Sub-sessions](#sub-sessions)); if it fails, the agents are used without them. Herdr can push status events, but only one
   pane per subscription, so polling is simpler.
 - A jump runs `herdr agent focus <pane id>`, then finds the Herdr client with `ps`, climbs its
   parent processes to the app that runs it (apps come from `hs.application.runningApplications()`),
