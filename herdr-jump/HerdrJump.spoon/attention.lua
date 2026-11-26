@@ -29,9 +29,14 @@ M.COLOR = {
   idle = { red = 0.56, green = 0.56, blue = 0.58, alpha = 1 },
   working = { red = 0.04, green = 0.52, blue = 1.0, alpha = 1 },
 }
--- The bookmark of an agent marked to review. Not a status color: icon.badges() draws one icon per
--- entry of COLOR.
-M.MARK_COLOR = { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 }
+-- The bookmark colors of an agent marked to review, in the order ⌘R cycles them (review.lua), and
+-- their names in the menu. Not status colors: icon.badges() draws one icon per entry of COLOR.
+M.MARK_COLORS = {
+  { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 },
+  { red = 1.0, green = 0.8, blue = 0.0, alpha = 1 },
+  { red = 0.0, green = 0.75, blue = 0.72, alpha = 1 },
+}
+M.MARK_NAMES = { "pink", "yellow", "teal" }
 
 -- The sort orders, in the order Tab cycles them. state_change_seq is one counter for all panes, so
 -- it orders the queue exactly. fifo: oldest change first; lifo: newest first; name: by title.
@@ -297,7 +302,8 @@ end
 -- and how long it has lasted ("blocked 12m"); a waiting agent's subText also says since when.
 -- With a family (family.of()), sub-sessions follow their master at depth 1 (the caller indents
 -- them), and the master's subText sums them up; `flat` keeps one list and names the master in the
--- subText instead. A marked agent's row has marked = true and says since when it is to review.
+-- subText instead. A marked agent's row has marked = true, markColor (1 to #MARK_COLORS) and says
+-- since when it is to review.
 function M.rows(agents, seen, order, times, fam, flat, marked)
   times = times or {}
   local byPane = {}
@@ -338,6 +344,7 @@ function M.rows(agents, seen, order, times, fam, flat, marked)
       age = age,
       depth = depth,
       marked = mark and true or nil,
+      markColor = mark and (mark.color or 1) or nil,
     }
   end
   return rows
@@ -399,7 +406,7 @@ function M.menu(rows, err, order)
   for i, row in ipairs(rows) do
     local title = row.age and (row.text .. " · " .. row.age) or row.text
     if row.marked then
-      title = title .. " · to review"
+      title = ("%s · to review (%s)"):format(title, M.MARK_NAMES[row.markColor or 1])
     end
     items[i] = { title = title, tooltip = row.subText, paneId = row.paneId, status = row.status, indent = row.depth }
   end
@@ -410,7 +417,7 @@ function M.menu(rows, err, order)
   for i, part in ipairs(legendParts()) do
     legend[i] = { title = part.meaning, status = part.status }
   end
-  legend[#legend + 1] = { title = MARK_PART.meaning }
+  legend[#legend + 1] = { title = MARK_PART.meaning .. ": " .. table.concat(M.MARK_NAMES, ", ") }
   items[#items + 1] = { title = "-" }
   items[#items + 1] = { title = "Sort by", menu = sorts }
   items[#items + 1] = { title = "Legend", menu = legend }

@@ -16,8 +16,8 @@
     </div>
     <figure>
       <img class="shot" src="img/herdr-jump/picker.png" width="1720" height="1148"
-        alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, each with an outlined bookmark after its title; then an idle agent with a pink bookmark, to review since 18:04; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it: the finished one with ⌘5, an idle one with a pink bookmark, a working one; then a working agent that keeps its pink bookmark; a line at the bottom explains the icons, the bookmark, the sort in use and the arrow keys">
-      <figcaption>The picker (⌃⌥⌘A, from any app): blocked first, then done, each oldest first, each a ⌘ key away; then the agents marked to review (pink bookmark); sub-sessions under their master. Tab sorts newest first or by name.</figcaption>
+        alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, each with an outlined bookmark after its title; then an idle agent with a pink bookmark, to review since 12:37; then a working agent coordinating a release, with an outlined bookmark and its three sub-sessions on compact indented lines under it: the finished one with ⌘5, an idle one with a yellow bookmark, a working one; then a working agent marked with a teal bookmark; a line at the bottom explains the icons, the three bookmark colors, the sort in use and the arrow keys">
+      <figcaption>The picker (⌃⌥⌘A, from any app): blocked first, then done, each oldest first, each a ⌘ key away; then the agents marked to review (a pink, yellow or teal bookmark); sub-sessions under their master. Tab sorts newest first or by name.</figcaption>
     </figure>
   </header>
 </div>
@@ -51,7 +51,8 @@
           <div><h3>Sub-sessions, quietly</h3><p>Helpers an agent started next to it are listed under it, indented.
             One that is done stays out of the count and silent; one waiting on a permission still calls you.</p></div>
           <div><h3>Seen, not reviewed</h3><p>A finished agent you looked at turns idle. Click its bookmark, or
-            <kbd>⌘R</kbd>, to keep it “to review” above the idle ones until you clear it.</p></div>
+            <kbd>⌘R</kbd>, to keep it “to review” above the idle ones; click again for yellow, then teal, to tell
+            your marks apart.</p></div>
           <div><h3>Back and forth</h3><p><kbd>⌃⌥⌘I</kbd> brings your terminal forward on the window you used last; pressed
             again from the terminal, it goes back to the app you came from.</p></div>
         </div>
@@ -73,8 +74,8 @@
               sub-sessions stay listed and are skipped.</td></tr>
             <tr><td><kbd>⇧↑</kbd> <kbd>⇧↓</kbd> in the picker</td><td>Move over the agents that wait for you only, blocked or done,
               sub-sessions included, past the ninth too.</td></tr>
-            <tr><td><kbd>⌘R</kbd> or the bookmark in the picker</td><td>Mark a done or idle agent to review, or clear the mark:
-              while idle it ranks above the other idle agents; its pink bookmark stays even while it works again.</td></tr>
+            <tr><td><kbd>⌘R</kbd> or the bookmark in the picker</td><td>Mark any agent to review in pink, then move the mark to
+              yellow, then teal, then clear it: while idle it ranks above the other idle agents; the bookmark stays while it works.</td></tr>
             <tr><td><kbd>Tab</kbd> in the picker</td><td>Next sort: FIFO (default), LIFO, then by name. The filter you typed stays.</td></tr>
           </tbody>
         </table></div>
@@ -110,7 +111,7 @@
           <b>Diagnostics</b>: the <code>herdr</code>, socket and terminal herdr-jump found, ready to copy.</p>
         <figure>
           <img class="shot" src="img/herdr-jump/menu.png" width="850" height="760" loading="lazy" style="max-width: 426px"
-            alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review; then the Sort by, Legend and Diagnostics submenus">
+            alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review and its bookmark color; then the Sort by, Legend and Diagnostics submenus">
         </figure>
       </section>
 

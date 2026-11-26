@@ -12,8 +12,6 @@ M.CHROME = 56 + 12 + 30 + 2
 M.WIDTH, M.MARGIN, M.TOP = 780, 24, 0.12
 
 local WAITING = { blocked = true, done = true }
--- Statuses that can be marked to review: the agent has delivered (as review.markable says).
-local MARKABLE = { done = true, idle = true }
 
 -- Whether a row waits for the user: blocked, or done and not seen (attention.status reports a seen
 -- done as idle). Waiting rows get the shortcuts and are the stops of ⇧↑↓ in the page.
@@ -47,22 +45,26 @@ function M.css(color)
   return ("rgb(%d, %d, %d)"):format(byte(color.red), byte(color.green), byte(color.blue))
 end
 
--- What picker.html renders: rows (from attention.rows, with shortcuts, whether each waits, is
--- marked to review or can be), the legend and its hint, the filter's placeholder and the status
--- colors.
-function M.model(rows, legend, placeholder, colors)
+-- What picker.html renders: rows (from attention.rows, with shortcuts, whether each waits, and
+-- its mark color: 0 when unmarked, else 1 to #markColors), the legend and its hint, the filter's
+-- placeholder, the status colors and the mark colors (in the order ⌘R cycles them).
+function M.model(rows, legend, placeholder, colors, markColors)
   local out, css = {}, {}
   for i, row in ipairs(rows) do
     out[i] = {
       pane = row.paneId, title = row.text, sub = row.subText, when = row.when, status = row.status,
       depth = row.depth or 0, key = row.key, waits = waits(row),
-      marked = row.marked == true, markable = MARKABLE[row.status] == true,
+      mark = row.marked and (row.markColor or 1) or 0,
     }
   end
   for status, color in pairs(colors) do
     css[status] = M.css(color)
   end
-  return { rows = out, legend = legend, placeholder = placeholder, colors = css }
+  local marks = {}
+  for i, color in ipairs(markColors or {}) do
+    marks[i] = M.css(color)
+  end
+  return { rows = out, legend = legend, placeholder = placeholder, colors = css, markColors = marks }
 end
 
 -- The window for these rows on a screen frame: centred, in the upper part, as tall as the rows

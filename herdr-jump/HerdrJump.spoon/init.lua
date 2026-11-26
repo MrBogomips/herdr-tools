@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.6.0"
+obj.version = "0.7.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -294,11 +294,8 @@ end
 -- The picker's model as JSON and its window, for the rows in the order in use.
 function obj:_pickerView()
   local rows = picker.shortcuts(self:_rows())
-  local colors = { mark = attention.MARK_COLOR }
-  for status, color in pairs(attention.COLOR) do
-    colors[status] = color
-  end
-  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order), colors)
+  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order),
+    attention.COLOR, attention.MARK_COLORS)
   local screen = hs.screen.mainScreen()
   return picker.frame(screen and screen:frame() or FALLBACK_SCREEN, rows), hs.json.encode(model)
 end
@@ -683,8 +680,9 @@ end
 
 --- HerdrJump:toggleReview(paneId)
 --- Method
---- Marks the agent to review, or clears its mark: the picker's bookmark and ⌘R. Only a done or idle
---- agent can be marked; a done one counts as seen then. The mark stays while the agent works again.
+--- Marks the agent to review, moves its mark to the next color, or clears it after the last one: the
+--- picker's bookmark and ⌘R. Any agent can be marked; a done one counts as seen then. The mark stays
+--- while the agent works.
 function obj:toggleReview(paneId)
   local found
   for _, agent in ipairs(self.agents) do
