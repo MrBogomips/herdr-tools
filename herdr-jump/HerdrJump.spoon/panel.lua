@@ -27,6 +27,9 @@ function M.new(template, inline, onMessage)
   self.view:shadow(true)
   self.view:level(hs.drawing.windowLevels.modalPanel)
   self.view:behaviorAsLabels({ "canJoinAllSpaces", "fullScreenAuxiliary" })
+  -- Escape never reaches the page (hs.webview takes it before WebKit), so a hotkey bound only
+  -- while the picker is shown closes it.
+  self.escape = hs.hotkey.new({}, "escape", function() self:hide() end)
   self.view:windowCallback(function(action, _, focused)
     if action == "focusChange" and focused == false then
       self:hide()
@@ -41,6 +44,7 @@ function Panel:show(frame, json)
   self.view:html(self.inline(self.template, json))
   self.view:show()
   self.view:bringToFront(true)
+  self.escape:enable()
   local window = self.view:hswindow()
   if window then
     window:focus()
@@ -57,6 +61,7 @@ function Panel:update(frame, json)
 end
 
 function Panel:hide()
+  self.escape:disable()
   if self:visible() then
     self.view:hide()
   end
@@ -67,6 +72,7 @@ function Panel:visible()
 end
 
 function Panel:delete()
+  self.escape:delete()
   if self.view then
     self.view:delete()
     self.view = nil
