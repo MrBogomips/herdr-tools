@@ -46,27 +46,26 @@ return {
   the_model_carries_rows_legend_hint_and_colors = function()
     local legend = { parts = { { status = "done", glyph = "✓", meaning = "done, not seen" } }, hint = "Sorted FIFO · Tab: LIFO, name" }
     local rows = picker.shortcuts({ row("w1:p1", "done"), row("w1:p2", "idle", 1) })
-    local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } })
+    local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } },
+      { { red = 1, green = 0, blue = 0 }, { red = 0, green = 0, blue = 1 } })
     h.eq(model.rows[1], {
       pane = "w1:p1", title = "w1:p1", sub = "done · x", when = "done", status = "done", depth = 0, key = 1, waits = true,
-      marked = false, markable = true,
+      mark = 0,
     })
     h.eq(model.rows[2].waits, false)
     h.eq(model.rows[2].depth, 1)
     h.eq(model.placeholder, "Filter agents")
     h.eq(model.legend, legend)
     h.eq(model.colors, { done = "rgb(0, 255, 0)" })
+    h.eq(model.markColors, { "rgb(255, 0, 0)", "rgb(0, 0, 255)" })
   end,
 
-  done_and_idle_rows_can_be_marked_and_marked_rows_say_so = function()
-    local rows = { row("a", "done"), row("b", "idle"), row("c", "blocked"), row("d", "working"), row("e", "unknown") }
-    rows[4].marked = true
-    local model = picker.model(rows, { parts = {}, hint = "" }, "", {})
-    local got = {}
-    for i, r in ipairs(model.rows) do
-      got[i] = { r.markable, r.marked }
-    end
-    h.eq(got, { { true, false }, { true, false }, { false, false }, { false, true }, { false, false } })
+  marked_rows_carry_their_mark_color_and_the_others_zero = function()
+    local rows = { row("a", "done"), row("b", "working"), row("c", "blocked") }
+    rows[2].marked, rows[2].markColor = true, 3
+    rows[3].marked = true
+    local model = picker.model(rows, { parts = {}, hint = "" }, "", {}, {})
+    h.eq({ model.rows[1].mark, model.rows[2].mark, model.rows[3].mark }, { 0, 3, 1 })
   end,
 
   waiting_rows_are_the_ones_with_shortcuts_and_beyond_the_ninth = function()

@@ -86,16 +86,17 @@ test("a single row stays selected", () => {
 test("an unknown mode moves like all", () => {
   eq(nextIndex(rows, 0, 1, "other"), 1);
 });
-test("a marked row offers to clear the mark, whatever its status", () => {
-  eq(reviewAction({ marked: true, markable: false }), "reviewed");
-  eq(reviewAction({ marked: true, markable: true }), "reviewed");
+test("any unmarked row offers the mark", () => {
+  eq(reviewAction({ mark: 0 }, 3), "to review");
+  eq(reviewAction({}, 3), "to review");
 });
-test("a done or idle row offers the mark", () => {
-  eq(reviewAction({ marked: false, markable: true }), "to review");
+test("a marked row offers the next color until the last one", () => {
+  eq(reviewAction({ mark: 1 }, 3), "next color");
+  eq(reviewAction({ mark: 2 }, 3), "next color");
 });
-test("other rows offer nothing", () => {
-  eq(reviewAction({ marked: false, markable: false }), null);
-  eq(reviewAction({}), null);
+test("a row in the last color offers to clear the mark", () => {
+  eq(reviewAction({ mark: 3 }, 3), "reviewed");
+  eq(reviewAction({ mark: 1 }, 1), "reviewed");
 });
 
 let failed = 0;

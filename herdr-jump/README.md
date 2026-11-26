@@ -11,12 +11,12 @@ Run five agents at once and they queue up for you: a permission here, a finished
 HerdrJump lines them up first come, first served, tells you how long each one has waited, and
 takes you to its pane with Enter, whatever app you are in.
 
-<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, each with an outlined bookmark after its title; then an idle agent with a pink bookmark, to review since 18:04; then a working agent coordinating a release, with its three sub-sessions on compact indented lines under it: the finished one with ⌘5, an idle one with a pink bookmark, a working one; then a working agent that keeps its pink bookmark; a line at the bottom explains the icons, the bookmark, the sort in use and the arrow keys" width="800">
+<img src="docs/picker.png" alt="The agents picker: two blocked agents with orange pause icons on top, each with the shortcut ⌘1 or ⌘2, then two finished agents with green check marks, ⌘3 and ⌘4, each with an outlined bookmark after its title; then an idle agent with a pink bookmark, to review since 12:37; then a working agent coordinating a release, with an outlined bookmark and its three sub-sessions on compact indented lines under it: the finished one with ⌘5, an idle one with a yellow bookmark, a working one; then a working agent marked with a teal bookmark; a line at the bottom explains the icons, the three bookmark colors, the sort in use and the arrow keys" width="800">
 
 The picker (`⌃⌥⌘A`, from any app), with fictional agents: blocked first, then done, each oldest
-first, each with its ⌘ shortcut; then the agents marked to review (pink bookmark), then the
-others, sub-sessions under their master. The outlined bookmark marks an agent; Tab sorts newest
-first or by name.
+first, each with its ⌘ shortcut; then the agents marked to review (a bookmark in one of three
+colors), then the others, sub-sessions under their master. The outlined bookmark marks an agent;
+Tab sorts newest first or by name.
 
 ## Standalone
 
@@ -52,7 +52,8 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 - **You looked at the result but have not reviewed it yet.** Once seen, a `done` agent turns
   `idle` and looks finished. Click the bookmark after its title in the picker (or press `⌘R`) to
   keep it "to review": a pink bookmark and "to review since 10:02", above the idle agents while it
-  is idle. The bookmark stays when you set it to work again, until you click it again.
+  is idle. Click again for yellow, then teal, to tell your marks apart; once more clears it. Any
+  agent can be marked, a working one too, and the bookmark stays while it works.
 
 ## Keys
 
@@ -63,7 +64,7 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
 | `⌘1`…`⌘9` (in the picker) | Jump to an agent that waits for you, `blocked` or `done` and not seen, sub-sessions included, numbered in list order. The others have no shortcut: pick them with the arrows, the filter or the mouse. A shortcut stays on its agent while you filter. |
 | `⌥↑` `⌥↓` (in the picker) | Move over the top-level rows only: masters and agents without sub-sessions. The sub-sessions stay on screen and are skipped; from one, `⌥↑` goes back to its master. With `groupChildren = false` every row is top-level, so they move like the plain arrows. |
 | `⇧↑` `⇧↓` (in the picker) | Move over the agents that wait for you only, `blocked` or `done` and not seen, sub-sessions included, past the ninth too (the rows with no `⌘` key left). |
-| `⌘R` or a click on the bookmark (in the picker) | Mark the agent to review, or clear its mark (see [To review](#to-review)). Only a `done` or `idle` agent can be marked; marking a `done` one also counts as seeing it. A click on the bookmark does not jump. |
+| `⌘R` or a click on the bookmark (in the picker) | Mark the agent to review in pink, then move the mark to yellow, then teal, then clear it (see [To review](#to-review)). Any agent can be marked, whatever its status; marking a `done` one also counts as seeing it. A click on the bookmark does not jump. |
 | `Tab` (in the picker) | Next sort: FIFO (oldest change first, the default), LIFO (newest first, still by status), name (every agent by title). The filter you typed stays; the choice is remembered. |
 
 Both keys can be changed, see [Configure](#configure).
@@ -84,8 +85,8 @@ The menu bar drop-down has a Legend submenu with the icons.
 | Empty ring | grey | `idle`, or `done` and already seen |
 | Half-filled ring | blue | `working` |
 
-After the title, a pink filled bookmark marks an agent [to review](#to-review); an outlined grey
-one, on every `done` or `idle` agent, is the button that marks it.
+After the title, a filled bookmark (pink, yellow or teal) marks an agent [to review](#to-review);
+an outlined grey one, on every other agent, is the button that marks it.
 
 ## Waiting times
 
@@ -112,7 +113,7 @@ Click it for the drop-down: the agents in the picker's order, each with its icon
 **Sort by** (FIFO, LIFO, by name; the checked one is in use), **Legend** and **Diagnostics** (see
 [Troubleshooting](#troubleshooting)).
 
-<img src="docs/menu.png" alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review; then the Sort by, Legend and Diagnostics submenus" width="426">
+<img src="docs/menu.png" alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review and its bookmark color; then the Sort by, Legend and Diagnostics submenus" width="426">
 
 macOS adds the item left of the other menu bar icons, on the main display. The count can lag by
 up to `pollSeconds`.
@@ -130,17 +131,20 @@ counter goes backwards (Herdr restarted and reused the pane id) is forgotten.
 
 A `done` agent you have looked at turns `idle`, which reads as "can be closed" even when you have
 not reviewed its work yet. Mark it to review: the bookmark after its title, or `⌘R` on the
-selected row. A marked agent keeps the icon of its real status, with a pink bookmark after the
-title and "to review since 10:02" under it. While it reads `idle` it ranks after the `done` ones
+selected row. Each further click moves the mark to the next color, pink, yellow, teal, and the
+one after teal clears it: three colors to sort your marks by whatever you like (urgent, waiting
+for someone, to discuss). Any agent can be marked, a working or blocked one too. A marked agent
+keeps the icon of its real status, with the bookmark in its color after the title and "to review
+since 10:02" under it; changing the color keeps that time. While it reads `idle` it ranks after the `done` ones
 and before `unknown`, oldest mark first (newest first in LIFO); while it works again, is blocked
 or done, it ranks with that status and keeps the bookmark. Masters add "N to review" for their
-sub-sessions, and the menu bar drop-down ends a marked row with "· to review". A mark never
-counts, chimes or gets a `⌘` key.
+sub-sessions, and the menu bar drop-down ends a marked row with "· to review (yellow)". A mark
+never counts, chimes or gets a `⌘` key.
 
-The mark goes when you click the bookmark (or `⌘R`) again, when the pane closes, or when Herdr
-restarts (its pane ids are reused). The marks live in Hammerspoon's settings
-(`HerdrJump.review`) and survive a reload. `spoon.HerdrJump:toggleReview(paneId)` does the same
-from a script.
+The mark goes when you click the bookmark (or `⌘R`) past teal, when the pane closes, or when Herdr
+restarts (its pane ids are reused; a restart goes unnoticed on an agent that never finished since it was marked). The marks live in Hammerspoon's settings
+(`HerdrJump.review`) and survive a reload; a mark stored by an older version reads as pink.
+`spoon.HerdrJump:toggleReview(paneId)` does the same as a click from a script.
 
 ## Sub-sessions
 

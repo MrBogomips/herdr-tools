@@ -4,8 +4,8 @@
      while it is open.
      Messages to Hammerspoon go through the "herdrJump" port: jump, close, order, review.
      The arrows move over every row; with ⌥ over top-level rows, with ⇧ over the waiting ones.
-     The bookmark after a title marks the agent to review, or clears the mark: a click on it, or ⌘R
-     on the selected row. -->
+     The bookmark after a title marks the agent to review, moves the mark to the next color, or
+     clears it after the last: a click on it, or ⌘R on the selected row. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -60,10 +60,10 @@
   .act { flex: none; color: var(--dim); font-size: 12px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
   .row.child .act { font-size: 10.5px; padding: 0 5px; }
   footer .bm { display: inline-flex; vertical-align: -2px; }
-  footer .bm svg { width: 9px; height: 11px; }
-  footer { box-sizing: border-box; height: 30px; flex: none; display: flex; align-items: center; gap: 16px;
+  footer .bm svg { width: 7px; height: 9px; }
+  footer { box-sizing: border-box; height: 30px; flex: none; display: flex; align-items: center; gap: 14px;
     padding: 0 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--dim); white-space: nowrap; }
-  footer .parts { display: flex; gap: 12px; }
+  footer .parts { display: flex; gap: 10px; }
   footer .hint { margin-left: auto; overflow: hidden; text-overflow: ellipsis; }
   .empty { padding: 14px 12px; color: var(--dim); }
 </style>
@@ -91,11 +91,12 @@ function nextIndex(rows, from, step, mode) {
   return from;
 }
 
-// What the bookmark of a row does: "reviewed" clears the mark of a marked row, "to review" marks a
-// done or idle one; null when the row has no bookmark.
-function reviewAction(row) {
-  if (row.marked) return "reviewed";
-  return row.markable ? "to review" : null;
+// What the bookmark of a row does, with `count` mark colors: "to review" marks an unmarked row in
+// the first color, "next color" moves a marked one on, "reviewed" clears it from the last color.
+function reviewAction(row, count) {
+  const mark = row.mark || 0;
+  if (mark === 0) return "to review";
+  return mark < count ? "next color" : "reviewed";
 }
 </script>
 <script>
@@ -123,31 +124,30 @@ function icon(status) {
   return `<svg class="icon" viewBox="0 0 20 20">${shapes[status] || shapes.unknown}</svg>`;
 }
 
-// The bookmark: filled in the mark color when marked, an outline otherwise.
-function bookmark(filled) {
-  const c = model.colors.mark;
-  const stroke = filled ? c : "var(--dim)";
-  return `<svg viewBox="0 0 12 15"><path d="M1.5 1.5h9v12L6 10.2 1.5 13.5z" fill="${filled ? c : "none"}" ` +
+// The bookmark: filled in mark color `mark` (1 to the number of colors), an outline for 0.
+function bookmark(mark) {
+  const c = mark > 0 ? model.markColors[mark - 1] : null;
+  const stroke = c || "var(--dim)";
+  return `<svg viewBox="0 0 12 15"><path d="M1.5 1.5h9v12L6 10.2 1.5 13.5z" fill="${c || "none"}" ` +
     `stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 }
 
-// The bookmark after a title, a button that marks or clears; nothing when the row has none.
+const TIPS = { "to review": "To review (⌘R)", "next color": "Next color (⌘R)", reviewed: "Reviewed (⌘R)" };
+
+// The bookmark after a title, a button that marks, changes the color or clears.
 function markButton(row) {
-  const action = reviewAction(row);
-  if (!action) return "";
-  const tip = action === "reviewed" ? "Reviewed (⌘R)" : "To review (⌘R)";
-  return `<span class="mark" title="${tip}">${bookmark(row.marked)}</span>`;
+  const tip = TIPS[reviewAction(row, model.markColors.length)];
+  return `<span class="mark" title="${tip}">${bookmark(row.mark || 0)}</span>`;
 }
 
 // On the selected row, what ⌘R does there.
 function reviewChip(row) {
-  const action = row.pane === selected && reviewAction(row);
+  const action = row.pane === selected && reviewAction(row, model.markColors.length);
   return action ? `<span class="act">⌘R ${action}</span>` : "";
 }
 
 function review(pane) {
-  const row = visible.find((r) => r.pane === pane);
-  if (row && reviewAction(row)) send({ action: "review", pane: pane });
+  if (visible.some((r) => r.pane === pane)) send({ action: "review", pane: pane });
 }
 
 function escape(text) {
@@ -178,7 +178,7 @@ function render(next) {
     reviewChip(r) + (r.key ? `<span class="key">⌘${r.key}</span>` : "") + `</div>`).join("")
     : `<div class="empty">No matching agents</div>`;
   document.getElementById("legend").innerHTML = model.legend.parts.map((p) => p.status === "mark"
-    ? `<span><span class="bm">${bookmark(true)}</span> ${escape(p.meaning)}</span>`
+    ? `<span>${model.markColors.map((_, i) => `<span class="bm">${bookmark(i + 1)}</span>`).join("")} ${escape(p.meaning)}</span>`
     : `<span><span style="color:${model.colors[p.status]}">${escape(p.glyph)}</span> ${escape(p.meaning)}</span>`).join("");
   document.getElementById("hint").textContent = model.legend.hint;
   const row = list.querySelector(".sel");

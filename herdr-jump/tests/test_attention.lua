@@ -291,9 +291,16 @@ return {
     end
   end,
 
-  the_mark_has_its_own_color_outside_the_status_colors = function()
-    h.eq(attention.MARK_COLOR, { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 })
+  the_marks_have_three_colors_outside_the_status_colors = function()
+    h.eq(#attention.MARK_COLORS, 3)
+    h.eq(attention.MARK_COLORS[1], { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 })
+    h.eq(attention.MARK_NAMES, { "pink", "yellow", "teal" })
     h.eq(attention.COLOR.mark, nil)
+    for _, mark in ipairs(attention.MARK_COLORS) do
+      for status, color in pairs(attention.COLOR) do
+        h.eq(mark == color, false, status)
+      end
+    end
   end,
 
   legend_explains_the_glyphs_and_the_order = function()
@@ -336,7 +343,7 @@ return {
         { title = "unknown", status = "unknown" },
         { title = "idle", status = "idle" },
         { title = "working", status = "working" },
-        { title = "to review" },
+        { title = "to review: pink, yellow, teal" },
       } },
     })
   end,
@@ -427,22 +434,25 @@ return {
       agent("w2:p1", "blocked", { state_change_seq = 2, cwd = "/srv/acme-api" }),
     }
     local times = { ["w1:p1"] = { age = "2h", clock = "09:00" }, ["w2:p1"] = { age = "4m", clock = "11:58" } }
-    local marked = { ["w1:p1"] = { at = 100, clock = "10:02" }, ["w2:p1"] = { at = 50, clock = "09:30" } }
+    local marked = { ["w1:p1"] = { at = 100, clock = "10:02", color = 3 }, ["w2:p1"] = { at = 50, clock = "09:30" } }
     local rows = attention.rows(agents, {}, "fifo", times, nil, nil, marked)
-    h.eq({ rows[1].status, rows[1].marked, rows[1].subText },
-      { "blocked", true, "blocked 4m · since 11:58 · to review since 09:30 · acme-api" })
-    h.eq({ rows[2].status, rows[2].marked, rows[2].subText },
-      { "idle", true, "idle 2h · to review since 10:02 · initech-reports" })
+    h.eq({ rows[1].status, rows[1].marked, rows[1].markColor, rows[1].subText },
+      { "blocked", true, 1, "blocked 4m · since 11:58 · to review since 09:30 · acme-api" })
+    h.eq({ rows[2].status, rows[2].marked, rows[2].markColor, rows[2].subText },
+      { "idle", true, 3, "idle 2h · to review since 10:02 · initech-reports" })
   end,
 
   rows_without_a_mark_have_no_marked_field = function()
     local agents = { agent("w1:p1", "idle", {}) }
-    h.eq(attention.rows(agents, {}, "fifo", {}, nil, nil, {})[1].marked, nil)
+    local row = attention.rows(agents, {}, "fifo", {}, nil, nil, {})[1]
+    h.eq({ row.marked, row.markColor }, {})
   end,
 
-  menu_says_a_marked_row_is_to_review = function()
-    local rows = { { text = "Initech", subText = "idle 2h", paneId = "w1:p1", status = "idle", age = "2h", marked = true } }
+  menu_says_a_marked_row_is_to_review_and_in_which_color = function()
+    local rows = {
+      { text = "Initech", subText = "idle 2h", paneId = "w1:p1", status = "idle", age = "2h", marked = true, markColor = 2 },
+    }
     h.eq(attention.menu(rows, nil, "fifo")[1],
-      { title = "Initech · 2h · to review", tooltip = "idle 2h", paneId = "w1:p1", status = "idle" })
+      { title = "Initech · 2h · to review (yellow)", tooltip = "idle 2h", paneId = "w1:p1", status = "idle" })
   end,
 }
