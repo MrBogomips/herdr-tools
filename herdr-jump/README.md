@@ -116,7 +116,7 @@ Click it for the drop-down: the agents in the picker's order, each with its icon
 <img src="docs/menu.png" alt="The menu bar drop-down with fictional agents: two blocked, two done, an idle one marked to review, then a working agent coordinating a release with its three sub-sessions indented under it, the idle one marked to review, then a working agent still marked to review; each with its status icon and wait, a marked one ending with to review and its bookmark color; then the Sort by, Legend and Diagnostics submenus" width="479">
 
 macOS adds the item left of the other menu bar icons, on the main display. The count can lag by
-up to `pollSeconds`.
+up to `pollSeconds`; the picker asks Herdr again when it opens, so its list is the current one.
 
 ### Seen agents
 
@@ -317,7 +317,8 @@ spoon.HerdrJump:start()
 - Every `pollSeconds` it runs `herdr agent list` (about 0.1 s), which prints the agents as JSON on
   stdout; errors come as a JSON envelope on stderr. Then `herdr pane list` for the pane labels that
   name helpers (see [Sub-sessions](#sub-sessions)); if it fails, the agents are used without them. Herdr can push status events, but only one
-  pane per subscription, so polling is simpler.
+  pane per subscription, so polling is simpler. The picker key runs the same read before the
+  picker opens.
 - A jump runs `herdr agent focus <pane id>`, then finds the Herdr client with `ps`, climbs its
   parent processes to the app that runs it (apps come from `hs.application.runningApplications()`),
   and has iTerm2 or Terminal select the tab on the client's tty over AppleScript; any other app is

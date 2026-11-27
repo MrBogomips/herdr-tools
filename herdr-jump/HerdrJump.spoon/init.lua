@@ -652,7 +652,7 @@ end
 --- HerdrJump:showAgents()
 --- Method
 --- Opens the agents picker, in the chosen order (oldest wait first by default), or closes it when
---- open; the list follows every read while it is open.
+--- open. It asks Herdr first, so the list is the current one; it follows every read while open.
 function obj:showAgents()
   if self.panel == nil then
     hs.alert.show("HerdrJump is stopped: call spoon.HerdrJump:start()")
@@ -666,18 +666,24 @@ function obj:showAgents()
     hs.alert.show("HerdrJump: " .. HERDR_NOT_FOUND)
     return
   end
-  if self.err then
-    hs.alert.show("HerdrJump: " .. self.err)
-    self:refresh()
+  -- A second press before Herdr answers must not open the picker twice.
+  if self.opening then
     return
   end
-  if #self.agents == 0 then
-    hs.alert.show("HerdrJump: no Herdr agents")
-    self:refresh()
-    return
-  end
-  self.panel:show(self:_pickerView())
-  self:refresh()
+  self.opening = true
+  self:refresh(function()
+    self.opening = false
+    if self.panel == nil then
+      return
+    end
+    if self.err then
+      hs.alert.show("HerdrJump: " .. self.err)
+    elseif #self.agents == 0 then
+      hs.alert.show("HerdrJump: no Herdr agents")
+    else
+      self.panel:show(self:_pickerView())
+    end
+  end)
 end
 
 --- HerdrJump:toggleReview(paneId)

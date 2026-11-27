@@ -269,6 +269,8 @@ list.addEventListener("mousemove", (event) => {
 window.addEventListener("focus", () => filter.focus());
 render();
 filter.focus();
+// init.lua holds its updates until this page, not the one the view showed before, can take them.
+send({ action: "ready" });
 </script>
 </body>
 </html>
