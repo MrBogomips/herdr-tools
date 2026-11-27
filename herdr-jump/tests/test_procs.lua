@@ -87,11 +87,6 @@ return {
     h.eq(pids(procs.clients(procs.parse(PS), "initech")), { 540, 630, 730, 820, 960 })
   end,
 
-  ttys_lists_each_terminal_once = function()
-    local clients = procs.clients(procs.parse(PS), "initech")
-    h.eq(procs.ttys(clients), { "/dev/ttys005", "/dev/ttys007", "/dev/ttys009", "/dev/ttys011" })
-  end,
-
   ancestry_climbs_to_the_last_process_before_launchd = function()
     h.eq(pids(procs.ancestry(procs.parse(PS), 540)), { 530, 520, 510, 500 })
     h.eq(pids(procs.ancestry(procs.parse(PS), 820)), { 810, 800 })

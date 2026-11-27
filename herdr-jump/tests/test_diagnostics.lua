@@ -72,8 +72,8 @@ return {
   end,
 
   settings_are_named = function()
-    local lines = diagnostics.lines(state({ terminal = { bundleID = CODE, name = "Code", ttys = {}, source = "setting", legacy = true, note = "x" } }))
-    h.eq(lines[4], "terminal: Code · itermBundleID (renamed terminalBundleID) · brings the app forward (x)")
+    local lines = diagnostics.lines(state({ terminal = { bundleID = CODE, name = "Code", ttys = {}, source = "setting", note = "x" } }))
+    h.eq(lines[4], "terminal: Code · terminalBundleID · brings the app forward (x)")
   end,
 
   errors_the_last_jump_and_the_permission_are_listed = function()
@@ -109,5 +109,13 @@ return {
     h.eq(has(diagnostics.lines(state({ subsessions = { masters = 2, children = 5 } })), "sub-sessions: 5 under 2 masters"), true)
     h.eq(has(diagnostics.lines(state({ subsessions = { masters = 1, children = 1 } })), "sub-sessions: 1 under 1 master"), true)
     h.eq(has(diagnostics.lines(state({ subsessions = { masters = 0, children = 0 } })), "sub-sessions"), false)
+  end,
+
+  the_herdr_line_and_the_missing_line_are_exported = function()
+    local herdr = { path = "/usr/local/bin/herdr", source = "setting", missing = { "/old/herdr" }, version = "0.9.3", older = true }
+    h.eq(diagnostics.herdrLine(herdr, "0.9.5"), "herdr: /usr/local/bin/herdr (herdrBin) · 0.9.3, older than 0.9.5")
+    h.eq(diagnostics.missingLine(herdr), "herdrBin /old/herdr is missing: using /usr/local/bin/herdr")
+    h.eq(diagnostics.missingLine({ path = "/x/herdr", missing = {} }), nil)
+    h.eq(diagnostics.missingLine({ missing = { "/old/herdr" } }), nil)
   end,
 }

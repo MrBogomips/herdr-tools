@@ -48,7 +48,7 @@ return {
   end,
 
   toggle_never_changes_its_inputs = function()
-    local marks = { ["w1:p1"] = { at = 5, completion = 7 } }
+    local marks = { ["w1:p1"] = { at = 5, completion = 7, color = 1 } }
     local seen = { ["w1:p1"] = 2 }
     local marksBefore, seenBefore = copy(marks), copy(seen)
     review.toggle(marks, seen, agent("w2:p1", "done", 9), "done", 1000)
@@ -84,9 +84,9 @@ return {
   end,
 
   the_cycle_has_as_many_colors_as_attention_draws = function()
-    local attention = h.load("attention")
+    local attention, menubar = h.load("attention"), h.load("menubar")
     h.eq(#attention.MARK_COLORS, review.COLORS)
-    h.eq(#attention.MARK_NAMES, review.COLORS)
+    h.eq(#menubar.MARK_NAMES, review.COLORS)
   end,
 
   valid_keeps_well_formed_entries_and_says_when_it_dropped_some = function()

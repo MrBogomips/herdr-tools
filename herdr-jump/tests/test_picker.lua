@@ -5,12 +5,16 @@ local function row(pane, status, depth)
   return { paneId = pane, text = pane, subText = status .. " · x", when = status, status = status, depth = depth }
 end
 
-local function keys(rows)
+local function keys(model)
   local out = {}
-  for i, r in ipairs(rows) do
+  for i, r in ipairs(model.rows) do
     out[i] = r.key or 0
   end
   return out
+end
+
+local function model(rows)
+  return picker.model(rows, { parts = {}, hint = "" }, "", {})
 end
 
 local SCREEN = { x = 0, y = 25, w = 1440, h = 875 }
@@ -20,7 +24,7 @@ return {
     local rows = {
       row("a", "blocked"), row("b", "idle", 1), row("c", "done", 1), row("d", "working"), row("e", "done"),
     }
-    h.eq(keys(picker.shortcuts(rows)), { 1, 0, 2, 0, 3 })
+    h.eq(keys(model(rows)), { 1, 0, 2, 0, 3 })
   end,
 
   shortcuts_stop_at_nine = function()
@@ -28,15 +32,9 @@ return {
     for i = 1, 11 do
       rows[i] = row("p" .. i, "done")
     end
-    local out = picker.shortcuts(rows)
+    local out = model(rows).rows
     h.eq(out[9].key, 9)
     h.eq(out[10].key, nil)
-  end,
-
-  shortcuts_leave_the_rows_given_unchanged = function()
-    local rows = { row("a", "blocked") }
-    picker.shortcuts(rows)
-    h.eq(rows[1].key, nil)
   end,
 
   css_colors_come_from_hammerspoon_colors = function()
@@ -45,7 +43,7 @@ return {
 
   the_model_carries_rows_legend_hint_and_colors = function()
     local legend = { parts = { { status = "done", glyph = "✓", meaning = "done, not seen" } }, hint = "Sorted FIFO · Tab: LIFO, name" }
-    local rows = picker.shortcuts({ row("w1:p1", "done"), row("w1:p2", "idle", 1) })
+    local rows = { row("w1:p1", "done"), row("w1:p2", "idle", 1) }
     local model = picker.model(rows, legend, "Filter agents", { done = { red = 0, green = 1, blue = 0 } },
       { { red = 1, green = 0, blue = 0 }, { red = 0, green = 0, blue = 1 } })
     h.eq(model.rows[1], {
@@ -62,8 +60,7 @@ return {
 
   marked_rows_carry_their_mark_color_and_the_others_zero = function()
     local rows = { row("a", "done"), row("b", "working"), row("c", "blocked") }
-    rows[2].marked, rows[2].markColor = true, 3
-    rows[3].marked = true
+    rows[2].markColor, rows[3].markColor = 3, 1
     local model = picker.model(rows, { parts = {}, hint = "" }, "", {}, {})
     h.eq({ model.rows[1].mark, model.rows[2].mark, model.rows[3].mark }, { 0, 3, 1 })
   end,
@@ -80,7 +77,7 @@ return {
     rows[14] = row("d3", "done")
     rows[15] = row("b", "blocked", 1)
     rows[16] = row("w", "working", 1)
-    local model = picker.model(picker.shortcuts(rows), { parts = {}, hint = "" }, "", {})
+    local model = model(rows)
     for i, r in ipairs(model.rows) do
       h.eq(r.waits, r.status == "blocked" or r.status == "done", "row " .. i)
       if r.key then

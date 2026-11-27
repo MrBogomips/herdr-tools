@@ -3,7 +3,7 @@
 --
 -- state = { version, minHerdr, hammerspoon,
 --   herdr = { path, source = "setting"|"found", missing = {paths}, version },
---   socket = { path, exists }, terminal = { name, source, legacy, note, selects }, clients,
+--   socket = { path, exists }, terminal = { name, source, note, selects }, clients,
 --   agentsError, lastRaise = { reason }, automation = name of a terminal Hammerspoon may not control,
 --   subsessions = { masters, children } }
 
@@ -15,7 +15,8 @@ local SOURCE = {
   default = "default",
 }
 
-local function herdrLine(herdr, minimum)
+-- The herdr line: the binary, where it came from and its version, or where it was looked for.
+function M.herdrLine(herdr, minimum)
   if herdr.path == nil then
     return ("herdr: not found in %s: set spoon.HerdrJump.herdrBin"):format(table.concat(herdr.missing or {}, ", "))
   end
@@ -29,11 +30,16 @@ local function herdrLine(herdr, minimum)
   return line
 end
 
-local function terminalLine(terminal)
-  local source = SOURCE[terminal.source]
-  if terminal.source == "setting" then
-    source = terminal.legacy and "itermBundleID (renamed terminalBundleID)" or "terminalBundleID"
+-- The warning for a herdrBin setting that points nowhere while another herdr is used, or nil.
+function M.missingLine(herdr)
+  if herdr.path and #(herdr.missing or {}) > 0 then
+    return ("herdrBin %s is missing: using %s"):format(herdr.missing[1], herdr.path)
   end
+  return nil
+end
+
+local function terminalLine(terminal)
+  local source = terminal.source == "setting" and "terminalBundleID" or SOURCE[terminal.source]
   local line = ("terminal: %s · %s · %s"):format(terminal.name, source or tostring(terminal.source),
     terminal.selects and "selects the Herdr tab" or "brings the app forward")
   if terminal.note then
@@ -49,10 +55,11 @@ end
 function M.lines(state)
   local lines = {
     ("HerdrJump %s · Hammerspoon %s"):format(state.version, state.hammerspoon),
-    herdrLine(state.herdr, state.minHerdr),
+    M.herdrLine(state.herdr, state.minHerdr),
   }
-  if state.herdr.path and #(state.herdr.missing or {}) > 0 then
-    lines[#lines + 1] = ("herdrBin %s is missing: using %s"):format(state.herdr.missing[1], state.herdr.path)
+  local missing = M.missingLine(state.herdr)
+  if missing then
+    lines[#lines + 1] = missing
   end
   lines[#lines + 1] = "socket: " .. state.socket.path .. (state.socket.exists and "" or " · missing: is Herdr running?")
   lines[#lines + 1] = terminalLine(state.terminal)

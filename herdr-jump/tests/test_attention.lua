@@ -294,86 +294,12 @@ return {
   the_marks_have_three_colors_outside_the_status_colors = function()
     h.eq(#attention.MARK_COLORS, 3)
     h.eq(attention.MARK_COLORS[1], { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 })
-    h.eq(attention.MARK_NAMES, { "pink", "yellow", "teal" })
     h.eq(attention.COLOR.mark, nil)
     for _, mark in ipairs(attention.MARK_COLORS) do
       for status, color in pairs(attention.COLOR) do
         h.eq(mark == color, false, status)
       end
     end
-  end,
-
-  legend_explains_the_glyphs_and_the_order = function()
-    h.eq(attention.legend("fifo"), {
-      hint = "Sorted FIFO · Tab: LIFO, name · ⌥↑↓ masters · ⇧↑↓ waiting",
-      parts = {
-        { status = "blocked", glyph = "⏸", meaning = "blocked" },
-        { status = "done", glyph = "✓", meaning = "done, not seen" },
-        { status = "unknown", glyph = "?", meaning = "unknown" },
-        { status = "idle", glyph = "○", meaning = "idle" },
-        { status = "working", glyph = "◐", meaning = "working" },
-        { status = "mark", glyph = "", meaning = "to review" },
-      },
-    })
-    h.eq(attention.legend("name").hint, "Sorted by name · Tab: FIFO, LIFO · ⌥↑↓ masters · ⇧↑↓ waiting")
-  end,
-
-  placeholder_names_the_order = function()
-    h.eq(attention.placeholder("lifo"), "Filter agents · sorted LIFO (Tab to change)")
-    h.eq(attention.placeholder("name"), "Filter agents · sorted by name (Tab to change)")
-  end,
-
-  menu_lists_the_rows_then_the_sort_choices_and_the_legend = function()
-    local rows = {
-      { text = "ACME", subText = "blocked 12m · acme-api", paneId = "w2:p3", status = "blocked", age = "12m" },
-      { text = "Lumon", subText = "idle", paneId = "w1:p1", status = "idle" },
-    }
-    h.eq(attention.menu(rows, nil, "lifo"), {
-      { title = "ACME · 12m", tooltip = "blocked 12m · acme-api", paneId = "w2:p3", status = "blocked" },
-      { title = "Lumon", tooltip = "idle", paneId = "w1:p1", status = "idle" },
-      { title = "-" },
-      { title = "Sort by", menu = {
-        { title = "FIFO: oldest first", order = "fifo", checked = false },
-        { title = "LIFO: newest first", order = "lifo", checked = true },
-        { title = "By name", order = "name", checked = false },
-      } },
-      { title = "Legend", menu = {
-        { title = "blocked", status = "blocked" },
-        { title = "done, not seen", status = "done" },
-        { title = "unknown", status = "unknown" },
-        { title = "idle", status = "idle" },
-        { title = "working", status = "working" },
-        { title = "to review: pink, yellow, teal" },
-      } },
-    })
-  end,
-
-  menu_says_when_there_is_no_agent = function()
-    h.eq(attention.menu({}, nil), { { title = "No Herdr agents", disabled = true } })
-  end,
-
-  menu_shows_the_error_instead_of_stale_rows = function()
-    local rows = { { text = "· Lumon", subText = "idle", paneId = "w1:p1", status = "idle" } }
-    h.eq(attention.menu(rows, "Herdr is not running"), { { title = "Herdr is not running", disabled = true } })
-  end,
-
-  menubar_title_shows_the_count_only_when_something_waits = function()
-    h.eq(attention.title(0), "")
-    h.eq(attention.title(2), "2")
-    h.eq(attention.title(nil), "")
-  end,
-
-  menubar_title_says_it_cannot_tell_when_herdr_fails = function()
-    h.eq(attention.title(0, "Herdr is not running"), "?")
-    h.eq(attention.title(3, "Herdr is not answering"), "?")
-  end,
-
-  menubar_icon_state_follows_the_count_unless_herdr_fails = function()
-    h.eq(attention.state(0), "idle")
-    h.eq(attention.state(nil), "idle")
-    h.eq(attention.state(2), "waiting")
-    h.eq(attention.state(0, "Herdr is not running"), "down")
-    h.eq(attention.state(3, "Herdr is not answering"), "down")
   end,
 
   unknownStatuses_lists_each_status_herdr_added_once = function()
@@ -434,25 +360,17 @@ return {
       agent("w2:p1", "blocked", { state_change_seq = 2, cwd = "/srv/acme-api" }),
     }
     local times = { ["w1:p1"] = { age = "2h", clock = "09:00" }, ["w2:p1"] = { age = "4m", clock = "11:58" } }
-    local marked = { ["w1:p1"] = { at = 100, clock = "10:02", color = 3 }, ["w2:p1"] = { at = 50, clock = "09:30" } }
+    local marked = { ["w1:p1"] = { at = 100, clock = "10:02", color = 3 }, ["w2:p1"] = { at = 50, clock = "09:30", color = 1 } }
     local rows = attention.rows(agents, {}, "fifo", times, nil, nil, marked)
-    h.eq({ rows[1].status, rows[1].marked, rows[1].markColor, rows[1].subText },
-      { "blocked", true, 1, "blocked 4m · since 11:58 · to review since 09:30 · acme-api" })
-    h.eq({ rows[2].status, rows[2].marked, rows[2].markColor, rows[2].subText },
-      { "idle", true, 3, "idle 2h · to review since 10:02 · initech-reports" })
+    h.eq({ rows[1].status, rows[1].markColor, rows[1].subText },
+      { "blocked", 1, "blocked 4m · since 11:58 · to review since 09:30 · acme-api" })
+    h.eq({ rows[2].status, rows[2].markColor, rows[2].subText },
+      { "idle", 3, "idle 2h · to review since 10:02 · initech-reports" })
   end,
 
-  rows_without_a_mark_have_no_marked_field = function()
+  rows_without_a_mark_have_no_mark_color = function()
     local agents = { agent("w1:p1", "idle", {}) }
     local row = attention.rows(agents, {}, "fifo", {}, nil, nil, {})[1]
-    h.eq({ row.marked, row.markColor }, {})
-  end,
-
-  menu_says_a_marked_row_is_to_review_and_in_which_color = function()
-    local rows = {
-      { text = "Initech", subText = "idle 2h", paneId = "w1:p1", status = "idle", age = "2h", marked = true, markColor = 2 },
-    }
-    h.eq(attention.menu(rows, nil, "fifo")[1],
-      { title = "Initech · 2h · to review (yellow)", tooltip = "idle 2h", paneId = "w1:p1", status = "idle" })
+    h.eq(row.markColor, nil)
   end,
 }

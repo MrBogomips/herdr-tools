@@ -26,12 +26,15 @@ local family = load("family")
 local herdr = load("herdr")
 local icon = load("icon")
 local locate = load("locate")
+local menubar = load("menubar")
 local panel = load("panel")
 local picker = load("picker")
 local procs = load("procs")
 local review = load("review")
 local since = load("since")
 local terminal = load("terminal")
+
+local bar = menubar.new(attention)
 
 local SEEN_KEY = "HerdrJump.seen"
 local SINCE_KEY = "HerdrJump.since"
@@ -45,8 +48,8 @@ local HERDR_NOT_FOUND = "herdr not found: set spoon.HerdrJump.herdrBin (see Diag
 -- move to another terminal or quit after start(). Looking costs one ps run, about 0.1 s.
 local TERMINAL_RECHECK_SECONDS = 30
 
--- The menu's status icons, in points.
-local BADGES = { menu = { size = 18 } }
+-- The size of the menu's status icons, in points.
+local MENU_BADGE_SIZE = 18
 -- Where the picker's window goes when no screen is reported.
 local FALLBACK_SCREEN = { x = 0, y = 0, w = 1440, h = 900 }
 
@@ -68,11 +71,6 @@ obj.socketPath = (os.getenv("HOME") or "") .. "/.config/herdr/herdr.sock"
 --- not running). The terminal of a running client is found by itself. By default iTerm2 when it is
 --- installed, else Terminal.
 obj.terminalBundleID = nil
-
---- HerdrJump.itermBundleID
---- Variable
---- Deprecated: the former name of terminalBundleID, still honoured.
-obj.itermBundleID = nil
 
 --- HerdrJump.pollSeconds
 --- Variable
@@ -138,12 +136,9 @@ end
 --- HerdrJump:bindHotkeys(mapping)
 --- Method
 --- Binds `terminal` and `agents`, e.g. `spoon.HerdrJump:bindHotkeys(spoon.HerdrJump.defaultHotkeys)`.
---- `iterm`, the former name of `terminal`, still works.
 function obj:bindHotkeys(mapping)
-  local toggle = function() self:toggleTerminal() end
   hs.spoons.bindHotkeysToSpec({
-    terminal = toggle,
-    iterm = toggle,
+    terminal = function() self:toggleTerminal() end,
     agents = function() self:showAgents() end,
   }, mapping)
   return self
@@ -167,9 +162,6 @@ function obj:start()
   self.marks = marks
   self.lastPollOk = false
   self.order = self:_initialOrder()
-  if self.itermBundleID then
-    self.logger.w("itermBundleID is now terminalBundleID: the old name still works")
-  end
   self.watcher = hs.application.watcher.new(function(_, event, app)
     if app == nil then
       return
@@ -184,7 +176,7 @@ function obj:start()
       self.previousApp = app
     end
   end):start()
-  self.badges = icon.badges(attention.COLOR, BADGES)
+  self.badges = icon.badges(attention.COLOR, MENU_BADGE_SIZE)
   self:_newPanel()
   if self.showMenubar then
     self.menubar = hs.menubar.new()
@@ -210,14 +202,15 @@ function obj:_connect(quiet)
   if self.herdrInfo.path == nil then
     self.err = "herdr not found"
     if not quiet then
-      self.logger.e(diagnostics.lines(self:_diagnosticsState())[2] .. " (the output of `command -v herdr`)")
+      self.logger.e(diagnostics.herdrLine(self.herdrInfo, obj.minHerdrVersion) .. " (the output of `command -v herdr`)")
       hs.alert.show("HerdrJump: " .. HERDR_NOT_FOUND)
     end
     self:_updateMenubar(0, self.err)
     return false
   end
-  if #self.herdrInfo.missing > 0 then
-    self.logger.w(("herdrBin %s is missing: using %s"):format(self.herdrInfo.missing[1], self.herdrInfo.path))
+  local missing = diagnostics.missingLine(self.herdrInfo)
+  if missing then
+    self.logger.w(missing)
   end
   self.err = nil
   if self.timer == nil then
@@ -271,8 +264,8 @@ end
 
 -- The picker's model as JSON and its window, for the rows in the order in use.
 function obj:_pickerView()
-  local rows = picker.shortcuts(self:_rows())
-  local model = picker.model(rows, attention.legend(self.order), attention.placeholder(self.order),
+  local rows = self:_rows()
+  local model = picker.model(rows, bar.legend(self.order), bar.placeholder(self.order),
     attention.COLOR, attention.MARK_COLORS)
   local screen = hs.screen.mainScreen()
   return picker.frame(screen and screen:frame() or FALLBACK_SCREEN, rows), hs.json.encode(model)
@@ -332,8 +325,7 @@ function obj:_detectTerminal()
     end
     targets, notes = terminal.resolve(chains, terminal.regularApps())
   end
-  local fallback = terminal.fallback({ terminalBundleID = self.terminalBundleID, itermBundleID = self.itermBundleID },
-    terminal.installed)
+  local fallback = terminal.fallback({ terminalBundleID = self.terminalBundleID }, terminal.installed)
   fallback.name = terminal.nameOf(fallback.bundleID)
   self.terminal = terminal.choose(targets, fallback, notes)
   self.terminalCheckedAt = os.time()
@@ -375,12 +367,12 @@ function obj:_updateMenubar(count, err)
   if not self.menubar then
     return
   end
-  local state = attention.state(count, err)
+  local state = menubar.state(count, err)
   if state ~= self.iconState then
     self.iconState = state
     self.menubar:setIcon(self.icons[state], true)
   end
-  self.menubar:setTitle(attention.title(count, err))
+  self.menubar:setTitle(menubar.title(count, err))
   self.menubar:setTooltip(err or "Herdr agents")
 end
 
@@ -418,11 +410,7 @@ function obj:refresh(onDone)
       if self:_freshTerminal() == nil then
         self:_detectTerminal()
       end
-      local seen = attention.updateSeen(self.seen, agents, self:_terminalInFront())
-      if not attention.sameSeen(seen, self.seen) then
-        self.seen = seen
-        hs.settings.set(SEEN_KEY, seen)
-      end
+      self:_setSeen(attention.updateSeen(self.seen, agents, self:_terminalInFront()))
       self:_setMarks(review.prune(self.marks, agents))
       local started = since.update(self.since, agents, os.time(), self.lastPollOk)
       if not since.same(started, self.since) then
@@ -432,12 +420,17 @@ function obj:refresh(onDone)
       self.family = family.of(agents)
       self.lastPollOk = true
     end
-    self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
-    self:_updatePicker()
+    self:_render()
     if onDone then
       onDone()
     end
   end)
+end
+
+-- Shows the current state: the menu bar item and, when open, the picker.
+function obj:_render()
+  self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
+  self:_updatePicker()
 end
 
 -- The open picker follows each read; an error closes it, as an empty list would read "no agents".
@@ -469,6 +462,14 @@ function obj:_rows()
     not self.groupChildren, review.describe(self.marks, now, since.clock))
 end
 
+-- Keeps and stores a new seen record when it differs.
+function obj:_setSeen(seen)
+  if not attention.sameSeen(seen, self.seen) then
+    self.seen = seen
+    hs.settings.set(SEEN_KEY, seen)
+  end
+end
+
 -- Keeps and stores new marks when they differ.
 function obj:_setMarks(marks)
   if not review.same(marks, self.marks) then
@@ -477,7 +478,7 @@ function obj:_setMarks(marks)
   end
 end
 
--- The hs.menubar entry of an attention.menu item: its status icon, a jump or a sort when clicked.
+-- The hs.menubar entry of a menubar menu item: its status icon, a jump or a sort when clicked.
 function obj:_menuEntry(item)
   local pane, order = item.paneId, item.order
   local entry = {
@@ -485,7 +486,7 @@ function obj:_menuEntry(item)
     tooltip = item.tooltip,
     disabled = item.disabled,
     checked = item.checked,
-    image = item.status and self.badges.menu[item.status] or nil,
+    image = item.status and self.badges[item.status] or nil,
     indent = item.indent,
   }
   if pane then
@@ -504,7 +505,7 @@ end
 
 function obj:_menu()
   local menu = {}
-  for i, item in ipairs(attention.menu(self:_rows(), self.err, self.order)) do
+  for i, item in ipairs(bar.menu(self:_rows(), self.err, self.order)) do
     menu[i] = self:_menuEntry(item)
   end
   menu[#menu + 1] = { title = "-" }
@@ -523,8 +524,8 @@ function obj:_diagnosticsState()
     herdr = self.herdrInfo,
     socket = { path = self.socketPath, exists = hs.fs.attributes(self.socketPath, "mode") == "socket" },
     terminal = {
-      name = target.name, source = target.source, legacy = target.legacy, note = target.note,
-      selects = terminal.adapter(target.bundleID) ~= "generic" and #target.ttys > 0,
+      name = target.name, source = target.source, note = target.note,
+      selects = terminal.selectsTab(target.bundleID) and #target.ttys > 0,
     },
     clients = self.clientCount,
     agentsError = self.herdrInfo.path and self.err or nil,
@@ -601,13 +602,6 @@ function obj:toggleTerminal()
   end
 end
 
---- HerdrJump:toggleIterm()
---- Method
---- The former name of toggleTerminal().
-function obj:toggleIterm()
-  self:toggleTerminal()
-end
-
 --- HerdrJump:showAgents()
 --- Method
 --- Opens the agents picker, in the chosen order (oldest wait first by default), or closes it when
@@ -663,12 +657,8 @@ function obj:toggleReview(paneId)
   end
   local marks, seen = review.toggle(self.marks, self.seen, found, attention.status(found, self.seen), os.time())
   self:_setMarks(marks)
-  if not attention.sameSeen(seen, self.seen) then
-    self.seen = seen
-    hs.settings.set(SEEN_KEY, seen)
-  end
-  self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
-  self:_updatePicker()
+  self:_setSeen(seen)
+  self:_render()
 end
 
 --- HerdrJump:jump(paneId)

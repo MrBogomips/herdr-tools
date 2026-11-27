@@ -1,6 +1,7 @@
 local h = ...
 local attention = h.load("attention")
 local family = h.load("family")
+local bar = h.load("menubar").new(attention)
 
 -- An agent of `herdr agent list`; `name` makes it a sub-session of the unnamed agent in its tab.
 local function agent(pane, status, seq, fields)
@@ -97,7 +98,7 @@ return {
   end,
 
   menu_indents_child_rows = function()
-    local items = attention.menu({
+    local items = bar.menu({
       { text = "Master", subText = "idle", paneId = "w1:p1", status = "idle" },
       { text = "design", subText = "done", paneId = "w1:p2", status = "done", depth = 1 },
     }, nil, "fifo")
@@ -106,15 +107,15 @@ return {
   end,
   a_master_sums_up_its_children_to_review = function()
     local agents = hub("idle", "idle", "working")
-    local marked = { ["w1:p2"] = { at = 5, clock = "10:00" }, ["w1:p3"] = { at = 6, clock = "10:01" } }
+    local marked = { ["w1:p2"] = { at = 5, clock = "10:00", color = 1 }, ["w1:p3"] = { at = 6, clock = "10:01", color = 1 } }
     local rows = attention.rows(agents, {}, "fifo", {}, family.of(agents), nil, marked)
     h.eq(rows[2].subText, "idle · hub · +2 sub · 2 to review")
   end,
 
   a_marked_child_ranks_by_mark_time_in_a_flat_list = function()
     local agents = hub("working", "idle", "idle")
-    local marked = { ["w1:p2"] = { at = 9, clock = "10:09" }, ["w1:p3"] = { at = 5, clock = "10:05" } }
+    local marked = { ["w1:p2"] = { at = 9, clock = "10:09", color = 1 }, ["w1:p3"] = { at = 5, clock = "10:05", color = 1 } }
     local rows = attention.rows(agents, {}, "fifo", {}, family.of(agents), true, marked)
-    h.eq({ rows[2].text, rows[2].marked, rows[3].text, rows[3].marked }, { "product", true, "design", true })
+    h.eq({ rows[2].text, rows[2].markColor, rows[3].text, rows[3].markColor }, { "product", 1, "design", 1 })
   end,
 }

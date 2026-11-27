@@ -15,14 +15,8 @@ local UNEXPECTED = "unexpected reply from Herdr"
 local PANE_ID = "^[%w_][%w_%-]*:[%w_%-]+$"
 -- Error codes with a shorter message than Herdr's own.
 local PLAIN = { server_not_running = "Herdr is not running" }
-
-function M.listArgs()
-  return { "agent", "list" }
-end
-
-function M.paneListArgs()
-  return { "pane", "list" }
-end
+local LIST_ARGS = { "agent", "list" }
+local PANE_LIST_ARGS = { "pane", "list" }
 
 function M.focusArgs(paneId)
   if type(paneId) ~= "string" or not paneId:match(PANE_ID) then
@@ -232,7 +226,7 @@ end
 -- The agents carry the label of their pane (pane_label), which names a helper Herdr left unnamed
 -- (see family.lua); without the pane list they come back unlabelled, and detail says why.
 function M.listAgents(conn, callback)
-  M.run(conn, M.listArgs(), function(result, err, detail)
+  M.run(conn, LIST_ARGS, function(result, err, detail)
     if err then
       callback(nil, err, detail)
       return
@@ -243,7 +237,7 @@ function M.listAgents(conn, callback)
       return
     end
     local note = dropped > 0 and ("dropped %d malformed agent(s)"):format(dropped) or nil
-    M.run(conn, M.paneListArgs(), function(panes, paneErr, paneDetail)
+    M.run(conn, PANE_LIST_ARGS, function(panes, paneErr, paneDetail)
       local labels, badPanes = nil, paneErr
       if not paneErr then
         labels, badPanes = M.paneLabels(panes)
