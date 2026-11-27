@@ -167,7 +167,7 @@ local function sorted(agents, seen, order, marked)
   return list
 end
 
--- Whether an agent waits without a sound or a count: a sub-session that is done. Its master hears
+-- Whether an agent waits without a count: a sub-session that is done. Its master hears
 -- about it; one blocked on a question still needs the user. fam comes from family.of().
 function M.quiet(agent, seen, fam)
   return fam ~= nil and fam.parentOf[agent.pane_id] ~= nil and M.status(agent, seen) == "done"

@@ -135,7 +135,7 @@
 
       <section id="subsessions" aria-labelledby="subsessions-title">
         <div class="kicker">// 06</div>
-        <h2 id="subsessions-title">Sub-sessions and sound</h2>
+        <h2 id="subsessions-title">Sub-sessions</h2>
         <p>An agent that starts helpers with <code>herdr agent start &lt;name&gt;</code> gives each one a Herdr name; the agent
           itself has none. So in a tab, the named agents are sub-sessions of the only unnamed one; a helper in a tab of its
           own belongs to the only unnamed agent of its workspace whose folder holds its folder. When
@@ -147,14 +147,10 @@
           <tbody>
             <tr><td>Picker and menu</td><td>right under its master, indented; in the picker on one compact line</td></tr>
             <tr><td>Master's row</td><td><code>+4 sub</code>, then how many are blocked and done</td></tr>
-            <tr><td><code>done</code></td><td>quiet: listed, not counted, no sound</td></tr>
-            <tr><td><code>blocked</code></td><td>counted, and chimes, like any agent</td></tr>
+            <tr><td><code>done</code></td><td>quiet: listed, not counted</td></tr>
+            <tr><td><code>blocked</code></td><td>counted, like any agent</td></tr>
           </tbody>
         </table></div>
-        <p><b>Sound</b> is off by default. Herdr plays its own for every pane of a kind of agent, sub-sessions included.
-          To hear only what needs you, set <code>enabled = false</code> under <code>[ui.sound]</code> in Herdr's
-          <code>config.toml</code> and <code>spoon.HerdrJump.sound = true</code> in Hammerspoon: <code>Ping</code> when an agent
-          waits on a question, <code>Glass</code> when one is done, never for the pane you are looking at.</p>
       </section>
 
       <section id="install" aria-labelledby="install-title">
@@ -212,7 +208,6 @@ spoon.HerdrJump:start()</code></pre>
             <tr><td><code>showMenubar</code></td><td><code>true</code></td><td>Show the menu bar icon and count</td></tr>
             <tr><td><code>defaultOrder</code></td><td><code>"fifo"</code></td><td><code>"fifo"</code>, <code>"lifo"</code> or <code>"name"</code> until you choose one</td></tr>
             <tr><td><code>groupChildren</code></td><td><code>true</code></td><td>Sub-sessions under their master; <code>false</code> keeps one flat list</td></tr>
-            <tr><td><code>sound</code></td><td>off</td><td><code>true</code>, a sound name or file, or <code>{ blocked = …, done = … }</code></td></tr>
           </tbody>
         </table></div>
       </section>

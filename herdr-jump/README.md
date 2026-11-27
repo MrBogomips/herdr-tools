@@ -47,8 +47,8 @@ It is not a Herdr plugin itself: it runs in Hammerspoon, outside Herdr. It has n
   same list as the picker, as a menu.
 - **An agent runs sub-sessions next to it.** The helpers it started in its tab are listed under it,
   indented, and its row sums them up (`+4 sub · 1 done`). A helper that is done stays out of the
-  count and, with the sound on, plays nothing: its master hears about it. One that waits on a
-  permission counts and chimes like any agent, since only you can answer it.
+  count: its master hears about it. One that waits on a permission counts like any agent, since
+  only you can answer it.
 - **You looked at the result but have not reviewed it yet.** Once seen, a `done` agent turns
   `idle` and looks finished. Click the bookmark after its title in the picker (or press Space) to
   keep it "to review": a pink bookmark and "to review since 10:02", above the idle agents while it
@@ -139,7 +139,7 @@ since 10:02" under it; changing the color keeps that time. While it reads `idle`
 and before `unknown`, oldest mark first (newest first in LIFO); while it works again, is blocked
 or done, it ranks with that status and keeps the bookmark. Masters add "N to review" for their
 sub-sessions, and the menu bar drop-down ends a marked row with "· to review (yellow)". A mark
-never counts, chimes or gets a `⌘` key.
+never counts or gets a `⌘` key.
 
 The mark goes when you click the bookmark (or press Space or `⌘R`) past teal, when the pane closes, or when Herdr
 restarts (its pane ids are reused; a restart goes unnoticed on an agent that never finished since it was marked). The marks live in Hammerspoon's settings
@@ -176,33 +176,11 @@ folder, stays a top-level agent.
 | --- | --- |
 | Picker and menu | right under its master, indented; in the picker on one compact line. The group ranks as its most urgent member, quiet ones aside, and keeps the sort in use inside |
 | Master's row | `+4 sub`, then how many sub-sessions are `blocked` and `done` |
-| `done` | quiet: listed with its icon, not counted, no sound |
-| `blocked` | counted, and chimes, like any agent |
+| `done` | quiet: listed with its icon, not counted |
+| `blocked` | counted, like any agent |
 
 `groupChildren = false` keeps one flat list, each sub-session naming its master (`sub of <master>`);
 a `done` sub-session stays quiet either way.
-
-## Sound
-
-Off by default. Herdr plays its own sounds, for every pane of a kind of agent: it cannot leave the
-sub-sessions out. To hear only what needs you, let HerdrJump play them instead:
-
-1. In Herdr's `config.toml` (`~/.config/herdr/config.toml`):
-
-   ```toml
-   [ui.sound]
-   enabled = false
-   ```
-
-2. In Hammerspoon's `init.lua`, before `start()`: `spoon.HerdrJump.sound = true`.
-
-It plays `Ping` when an agent starts waiting on a question and `Glass` when one is done, one sound
-per poll (`blocked` wins). Nothing plays for a `done` sub-session, for the pane you are looking at
-(focused, with the terminal running Herdr in front), or for what the first read after a start or
-an outage finds. `sound = "Hero"` plays one sound for both; `sound = { blocked = "Funk", done =
-"~/sounds/done.mp3" }` sets each, by system sound name (`/System/Library/Sounds`) or file path.
-Diagnostics shows the sounds, and warns when Herdr's own are still on. Herdr's in-app toasts
-(`[ui.toast]`) are Herdr's: HerdrJump does not change them.
 
 ## Terminals
 
@@ -294,7 +272,6 @@ Set these before `start()`:
 | `showMenubar` | `true` | Show the menu bar icon and count |
 | `defaultOrder` | `"fifo"` | The sort until you choose one: `"fifo"`, `"lifo"` or `"name"`; your last choice (Tab, menu) wins |
 | `groupChildren` | `true` | List sub-sessions under their master (see [Sub-sessions](#sub-sessions)); `false` keeps one flat list |
-| `sound` | `nil` (off) | `true`, a sound name or file, or `{ blocked = …, done = … }`: see [Sound](#sound) |
 
 `spoon.HerdrJump:setOrder("lifo")` sorts from a script, like Tab, and is remembered too.
 
@@ -343,8 +320,6 @@ spoon.HerdrJump:start()
   back to activating iTerm.
 - A sub-session is any named agent next to an unnamed one: an agent you named by hand
   (`herdr agent rename`) in a tab with another, unnamed agent is listed as its sub-session.
-- The sound plays only while Hammerspoon runs; with Herdr's own sound off, nothing chimes without
-  it.
 - The picker grows with the list up to the screen's height, then the list scrolls. It opens on
   the main screen (the one with the focused window).
 
@@ -369,7 +344,7 @@ spoon.HerdrJump:start()
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, sounds, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker model and size), Lua 5.4
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker model and size), Lua 5.4
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 

@@ -9,7 +9,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "HerdrJump"
-obj.version = "0.9.0"
+obj.version = "0.10.0"
 obj.author = "Giovanni Costagliola"
 obj.homepage = "https://github.com/MrBogomips/herdr-tools/tree/main/herdr-jump"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -21,7 +21,6 @@ local function load(name)
 end
 
 local attention = load("attention")
-local chime = load("chime")
 local diagnostics = load("diagnostics")
 local family = load("family")
 local herdr = load("herdr")
@@ -98,14 +97,6 @@ obj.defaultOrder = "fifo"
 --- not count either way.
 obj.groupChildren = true
 
---- HerdrJump.sound
---- Variable
---- Off (nil) by default. true plays "Ping" when an agent starts waiting on a question and "Glass"
---- when one is done; a sound name or file path plays that one for both; { blocked = …, done = … }
---- sets each. Sub-sessions that are done stay silent, and so does the pane you are looking at.
---- Turn Herdr's own sound off (enabled = false under [ui.sound]) or you hear both.
-obj.sound = nil
-
 --- HerdrJump.defaultHotkeys
 --- Variable
 --- ⌃⌥⌘I back to the terminal (again: back to the previous app), ⌃⌥⌘A the agents picker.
@@ -140,10 +131,8 @@ function obj:init()
   self.clientCount = 0
   self.lastRaise = nil
   self.automation = nil
-  -- Masters and sub-sessions of the last read; the sounds (nil: off), why the setting was refused,
-  -- what the last read saw, and what plays a sound.
-  self.family, self.sounds, self.soundProblem, self.chimeSnapshot = family.none(), nil, nil, nil
-  self.player = chime.player(function(message) self.logger.w(message) end)
+  -- Masters and sub-sessions of the last read.
+  self.family = family.none()
 end
 
 --- HerdrJump:bindHotkeys(mapping)
@@ -178,7 +167,6 @@ function obj:start()
   self.marks = marks
   self.lastPollOk = false
   self.order = self:_initialOrder()
-  self:_setUpSound()
   if self.itermBundleID then
     self.logger.w("itermBundleID is now terminalBundleID: the old name still works")
   end
@@ -213,16 +201,6 @@ function obj:start()
   self:_detectTerminal()
   self:_connect(false)
   return self
-end
-
--- Reads the sound setting; logs when it cannot be used, or when Herdr plays its own sounds too.
-function obj:_setUpSound()
-  self.sounds, self.soundProblem = chime.settings(self.sound)
-  self.chimeSnapshot = nil
-  local status = chime.status(self.sounds, self.soundProblem, self.socketPath)
-  if status.problem or status.herdr then
-    self.logger.w(table.concat(diagnostics.soundLines(status), " · "))
-  end
 end
 
 -- Finds herdr and polls it. Without herdr it does not poll (each poll would fail to launch it) and
@@ -428,8 +406,6 @@ function obj:refresh(onDone)
       end
       self.agents, self.err = {}, err
       self.family = family.none()
-      -- After the gap, the first good read only records: no burst of sounds.
-      self.chimeSnapshot = nil
       self.lastPollOk = false
     else
       -- Like an error, a detail (dropped agents, no pane labels) is logged when it starts or changes.
@@ -454,7 +430,6 @@ function obj:refresh(onDone)
         hs.settings.set(SINCE_KEY, started)
       end
       self.family = family.of(agents)
-      self:_chime(agents)
       self.lastPollOk = true
     end
     self:_updateMenubar(attention.count(self.agents, self.seen, self.family), self.err)
@@ -463,21 +438,6 @@ function obj:refresh(onDone)
       onDone()
     end
   end)
-end
-
--- Plays one sound when agents started waiting since the last read: not for a sub-session that is
--- done, nor for the focused pane while the terminal running Herdr is in front.
-function obj:_chime(agents)
-  local statusOf = function(agent) return attention.status(agent, self.seen) end
-  if self.sounds then
-    local front = self:_terminalInFront()
-    local events = chime.events(self.chimeSnapshot, agents, statusOf,
-      function(agent) return attention.quiet(agent, self.seen, self.family) end,
-      function(agent) return front and agent.focused == true end)
-    local status = chime.sound(events)
-    if status then self.player(self.sounds[status]) end
-  end
-  self.chimeSnapshot = chime.snapshot(agents, statusOf)
 end
 
 -- The open picker follows each read; an error closes it, as an empty list would read "no agents".
@@ -570,7 +530,6 @@ function obj:_diagnosticsState()
     agentsError = self.herdrInfo.path and self.err or nil,
     lastRaise = self.lastRaise,
     automation = self.automation,
-    sound = chime.status(self.sounds, self.soundProblem, self.socketPath),
     subsessions = family.counts(self.family),
   }
 end
