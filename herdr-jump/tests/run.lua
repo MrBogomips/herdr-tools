@@ -7,7 +7,7 @@ local here = (arg and arg[0] or ""):match("^(.*)/[^/]*$") or "."
 local helpers = dofile(here .. "/helpers.lua")
 
 local FILES = {
-  "test_attention", "test_chime", "test_diagnostics", "test_family", "test_subsessions", "test_herdr", "test_icon", "test_locate", "test_picker", "test_procs", "test_review",
+  "test_attention", "test_chime", "test_diagnostics", "test_family", "test_subsessions", "test_herdr", "test_icon", "test_locate", "test_panel", "test_picker", "test_procs", "test_review",
   "test_since", "test_terminal",
 }
 

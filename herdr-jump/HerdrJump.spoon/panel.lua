@@ -14,9 +14,14 @@ local PORT = "herdrJump"
 
 -- template: picker.html's text; onMessage(message): a table posted by the page ({ action, pane }).
 function M.new(template, inline, onMessage)
-  local self = setmetatable({ template = template, inline = inline }, Panel)
+  local self = setmetatable({ template = template, inline = inline, ready = false }, Panel)
   self.port = hs.webview.usercontent.new(PORT):setCallback(function(message)
-    if type(message) == "table" and type(message.body) == "table" then
+    if type(message) ~= "table" or type(message.body) ~= "table" then
+      return
+    end
+    if message.body.action == "ready" then
+      self:_ready()
+    else
       onMessage(message.body)
     end
   end)
@@ -39,7 +44,10 @@ function M.new(template, inline, onMessage)
 end
 
 -- Loads the page with the model (JSON) at frame, shows it and gives it the keyboard.
+-- The load takes some 80 ms, during which the view still runs the page it had: the new page says
+-- "ready" when its script has run, and an update meant for it waits until then.
 function Panel:show(frame, json)
+  self.ready, self.pending = false, nil
   self.view:frame(frame)
   self.view:html(self.inline(self.template, json))
   self.view:show()
@@ -57,7 +65,21 @@ function Panel:update(frame, json)
     return
   end
   self.view:frame(frame)
-  self.view:evaluateJavaScript("render(" .. json .. ")")
+  if self.ready then
+    self.view:evaluateJavaScript("render(" .. json .. ")")
+  else
+    self.pending = json
+  end
+end
+
+-- The page loaded by show() runs: it gets the update that arrived meanwhile, if any.
+function Panel:_ready()
+  self.ready = true
+  local json = self.pending
+  self.pending = nil
+  if json and self:visible() then
+    self.view:evaluateJavaScript("render(" .. json .. ")")
+  end
 end
 
 function Panel:hide()
