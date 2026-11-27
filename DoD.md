@@ -22,7 +22,8 @@
 - Merge without asking a simple pull request, with `gh pr merge <n> --rebase --delete-branch`, once CI passes
   and nothing is requested or unresolved. Simple means all of these:
   - it touches one plugin or companion, or only documentation;
-  - it changes no `herdr-plugin.toml`, `.github/`, `.claude/`, `install.sh` or vendored `herdr_api.py`;
+  - it changes no `herdr-plugin.toml`, `.github/`, `.claude/`, `.agents/`, `AGENTS.md`, `install.sh` or vendored
+    `herdr_api.py`;
   - it adds or changes no key binding, setting or stored data format;
   - it changes at most about 200 lines outside tests and screenshots.
 - Any other pull request: the user merges.
