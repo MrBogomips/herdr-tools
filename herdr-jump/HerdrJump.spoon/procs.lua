@@ -86,18 +86,6 @@ function M.clients(parsed, session)
   return #matching > 0 and matching or all
 end
 
--- The terminal devices of the clients, each once, first seen first.
-function M.ttys(clients)
-  local ttys, listed = {}, {}
-  for _, client in ipairs(clients) do
-    if not listed[client.tty] then
-      listed[client.tty] = true
-      ttys[#ttys + 1] = client.tty
-    end
-  end
-  return ttys
-end
-
 -- The parents of a process, nearest first, up to the one launchd (pid 1) started.
 function M.ancestry(parsed, pid)
   local chain, visited = {}, {}

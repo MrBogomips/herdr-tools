@@ -267,7 +267,7 @@ Set these before `start()`:
 | --- | --- | --- |
 | `herdrBin` | found | The `herdr` binary. Unset or missing, it is looked for in `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin` (Herdr's installer), `~/.cargo/bin`, the Nix profiles, `/opt/local/bin` and mise's shims: Hammerspoon's PATH has none of them |
 | `socketPath` | `~/.config/herdr/herdr.sock` | The Herdr server socket, passed as `HERDR_SOCKET_PATH`: set it when your Herdr uses another one (`herdr status server` prints it), such as a named session's `~/.config/herdr/sessions/<name>/herdr.sock` |
-| `terminalBundleID` | iTerm2 when installed, else Terminal | The terminal to bring forward when no Herdr client shows its own (Herdr in tmux, or not running); `itermBundleID`, its former name, still works |
+| `terminalBundleID` | iTerm2 when installed, else Terminal | The terminal to bring forward when no Herdr client shows its own (Herdr in tmux, or not running) |
 | `pollSeconds` | `5` | How often the agent list is read |
 | `showMenubar` | `true` | Show the menu bar icon and count |
 | `defaultOrder` | `"fifo"` | The sort until you choose one: `"fifo"`, `"lifo"` or `"name"`; your last choice (Tab, menu) wins |
@@ -286,8 +286,6 @@ spoon.HerdrJump:bindHotkeys({
 })
 spoon.HerdrJump:start()
 ```
-
-`iterm`, the former name of `terminal`, still works in the mapping.
 
 ## How it works
 
@@ -344,7 +342,7 @@ spoon.HerdrJump:start()
 ## Tests
 
 ```bash
-lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker model and size), Lua 5.4
+lua herdr-jump/tests/run.lua           # the pure modules (sorting, sub-sessions, menu bar text, seen record, wait times, icons, herdr replies, processes, terminals, herdr lookup, diagnostics, picker model and size), Lua 5.4
 sh herdr-jump/tests/test_install.sh    # install.sh, with the system commands stubbed
 ```
 

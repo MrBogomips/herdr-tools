@@ -1,4 +1,4 @@
--- Which Herdr agents need the user, in what order, and what the menu bar says about them.
+-- Which Herdr agents need the user, and in what order.
 -- Pure Lua: no hs.* calls, so it runs under plain Lua in the tests.
 --
 -- An agent is one entry of `herdr agent list`; the fields read here are pane_id, agent_status,
@@ -12,14 +12,14 @@
 
 local M = {}
 
--- Lower comes first. Statuses Herdr may add later rank with "unknown".
-local PRIORITY = { blocked = 1, done = 2, unknown = 3, idle = 4, working = 5 }
+-- The statuses, most urgent first. Statuses Herdr may add later rank with "unknown".
+M.STATUSES = { "blocked", "done", "unknown", "idle", "working" }
+local KNOWN = {}
+for _, status in ipairs(M.STATUSES) do
+  KNOWN[status] = true
+end
 -- Where rows rank: by status, with marked idle agents between done and unknown.
 local RANK = { blocked = 1, done = 2, marked = 3, unknown = 4, idle = 5, working = 6 }
-local STATUSES = { "blocked", "done", "unknown", "idle", "working" }
--- The legend's text glyphs, close to the symbol inside each status icon (icon.lua).
-local GLYPH = { blocked = "⏸", done = "✓", unknown = "?", idle = "○", working = "◐" }
-local MEANING = { done = "done, not seen" }
 
 -- Status colors (hs.drawing.color tables), readable on light and dark backgrounds.
 M.COLOR = {
@@ -29,25 +29,25 @@ M.COLOR = {
   idle = { red = 0.56, green = 0.56, blue = 0.58, alpha = 1 },
   working = { red = 0.04, green = 0.52, blue = 1.0, alpha = 1 },
 }
--- The bookmark colors of an agent marked to review, in the order ⌘R cycles them (review.lua), and
--- their names in the menu. Not status colors: icon.badges() draws one icon per entry of COLOR.
+-- The bookmark colors of an agent marked to review, in the order ⌘R cycles them (review.lua). Not
+-- status colors: icon.badges() draws one icon per entry of COLOR.
 M.MARK_COLORS = {
   { red = 1.0, green = 0.22, blue = 0.37, alpha = 1 },
   { red = 1.0, green = 0.8, blue = 0.0, alpha = 1 },
   { red = 0.0, green = 0.75, blue = 0.72, alpha = 1 },
 }
-M.MARK_NAMES = { "pink", "yellow", "teal" }
 
 -- The sort orders, in the order Tab cycles them. state_change_seq is one counter for all panes, so
 -- it orders the queue exactly. fifo: oldest change first; lifo: newest first; name: by title.
 M.ORDERS = { "fifo", "lifo", "name" }
-local ORDER_NAME = { fifo = "FIFO", lifo = "LIFO", name = "by name" }
-local ORDER_SHORT = { fifo = "FIFO", lifo = "LIFO", name = "name" }
-local SORT_TITLE = { fifo = "FIFO: oldest first", lifo = "LIFO: newest first", name = "By name" }
+local KNOWN_ORDER = {}
+for _, name in ipairs(M.ORDERS) do
+  KNOWN_ORDER[name] = true
+end
 
 -- A known order, "fifo" otherwise.
 function M.order(order)
-  return ORDER_NAME[order] and order or M.ORDERS[1]
+  return KNOWN_ORDER[order] and order or M.ORDERS[1]
 end
 
 function M.nextOrder(order)
@@ -62,7 +62,7 @@ end
 -- The status the user should see: a done agent already viewed counts as idle.
 function M.status(agent, seen)
   local status = agent.agent_status
-  if PRIORITY[status] == nil then
+  if not KNOWN[status] then
     return "unknown"
   end
   local viewed = seen[agent.pane_id]
@@ -218,13 +218,17 @@ function M.rank(agents, seen, order, fam, marked)
   return ranked
 end
 
+local function waiting(status)
+  return status == "blocked" or status == "done"
+end
+
 -- How many agents wait for the user: blocked on a question, or done and not yet seen; with a
 -- family, a sub-session that is done does not count (see quiet()).
 function M.count(agents, seen, fam)
   local n = 0
   for _, agent in ipairs(agents) do
     local status = M.status(agent, seen)
-    if (status == "blocked" or status == "done") and not M.quiet(agent, seen, fam) then
+    if waiting(status) and not M.quiet(agent, seen, fam) then
       n = n + 1
     end
   end
@@ -266,10 +270,6 @@ function M.sameSeen(a, b)
   return true
 end
 
-local function waiting(status)
-  return status == "blocked" or status == "done"
-end
-
 -- What a master's row says about its sub-sessions: how many, how many wait, how many to review.
 local function summary(pane, byPane, seen, fam, marked)
   local children = fam.childrenOf[pane]
@@ -302,8 +302,8 @@ end
 -- and how long it has lasted ("blocked 12m"); a waiting agent's subText also says since when.
 -- With a family (family.of()), sub-sessions follow their master at depth 1 (the caller indents
 -- them), and the master's subText sums them up; `flat` keeps one list and names the master in the
--- subText instead. A marked agent's row has marked = true, markColor (1 to #MARK_COLORS) and says
--- since when it is to review.
+-- subText instead. A marked agent's row has markColor (1 to #MARK_COLORS) and says since when it is
+-- to review.
 function M.rows(agents, seen, order, times, fam, flat, marked)
   times = times or {}
   local byPane = {}
@@ -343,105 +343,10 @@ function M.rows(agents, seen, order, times, fam, flat, marked)
       when = when,
       age = age,
       depth = depth,
-      marked = mark and true or nil,
-      markColor = mark and (mark.color or 1) or nil,
+      markColor = mark and mark.color,
     }
   end
   return rows
-end
-
--- What each glyph means, most urgent first, as parts (to color each glyph).
-local function legendParts()
-  local parts = {}
-  for i, status in ipairs(STATUSES) do
-    parts[i] = { status = status, glyph = GLYPH[status], meaning = MEANING[status] or status }
-  end
-  return parts
-end
-
--- The orders Tab moves to from this one, in cycle order.
-local function others(order)
-  local names, following = {}, M.nextOrder(order)
-  while following ~= order do
-    names[#names + 1] = ORDER_SHORT[following]
-    following = M.nextOrder(following)
-  end
-  return table.concat(names, ", ")
-end
-
--- The picker's keys besides Tab, shown after the order: arrows with a modifier.
-local NAV_HINT = "⌥↑↓ masters · ⇧↑↓ waiting"
-
--- The legend's last part: the bookmark of a marked agent, which the page draws itself.
-local MARK_PART = { status = "mark", glyph = "", meaning = "to review" }
-
--- The picker's footer line: what the glyphs mean, then the order, where Tab goes and the arrows.
-function M.legend(order)
-  order = M.order(order)
-  local parts = legendParts()
-  parts[#parts + 1] = MARK_PART
-  return {
-    parts = parts,
-    hint = ("Sorted %s · Tab: %s · %s"):format(ORDER_NAME[order], others(order), NAV_HINT),
-  }
-end
-
--- The picker's filter field text while nothing is typed.
-function M.placeholder(order)
-  return ("Filter agents · sorted %s (Tab to change)"):format(ORDER_NAME[M.order(order)])
-end
-
--- Menu bar drop-down entries (hs.menubar format): the rows, the sort choices, the legend. The caller
--- attaches the status icons and the click handlers: a jump for an entry with a paneId, a sort for
--- one with an order. An error replaces the rows, which would be stale.
-function M.menu(rows, err, order)
-  if err then
-    return { { title = err, disabled = true } }
-  end
-  if #rows == 0 then
-    return { { title = "No Herdr agents", disabled = true } }
-  end
-  order = M.order(order)
-  local items = {}
-  for i, row in ipairs(rows) do
-    local title = row.age and (row.text .. " · " .. row.age) or row.text
-    if row.marked then
-      title = ("%s · to review (%s)"):format(title, M.MARK_NAMES[row.markColor or 1])
-    end
-    items[i] = { title = title, tooltip = row.subText, paneId = row.paneId, status = row.status, indent = row.depth }
-  end
-  local sorts, legend = {}, {}
-  for i, name in ipairs(M.ORDERS) do
-    sorts[i] = { title = SORT_TITLE[name], order = name, checked = name == order }
-  end
-  for i, part in ipairs(legendParts()) do
-    legend[i] = { title = part.meaning, status = part.status }
-  end
-  legend[#legend + 1] = { title = MARK_PART.meaning .. ": " .. table.concat(M.MARK_NAMES, ", ") }
-  items[#items + 1] = { title = "-" }
-  items[#items + 1] = { title = "Sort by", menu = sorts }
-  items[#items + 1] = { title = "Legend", menu = legend }
-  return items
-end
-
--- The menu bar title, shown next to the icon: the count when something waits, nothing otherwise.
--- With an error the count is unknown, which must not look like "nothing waits".
-function M.title(count, err)
-  if err then
-    return "?"
-  end
-  if not count or count == 0 then
-    return ""
-  end
-  return tostring(count)
-end
-
--- Which icon the menu bar shows: "down" when Herdr cannot be read, "waiting" while agents wait.
-function M.state(count, err)
-  if err then
-    return "down"
-  end
-  return (count or 0) > 0 and "waiting" or "idle"
 end
 
 -- Statuses this module does not know, sorted, each once: Herdr may add or rename one, and such an
@@ -450,7 +355,7 @@ function M.unknownStatuses(agents)
   local found, list = {}, {}
   for _, agent in ipairs(agents) do
     local status = agent.agent_status
-    if status ~= nil and PRIORITY[status] == nil and not found[status] then
+    if status ~= nil and not KNOWN[status] and not found[status] then
       found[status] = true
       list[#list + 1] = tostring(status)
     end

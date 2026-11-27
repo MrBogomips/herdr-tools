@@ -41,7 +41,7 @@
   .icon { flex: none; width: 24px; height: 24px; }
   .text { flex: 1; min-width: 0; }
   .title, .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .title { font-size: 16px; }
+  .title { font-size: 16px; display: flex; align-items: center; gap: 6px; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 1px; }
   .key { flex: none; color: var(--dim); font-size: 15px; }
   .row.child { height: 24px; padding-left: 48px; gap: 8px; }
@@ -50,7 +50,6 @@
   .row.child .title { flex: none; max-width: 55%; font-size: 13px; }
   .row.child .sub { flex: 1; margin: 0; font-size: 11px; }
   .row.child .key { font-size: 12px; }
-  .title { display: flex; align-items: center; gap: 6px; }
   .title .name { overflow: hidden; text-overflow: ellipsis; }
   .mark { flex: none; display: inline-flex; width: 18px; height: 18px; border-radius: 4px;
     align-items: center; justify-content: center; cursor: pointer; }
@@ -172,8 +171,7 @@ function escape(text) {
 
 // The status and its age in the status color, then the rest of the subtext.
 function subText(row) {
-  const sub = row.sub || "";
-  const rest = sub.startsWith(row.when) ? sub.slice(row.when.length) : " · " + sub;
+  const rest = (row.sub || "").slice(row.when.length);
   return `<span style="color:${model.colors[row.status] || "inherit"}">${escape(row.when)}</span>${escape(rest)}`;
 }
 
@@ -228,9 +226,10 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   // ⌘R is always taken, so that it never reloads the page; Space only while the filter is empty.
-  if (isReviewKey(event, filter.value) || (event.metaKey && event.key.toLowerCase() === "r")) {
+  const reviewKey = isReviewKey(event, filter.value);
+  if (reviewKey || (event.metaKey && event.key.toLowerCase() === "r")) {
     event.preventDefault();
-    if (isReviewKey(event, filter.value) && selected) review(selected);
+    if (reviewKey && selected) review(selected);
     return;
   }
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {

@@ -19,24 +19,6 @@ local function waits(row)
   return WAITING[row.status] == true
 end
 
--- New rows where each waiting one (blocked, or done and not seen) gets a shortcut key, 1 to 9 in
--- list order; the others are chosen by hand.
-function M.shortcuts(rows)
-  local out, next = {}, 1
-  for i, row in ipairs(rows) do
-    local copy = {}
-    for k, v in pairs(row) do
-      copy[k] = v
-    end
-    if waits(row) and next <= 9 then
-      copy.key = next
-      next = next + 1
-    end
-    out[i] = copy
-  end
-  return out
-end
-
 -- An hs.drawing color (components 0 to 1) as CSS.
 function M.css(color)
   local function byte(v)
@@ -45,17 +27,22 @@ function M.css(color)
   return ("rgb(%d, %d, %d)"):format(byte(color.red), byte(color.green), byte(color.blue))
 end
 
--- What picker.html renders: rows (from attention.rows, with shortcuts, whether each waits, and
--- its mark color: 0 when unmarked, else 1 to #markColors), the legend and its hint, the filter's
+-- What picker.html renders: rows (from attention.rows, with whether each waits, its shortcut key
+-- (1 to 9 for the waiting ones, in list order) and its mark color: 0 when unmarked, else
+-- 1 to #markColors), the legend and its hint, the filter's
 -- placeholder, the status colors and the mark colors (in the order ⌘R cycles them).
 function M.model(rows, legend, placeholder, colors, markColors)
-  local out, css = {}, {}
+  local out, css, key = {}, {}, 1
   for i, row in ipairs(rows) do
+    local waiting = waits(row)
     out[i] = {
       pane = row.paneId, title = row.text, sub = row.subText, when = row.when, status = row.status,
-      depth = row.depth or 0, key = row.key, waits = waits(row),
-      mark = row.marked and (row.markColor or 1) or 0,
+      depth = row.depth or 0, key = waiting and key <= 9 and key or nil, waits = waiting,
+      mark = row.markColor or 0,
     }
+    if out[i].key then
+      key = key + 1
+    end
   end
   for status, color in pairs(colors) do
     css[status] = M.css(color)

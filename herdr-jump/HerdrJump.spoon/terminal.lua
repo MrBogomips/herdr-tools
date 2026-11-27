@@ -71,26 +71,26 @@ local function terminalScript(bundleID, ttys)
   }, "\n")
 end
 
-local ADAPTERS = {
-  [M.ITERM] = { name = "iterm2", script = itermScript },
-  [M.TERMINAL] = { name = "terminal", script = terminalScript },
+-- The script builder of each app that can select a tab.
+local SCRIPTS = {
+  [M.ITERM] = itermScript,
+  [M.TERMINAL] = terminalScript,
 }
 
--- "iterm2" or "terminal" when the app can select the client's tab, "generic" otherwise.
-function M.adapter(bundleID)
-  local adapter = ADAPTERS[bundleID]
-  return adapter and adapter.name or "generic"
+-- Whether the app can select the client's tab (it has a script), not only come forward.
+function M.selectsTab(bundleID)
+  return SCRIPTS[bundleID] ~= nil
 end
 
 -- AppleScript that brings forward the window and tab on one of the ttys and returns "raised", or
 -- "missing" when none matches; nil without an adapter or a valid tty. Only strings shaped like
 -- /dev/ttysNNN and bundle ids reach the script.
 function M.raiseScript(bundleID, ttys)
-  local adapter, list = ADAPTERS[bundleID], quoted(ttys)
-  if adapter == nil or list == nil or type(bundleID) ~= "string" or not bundleID:match(BUNDLE_ID) then
+  local script, list = SCRIPTS[bundleID], quoted(ttys)
+  if script == nil or list == nil or type(bundleID) ~= "string" or not bundleID:match(BUNDLE_ID) then
     return nil
   end
-  return adapter.script(bundleID, list)
+  return script(bundleID, list)
 end
 
 local function basename(command)
@@ -141,14 +141,11 @@ function M.resolve(chains, apps)
   return targets, notes
 end
 
--- The terminal to use when no client shows its own: terminalBundleID, the older itermBundleID,
+-- The terminal to use when no client shows its own: terminalBundleID,
 -- iTerm2 when installed, else Terminal. installed(bundleID) tells whether an app is there.
 function M.fallback(settings, installed)
   if settings.terminalBundleID then
     return { bundleID = settings.terminalBundleID, source = "setting" }
-  end
-  if settings.itermBundleID then
-    return { bundleID = settings.itermBundleID, source = "setting", legacy = true }
   end
   if installed(M.ITERM) then
     return { bundleID = M.ITERM, source = "default" }
@@ -163,7 +160,7 @@ function M.choose(targets, fallback, notes)
   end
   return {
     bundleID = fallback.bundleID, name = fallback.name, ttys = {}, source = fallback.source,
-    legacy = fallback.legacy, note = notes[1] or NO_CLIENT,
+    note = notes[1] or NO_CLIENT,
   }
 end
 

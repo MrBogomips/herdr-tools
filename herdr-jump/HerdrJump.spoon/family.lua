@@ -196,7 +196,7 @@ function M.of(agents)
       end
     end
     -- A tab with unnamed agents but no master is ambiguous: its named agents stay top-level.
-    settled[tab] = master ~= nil or #unnamed > 0
+    settled[tab] = #unnamed > 0
   end
   -- Masters for helpers in tabs of their own: unnamed agents that are no one's child.
   local candidates = {}

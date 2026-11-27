@@ -162,14 +162,11 @@ function M.status(status, color, size)
   return render(M.statusElements(status, color, size), size)
 end
 
--- The status icons for each use, per status: uses = { name = { size = points } }. Needs Hammerspoon.
-function M.badges(colors, uses)
+-- The status icons at a size in points, per status. Needs Hammerspoon.
+function M.badges(colors, size)
   local badges = {}
-  for use, spec in pairs(uses) do
-    badges[use] = {}
-    for status, color in pairs(colors) do
-      badges[use][status] = M.status(status, color, spec.size)
-    end
+  for status, color in pairs(colors) do
+    badges[status] = M.status(status, color, size)
   end
   return badges
 end

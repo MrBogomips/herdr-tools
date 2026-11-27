@@ -61,11 +61,11 @@ local function installed(list)
 end
 
 return {
-  adapters_exist_for_iterm_and_terminal_only = function()
-    h.eq(terminal.adapter(ITERM), "iterm2")
-    h.eq(terminal.adapter(TERMINAL), "terminal")
-    h.eq(terminal.adapter(CODE), "generic")
-    h.eq(terminal.adapter(nil), "generic")
+  only_iterm_and_terminal_select_a_tab = function()
+    h.eq(terminal.selectsTab(ITERM), true)
+    h.eq(terminal.selectsTab(TERMINAL), true)
+    h.eq(terminal.selectsTab(CODE), false)
+    h.eq(terminal.selectsTab(nil), false)
   end,
 
   iterm_script_selects_the_window_tab_and_session_of_every_client_tty = function()
@@ -125,11 +125,9 @@ return {
     h.eq(notes, { "Herdr runs inside tmux, so its terminal is unknown" })
   end,
 
-  fallback_is_the_setting_then_the_old_setting_then_an_installed_terminal = function()
+  fallback_is_the_setting_then_an_installed_terminal = function()
     local both = installed({ ITERM, TERMINAL })
-    h.eq(terminal.fallback({ terminalBundleID = CODE, itermBundleID = ITERM }, both), { bundleID = CODE, source = "setting" })
-    h.eq(terminal.fallback({ itermBundleID = "com.example.term" }, both),
-      { bundleID = "com.example.term", source = "setting", legacy = true })
+    h.eq(terminal.fallback({ terminalBundleID = CODE }, both), { bundleID = CODE, source = "setting" })
     h.eq(terminal.fallback({}, both), { bundleID = ITERM, source = "default" })
     h.eq(terminal.fallback({}, installed({ TERMINAL })), { bundleID = TERMINAL, source = "default" })
   end,

@@ -27,7 +27,7 @@ function M.toggle(marks, seen, agent, status, now)
   local pane = agent.pane_id
   local newMarks, newSeen = copy(marks), copy(seen)
   local mark = marks[pane]
-  local color = mark and (mark.color or 1)
+  local color = mark and mark.color
   if mark == nil then
     newMarks[pane] = { at = now, completion = agent.completion_seq or 0, color = 1 }
     if status == "done" and agent.completion_seq ~= nil then
