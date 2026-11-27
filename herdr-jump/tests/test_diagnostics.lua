@@ -105,25 +105,6 @@ return {
     h.eq(menu[#menu], { title = "Open the Automation settings", action = "automation" })
   end,
 
-  sound_off_says_so = function()
-    local lines = diagnostics.lines(state({ sound = { on = false } }))
-    h.eq(lines[#lines], "sound: off (Herdr's own, if on)")
-  end,
-
-  sound_on_names_the_sounds_and_warns_when_herdr_plays_too = function()
-    local sound = { on = true, sounds = { blocked = "Ping", done = "Glass" }, herdr = true, config = "/u/.config/herdr/config.toml" }
-    local lines = diagnostics.lines(state({ sound = sound }))
-    h.eq(has(lines, "sound: blocked Ping, done Glass"), true)
-    h.eq(has(lines, "sound: Herdr plays its own too: set enabled = false under [ui.sound] in /u/.config/herdr/config.toml"), true)
-    sound.herdr = false
-    h.eq(has(diagnostics.lines(state({ sound = sound })), "Herdr plays its own too"), false)
-  end,
-
-  a_sound_setting_it_cannot_use_is_shown = function()
-    local lines = diagnostics.lines(state({ sound = { on = false, problem = "sound must be true" } }))
-    h.eq(lines[#lines], "sound: sound must be true")
-  end,
-
   sub_sessions_found_are_counted = function()
     h.eq(has(diagnostics.lines(state({ subsessions = { masters = 2, children = 5 } })), "sub-sessions: 5 under 2 masters"), true)
     h.eq(has(diagnostics.lines(state({ subsessions = { masters = 1, children = 1 } })), "sub-sessions: 1 under 1 master"), true)

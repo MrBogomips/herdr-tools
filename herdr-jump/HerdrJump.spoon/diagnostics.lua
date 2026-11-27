@@ -5,8 +5,7 @@
 --   herdr = { path, source = "setting"|"found", missing = {paths}, version },
 --   socket = { path, exists }, terminal = { name, source, legacy, note, selects }, clients,
 --   agentsError, lastRaise = { reason }, automation = name of a terminal Hammerspoon may not control,
---   sound = { on, sounds = { blocked, done }, herdr = whether Herdr plays its own (nil: unknown), config,
---     problem }, subsessions = { masters, children } }
+--   subsessions = { masters, children } }
 
 local M = {}
 
@@ -43,21 +42,6 @@ local function terminalLine(terminal)
   return line
 end
 
--- What the sound setting does, and whether Herdr plays its own sounds too.
-function M.soundLines(sound)
-  if sound.problem then
-    return { "sound: " .. sound.problem }
-  end
-  if not sound.on then
-    return { "sound: off (Herdr's own, if on)" }
-  end
-  local lines = { ("sound: blocked %s, done %s"):format(sound.sounds.blocked, sound.sounds.done) }
-  if sound.herdr then
-    lines[2] = ("sound: Herdr plays its own too: set enabled = false under [ui.sound] in %s"):format(sound.config)
-  end
-  return lines
-end
-
 local function plural(n, word)
   return ("%d %s%s"):format(n, word, n == 1 and "" or "s")
 end
@@ -85,9 +69,6 @@ function M.lines(state)
   local sub = state.subsessions
   if sub and sub.children > 0 then
     lines[#lines + 1] = ("sub-sessions: %d under %s"):format(sub.children, plural(sub.masters, "master"))
-  end
-  for _, line in ipairs(state.sound and M.soundLines(state.sound) or {}) do
-    lines[#lines + 1] = line
   end
   return lines
 end
